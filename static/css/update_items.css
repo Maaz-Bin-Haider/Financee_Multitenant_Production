@@ -1,0 +1,119 @@
+/* update_items.css */
+
+/* --- Body Styling --- */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    background-color: #f9f9f9;
+    color: #333;
+    display: flex;
+    flex-direction: column;  /* stack children vertically */
+    align-items: center;     /* center horizontally */
+    min-height: 100vh;
+    padding-top: 40px;       /* space from top */
+}
+
+/* --- Form Container --- */
+form {
+    background: none;
+    padding: 25px 30px;
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+    width: 40vw; /* standard width */
+    max-width: 90%; /* responsive on small screens */
+    margin: auto;
+}
+button{
+      background: rgb(102, 158, 102);
+      color: #fff;
+      font-weight: 600;
+      padding: 12px 20px;
+      border-radius: 12px;
+      transition: all 0.25s ease;
+      display: inline-flex;
+      align-items: center;
+      align-self: center;
+      gap: 8px;
+      border: none;
+    }
+button:hover{
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+/* --- Headings --- */
+h2 {
+    margin-bottom: 20px;
+    color: #2c3e50;
+    text-align: center;
+}
+
+/* --- Label & Input Styling --- */
+form label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    display: block;
+}
+
+form input[type="text"],
+form input[type="number"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+    margin-bottom: 15px;
+    transition: border 0.3s, box-shadow 0.3s;
+}
+
+form input[type="text"]:focus,
+form input[type="number"]:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+    outline: none;
+}
+
+
+
+/* --- Suggestions Dropdown --- */
+.autocomplete-container {
+    position: relative;
+    width: 100%;
+}
+
+#suggestions {
+    border: 1px solid #ccc;
+    display: none;
+    position: absolute;
+    background: #fff;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 100%;
+    z-index: 1000;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#suggestions div {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    transition: background 0.2s;
+}
+
+#suggestions div:hover {
+    background-color: #3498db;
+    color: #fff;
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 480px) {
+    form {
+        width: 90%;
+        padding: 20px;
+    }
+
+    button {
+        padding: 14px;
+    }
+}

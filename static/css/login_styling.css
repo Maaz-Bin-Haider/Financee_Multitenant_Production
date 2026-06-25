@@ -1,0 +1,212 @@
+/* ============================================================
+   LOGIN PAGE — Light Professional Theme
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  background: #f0f4f8;
+  /* Subtle geometric pattern */
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(37,99,235,0.06) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(14,165,233,0.05) 0%, transparent 50%),
+    radial-gradient(circle at 60% 10%, rgba(99,102,241,0.04) 0%, transparent 40%);
+  color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== CARD ===== */
+.auth-card {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.06),
+    0 8px 32px rgba(0,0,0,0.08),
+    0 0 0 1px rgba(0,0,0,0.04);
+  padding: 2.5rem 2.25rem;
+  width: 420px;
+  max-width: 94vw;
+  animation: cardIn 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ===== LOGO / BRAND ===== */
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.auth-logo-icon {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: white;
+  margin-bottom: 0.85rem;
+  box-shadow: 0 4px 14px rgba(37,99,235,0.3);
+}
+
+.auth-brand h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+  letter-spacing: -0.025em;
+}
+
+.auth-brand p {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ===== FORM ===== */
+.auth-form-group {
+  margin-bottom: 1.1rem;
+}
+
+.auth-form-group label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 6px;
+  letter-spacing: 0.01em;
+}
+
+.auth-form-group .form-control,
+.auth-card .form-control {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #1e293b;
+  font-family: 'DM Sans', inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  outline: none;
+}
+
+.auth-card .form-control:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.14);
+  background: #ffffff;
+}
+
+.auth-card .form-control::placeholder {
+  color: #94a3b8;
+}
+
+/* Password field wrapper */
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper .form-control {
+  padding-right: 2.8rem;
+}
+
+.toggle-btn {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.25rem;
+  font-size: 0.95rem;
+  transition: color 0.2s;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.toggle-btn:hover {
+  color: #475569;
+}
+
+/* ===== SUBMIT BUTTON ===== */
+.auth-card .btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0.68rem 1rem;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-family: 'DM Sans', inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.5rem;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.28);
+  letter-spacing: 0.01em;
+}
+
+.auth-card .btn-primary:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  box-shadow: 0 4px 16px rgba(37,99,235,0.38);
+  transform: translateY(-1px);
+}
+
+.auth-card .btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(37,99,235,0.2);
+}
+
+/* loading state */
+.auth-card .btn-primary.loading {
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+/* ===== FOOTER NOTE ===== */
+.auth-footer-note {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+/* ===== DIVIDER ===== */
+.auth-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 1.5rem 0 1.25rem;
+}
+
+/* ===== INPUT GROUP (Bootstrap override) ===== */
+.auth-card .input-group {
+  position: relative;
+  display: flex;
+}
+
+.auth-card .input-group .form-control {
+  border-radius: 10px !important;
+  padding-right: 3rem;
+}

@@ -1,0 +1,39 @@
+# =============================================================================
+# docker-compose.override.yml  —  LOCAL DEV ONLY (MacBook Air M1, 8 GB)
+# -----------------------------------------------------------------------------
+# docker compose AUTOMATICALLY merges this file on top of docker-compose.yml
+# when you run plain `docker compose ...` in this directory. It:
+#   * shrinks Postgres memory so the stack fits comfortably in 8 GB alongside
+#     macOS + Docker Desktop + your browser,
+#   * exposes Postgres on localhost:5432 so you can inspect it with a GUI
+#     (TablePlus / DBeaver / psql) while testing.
+#
+# DO NOT copy this file to the EC2 host — there you want the full-size settings
+# in docker-compose.yml. (On the server, run with:
+#     docker compose -f docker-compose.yml up -d
+#  to ignore any override, or simply don't put this file on the server.)
+# =============================================================================
+services:
+  db:
+    ports:
+      - "5432:5432"            # inspect the DB from your Mac
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=50"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=768MB"
+      - "-c"
+      - "work_mem=8MB"
+      - "-c"
+      - "maintenance_work_mem=128MB"
+      - "-c"
+      - "random_page_cost=1.1"
+
+  web:
+    # Fewer workers locally — you're the only user.
+    environment:
+      WEB_CONCURRENCY: 2
+      GUNICORN_THREADS: 2

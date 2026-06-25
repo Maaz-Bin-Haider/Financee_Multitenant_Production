@@ -1,0 +1,54 @@
+# =====================
+# Python
+# =====================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# =====================
+# Django
+# =====================
+*.log
+db.sqlite3
+media/
+
+# Django migrations (optional — usually NOT ignored in real projects)
+# If you want to reset DB frequently in dev, you can ignore migrations:
+# */migrations/*.pyc
+# */migrations/__pycache__/
+
+# =====================
+# Environment variables
+# =====================
+.env
+
+
+# =====================
+# IDE / Editor
+# =====================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# =====================
+# Testing / coverage
+# =====================
+
+.pytest_cache/
+
+
+# =====================
+# Static files (if collected locally)
+# =====================
+staticfiles/
+

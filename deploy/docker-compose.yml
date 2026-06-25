@@ -1,0 +1,91 @@
+# =============================================================================
+# docker-compose.yml  —  single-EC2 production stack
+# -----------------------------------------------------------------------------
+#   db    : PostgreSQL 16, data on a named volume, tuned via command flags.
+#   web   : Django + Gunicorn (image from ./Dockerfile). Static baked at build.
+#   nginx : reverse proxy + static serving, shares the web image's static tree
+#           through the `staticfiles` volume.
+#
+# The `staticfiles` volume is populated from the web image at build (collectstatic
+# wrote /app/staticfiles) and mounted read-only into nginx so both see the same
+# hashed files + manifest.
+# =============================================================================
+services:
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # ONE-TIME bootstrap: this runs ONLY when pgdata is empty (first boot).
+      # It builds the public schema (auth/django/tenancy) + example tenant
+      # schema tenant_company_1. After that, `migrate` (in the web entrypoint)
+      # applies the authentication permission migrations. Ignored on later boots.
+      - ../build_multitenant_db.sql:/docker-entrypoint-initdb.d/01_build.sql:ro
+    # Conservative tuning for a shared 8 GB box (DB co-located with app).
+    # Adjust to the instance; see deploy/README for the rationale.
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "shared_buffers=1GB"
+      - "-c"
+      - "effective_cache_size=3GB"
+      - "-c"
+      - "work_mem=16MB"
+      - "-c"
+      - "maintenance_work_mem=256MB"
+      - "-c"
+      - "wal_compression=on"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "random_page_cost=1.1"          # SSD/gp3
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+    volumes:
+      - staticfiles:/app/staticfiles
+      - media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/authentication/login/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  nginx:
+    image: nginx:1.27
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # - "443:443"   # enable with certs
+    volumes:
+      - ./nginx/financee.conf:/etc/nginx/conf.d/default.conf:ro
+      - staticfiles:/app/staticfiles:ro
+      - media:/app/media:ro
+    depends_on:
+      - web
+
+volumes:
+  pgdata:
+  staticfiles:
+  media:

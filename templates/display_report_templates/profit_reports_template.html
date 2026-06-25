@@ -1,0 +1,82 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Profit Reports{% endblock title %}
+
+{% block SeperateCssFile %}
+<link rel="stylesheet" href="{% static 'css/accounts_reports.css' %}">
+<link rel="stylesheet" href="{% static 'css/profit_reports.css' %}">
+{% endblock SeperateCssFile %}
+
+{% block body %}
+
+<!-- Page title bar -->
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:1.1rem;">
+  <div style="width:36px;height:36px;background:#fef3c7;border-radius:var(--radius-md);
+              display:flex;align-items:center;justify-content:center;color:#d97706;font-size:0.95rem;flex-shrink:0;">
+    <i class="fa-solid fa-chart-pie"></i>
+  </div>
+  <div>
+    <h2 style="margin:0;font-size:1.2rem;font-weight:700;letter-spacing:-0.02em;">Profit Reports</h2>
+    <p style="margin:0;font-size:0.78rem;color:var(--text-tertiary);">Sale-wise profit &amp; company valuation</p>
+  </div>
+</div>
+
+<div class="reports-wrapper">
+
+  <!-- ====== LEFT PANEL ====== -->
+  <aside class="left-panel">
+    <h3>Profit</h3>
+    <div class="report-buttons">
+      <button class="report-btn" id="btn-sale"
+              onclick="selectReport('sale')">
+        <i class="fa-solid fa-receipt" style="margin-right:7px;font-size:0.78rem;"></i>Sale-wise Profit
+      </button>
+      <button class="report-btn active" id="btn-company"
+              onclick="selectReport('company')">
+        <i class="fa-solid fa-building-columns" style="margin-right:7px;font-size:0.78rem;"></i>Company Valuation
+      </button>
+    </div>
+  </aside>
+
+  <!-- ====== RIGHT PANEL ====== -->
+  <section class="right-panel">
+
+    <!-- Dynamic Form -->
+    <div id="report-form-container"></div>
+
+    <!-- Table Actions -->
+    <div class="table-actions">
+      <button id="download_pdf" class="btn-download">
+        <i class="fa-solid fa-file-pdf"></i> PDF
+      </button>
+      <button id="download_csv" class="btn-download btn-csv">
+        <i class="fa-solid fa-file-csv"></i> CSV
+      </button>
+    </div>
+
+    <!-- Report Table -->
+    <div class="table-container">
+      <table id="reportTable">
+        <thead id="reportHeader"></thead>
+        <tbody id="reportBody">
+          <tr><td class="no-data">
+            <i class="fa-solid fa-chart-pie" style="display:block;font-size:1.8rem;margin-bottom:0.6rem;opacity:0.3;"></i>
+            Select a report to view results
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+</div>
+
+<!-- Dependencies -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+<script src="{% static 'js/profit_reports.js' %}"></script>
+
+{% endblock body %}

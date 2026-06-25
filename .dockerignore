@@ -1,0 +1,30 @@
+# Place this file at the PROJECT ROOT (next to manage.py), not in deploy/.
+# It keeps the Docker build context small and prevents stale build output from
+# leaking into the image (collectstatic regenerates staticfiles/ at build time).
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Django build output / local db
+staticfiles/
+media/
+*.sqlite3
+
+# Secrets & local env (NEVER ship these in the image)
+.env
+deploy/.env
+
+# VCS / IDE / OS
+.git/
+.gitignore
+.idea/
+.vscode/
+.DS_Store
+
+# Docs / tests not needed at runtime
+*.md
