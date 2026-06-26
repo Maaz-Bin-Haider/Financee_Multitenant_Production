@@ -215,6 +215,11 @@ def sales(request):
 
                             # Fetch the returned invoice ID
                             invoice_id = cursor.fetchone()[0]
+                            # Save the optional user description on the invoice
+                            cursor.execute(
+                                "UPDATE salesinvoices SET description=%s WHERE sales_invoice_id=%s",
+                                [(data.get("description") or "").strip() or None, invoice_id],
+                            )
                             return JsonResponse({"success": True, "message": "Sale Successfull"})
                     except Exception as e:
                         logger.exception('swallowed exception in %s', __name__)
@@ -301,6 +306,11 @@ def sales(request):
 
                             # Fetch the returned invoice ID
                             invoice_id = cursor.fetchone()[0]
+                            # Save the optional user description on the invoice
+                            cursor.execute(
+                                "UPDATE salesinvoices SET description=%s WHERE sales_invoice_id=%s",
+                                [(data.get("description") or "").strip() or None, sale_id],
+                            )
                             return JsonResponse({"success": True, "message": "Update Successfull"})
 
                     except Exception as e:

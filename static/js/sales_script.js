@@ -1562,8 +1562,9 @@ function buildAndSubmit(event) {
   }
 
   const currentId = document.getElementById("current_sale_id").value || null;
+  const description = (document.getElementById("sale_description")?.value || "").trim();
   const payload   = { sale_id: currentId, party_name: partyName,
-                      sale_date: saleDate, items, action };
+                      sale_date: saleDate, items, action, description };
 
   _submitSale(payload);
 }
@@ -1734,6 +1735,8 @@ function renderSaleData(data) {
   document.getElementById("search_name").value       = data.Party || "";
   document.getElementById("sale_date").value         = data.invoice_date || "";
   document.getElementById("current_sale_id").value   = data.sales_invoice_id || "";
+  const _descEl = document.getElementById("sale_description");
+  if (_descEl) _descEl.value = data.description || "";
 
   // Update badge
   const badge = document.getElementById("invoiceIdBadge");

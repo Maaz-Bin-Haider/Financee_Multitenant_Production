@@ -817,6 +817,11 @@ def purchasing(request):
 
                             # Fetch the returned invoice ID
                             invoice_id = cursor.fetchone()[0]
+                            # Save the optional user description on the invoice
+                            cursor.execute(
+                                "UPDATE purchaseinvoices SET description=%s WHERE purchase_invoice_id=%s",
+                                [(data.get("description") or "").strip() or None, invoice_id],
+                            )
                             return JsonResponse({"success": True, "message": "Purchase Successfull"})
                     except Exception as e:
                         return JsonResponse({"success": False, "message": f"Failed to make Purchase, try again! {e}"})  
@@ -909,6 +914,11 @@ def purchasing(request):
 
                             # Fetch the returned invoice ID
                             invoice_id = cursor.fetchone()[0]
+                            # Save the optional user description on the invoice
+                            cursor.execute(
+                                "UPDATE purchaseinvoices SET description=%s WHERE purchase_invoice_id=%s",
+                                [(data.get("description") or "").strip() or None, purchase_id],
+                            )
                             return JsonResponse({"success": True, "message": "Update Successfull"})
 
                     except Exception as e:

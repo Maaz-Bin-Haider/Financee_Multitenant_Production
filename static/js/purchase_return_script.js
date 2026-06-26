@@ -787,7 +787,8 @@ function submitReturn(event) {
     party_name:  partyName,
     return_date: returnDate,
     serials,
-    action
+    action,
+    description: (document.getElementById("purchase_return_description")?.value || "").trim()
   };
 
   fetch("/purchaseReturn/create-purchase-return/", {
@@ -811,6 +812,8 @@ function renderPurchaseReturnData(data) {
   document.getElementById("search_name").value         = data.Vendor || "";
   document.getElementById("return_date").value         = data.return_date || "";
   document.getElementById("current_return_id").value   = data.purchase_return_id || "";
+  const _prDescEl = document.getElementById("purchase_return_description");
+  if (_prDescEl) _prDescEl.value = data.description || "";
 
   // ID badge
   const badge = document.getElementById("invoiceIdBadge");

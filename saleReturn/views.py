@@ -797,6 +797,11 @@ def createSaleReturn(request):
                         json_data = json.dumps(data.get("serials"))
                         with connection.cursor() as cursor:
                             cursor.execute("SELECT create_sale_return(%s,%s,%s)",[data.get('party_name'),json_data,request.user.id])
+                            new_return_id = cursor.fetchone()[0]
+                            cursor.execute(
+                                "UPDATE salesreturns SET description=%s WHERE sales_return_id=%s",
+                                [(data.get("description") or "").strip() or None, new_return_id],
+                            )
                         return JsonResponse({"success": True, "message": "Sale Return Sucessfull"}) 
                     except Exception as e:
                         return JsonResponse({"success": False, "message": f"Unable to Sale Return, Try Again!"}) 
@@ -819,6 +824,10 @@ def createSaleReturn(request):
                         json_data = json.dumps(data.get("serials"))
                         with connection.cursor() as cursor:
                             cursor.execute("SELECT update_sale_return(%s,%s,%s)",[sale_return_ID,json_data,request.user.id])
+                            cursor.execute(
+                                "UPDATE salesreturns SET description=%s WHERE sales_return_id=%s",
+                                [(data.get("description") or "").strip() or None, sale_return_ID],
+                            )
                         return JsonResponse({"success": True, "message": "Sale-Return Updated Sucessfully"}) 
                     except Exception as e:
                         return JsonResponse({"success": False, "message": f"Unable to Update Sale-Return, Try Again!"})

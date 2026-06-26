@@ -658,7 +658,8 @@ function submitSaleReturn(event) {
     party_name:  customer,
     return_date: returnDate,
     serials,
-    action
+    action,
+    description: (document.getElementById("sale_return_description")?.value || "").trim()
   };
 
   fetch("/saleReturn/create-sale-return/", {
@@ -682,6 +683,8 @@ function renderSaleReturnData(data) {
   document.getElementById("search_name").value    = data.Customer || "";
   document.getElementById("return_date").value    = data.return_date || "";
   document.getElementById("current_return_id").value = data.sales_return_id || "";
+  const _srDescEl = document.getElementById("sale_return_description");
+  if (_srDescEl) _srDescEl.value = data.description || "";
 
   // ID badge
   const badge = document.getElementById("invoiceIdBadge");

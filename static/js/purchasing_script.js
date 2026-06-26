@@ -3383,8 +3383,9 @@ function buildAndSubmit(event) {
   }
 
   const purchaseId = document.getElementById("current_purchase_id")?.value || null;
+  const description = (document.getElementById("purchase_description")?.value || "").trim();
   const payload    = { party_name: partyName, purchase_date: purchaseDate,
-                       items, action };
+                       items, action, description };
   if (purchaseId) payload.purchase_id = purchaseId;
 
   fetch("/purchase/purchasing/", {
@@ -3595,6 +3596,8 @@ function renderPurchaseData(data) {
   document.getElementById("search_name").value         = data.Party || "";
   document.getElementById("purchase_date").value       = data.invoice_date || "";
   document.getElementById("current_purchase_id").value = data.purchase_invoice_id || "";
+  const _pDescEl = document.getElementById("purchase_description");
+  if (_pDescEl) _pDescEl.value = data.description || "";
 
   const badge = document.getElementById("invoiceIdBadge");
   if (badge) badge.textContent = data.purchase_invoice_id ? `#${data.purchase_invoice_id}` : "#NEW";

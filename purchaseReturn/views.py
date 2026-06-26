@@ -802,6 +802,11 @@ def createPurchaseReturn(request):
                         json_data = json.dumps(data.get("serials"))
                         with connection.cursor() as cursor:
                             cursor.execute("SELECT create_purchase_return(%s,%s,%s)",[data.get('party_name'),json_data,request.user.id])
+                            new_return_id = cursor.fetchone()[0]
+                            cursor.execute(
+                                "UPDATE purchasereturns SET description=%s WHERE purchase_return_id=%s",
+                                [(data.get("description") or "").strip() or None, new_return_id],
+                            )
                         return JsonResponse({"success": True, "message": "Purchase Return Sucessfull"}) 
                     except Exception as e:
                         return JsonResponse({"success": False, "message": f"Unable to Purchase Return, Try Again!"}) 
@@ -824,6 +829,10 @@ def createPurchaseReturn(request):
                         json_data = json.dumps(data.get("serials"))
                         with connection.cursor() as cursor:
                             cursor.execute("SELECT update_purchase_return(%s,%s,%s)",[purchase_return_ID,json_data,request.user.id])
+                            cursor.execute(
+                                "UPDATE purchasereturns SET description=%s WHERE purchase_return_id=%s",
+                                [(data.get("description") or "").strip() or None, purchase_return_ID],
+                            )
                         return JsonResponse({"success": True, "message": "Purchase-Return Updated Sucessfully"}) 
                     except Exception as e:
                         
