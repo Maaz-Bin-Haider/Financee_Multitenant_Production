@@ -10842,3 +10842,569 @@ BEGIN
 
 END;
 $function$;
+-- add_cash_transactions.sql
+-- ============================================================================
+-- Cash Sale / Cash Purchase (and their returns) WITHOUT creating a credit party
+-- balance. Reuses the existing Cash account and the existing journal/serial
+-- posting; the ONLY change is the counterparty line of each journal:
+--
+--   * Credit Sale  (unchanged): Debit  Accounts Receivable (party)
+--   * Cash   Sale  (new):       Debit  Cash               (no party)
+--   * Credit Purch (unchanged): Credit Accounts Payable    (party)
+--   * Cash   Purch (new):       Credit Cash               (no party)
+--   * returns mirror the above for cash counterparties.
+--
+-- The signal is the counterparty itself: two sentinel parties ("Cash Sale",
+-- "Cash Purchase") carry a new Parties.is_cash flag. When a journal's
+-- counterparty is_cash, the builder posts to the existing Cash account with NO
+-- party_id, so the cash party never accrues a receivable/payable and no
+-- "receive payment" / "pay supplier" step is needed.
+--
+-- Existing parties default is_cash=false => credit flow is byte-for-byte
+-- unchanged. Idempotent. Apply with:
+--   python manage.py apply_sql_all_tenants tenancy/sql/add_cash_transactions.sql
+-- ============================================================================
+
+-- 1) Flag on Parties ---------------------------------------------------------
+ALTER TABLE Parties ADD COLUMN IF NOT EXISTS is_cash boolean DEFAULT false;
+
+-- 2) Sentinel cash parties: get-or-create, return id -------------------------
+CREATE OR REPLACE FUNCTION get_cash_party_id(p_kind text) RETURNS bigint
+    LANGUAGE plpgsql AS $$
+DECLARE
+    v_id   bigint;
+    v_name text;
+    v_type text;
+BEGIN
+    IF p_kind = 'sale' THEN
+        v_name := 'Cash Sale';     v_type := 'Customer';
+    ELSIF p_kind = 'purchase' THEN
+        v_name := 'Cash Purchase'; v_type := 'Vendor';
+    ELSE
+        RAISE EXCEPTION 'get_cash_party_id: kind must be sale|purchase, got %', p_kind;
+    END IF;
+
+    SELECT party_id INTO v_id FROM Parties WHERE party_name = v_name LIMIT 1;
+    IF v_id IS NULL THEN
+        PERFORM add_party_from_json(jsonb_build_object(
+            'party_name', v_name, 'party_type', v_type,
+            'opening_balance', 0, 'balance_type', 'Debit'));
+        SELECT party_id INTO v_id FROM Parties WHERE party_name = v_name LIMIT 1;
+    END IF;
+    UPDATE Parties SET is_cash = true WHERE party_id = v_id AND COALESCE(is_cash,false) = false;
+    RETURN v_id;
+END; $$;
+
+-- ============================================================================
+-- 3) Journal builders — add the cash branch (everything else unchanged)
+-- ============================================================================
+
+-- 3a) SALES ------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION rebuild_sales_journal(p_invoice_id bigint) RETURNS void
+    LANGUAGE plpgsql AS $$
+DECLARE
+    j_id BIGINT;
+    rev_acc BIGINT;
+    party_acc BIGINT;
+    cogs_acc BIGINT;
+    inv_acc BIGINT;
+    cash_acc BIGINT;
+    v_is_cash BOOLEAN := false;
+    total_cost NUMERIC(14,2);
+    total_revenue NUMERIC(14,2);
+    v_customer_id BIGINT;
+    v_invoice_date DATE;
+BEGIN
+    SELECT journal_id INTO j_id FROM SalesInvoices WHERE sales_invoice_id = p_invoice_id;
+    IF j_id IS NOT NULL THEN
+        DELETE FROM JournalLines WHERE journal_id = j_id;
+        DELETE FROM JournalEntries WHERE journal_id = j_id;
+    END IF;
+
+    SELECT s.customer_id, s.total_amount, s.invoice_date
+    INTO v_customer_id, total_revenue, v_invoice_date
+    FROM SalesInvoices s WHERE s.sales_invoice_id = p_invoice_id;
+
+    SELECT account_id INTO rev_acc  FROM ChartOfAccounts WHERE account_name='Sales Revenue';
+    SELECT account_id INTO cogs_acc FROM ChartOfAccounts WHERE account_name='Cost of Goods Sold';
+    SELECT account_id INTO inv_acc  FROM ChartOfAccounts WHERE account_name='Inventory';
+    SELECT account_id INTO cash_acc FROM ChartOfAccounts WHERE account_name='Cash';
+    SELECT ar_account_id INTO party_acc FROM Parties WHERE party_id = v_customer_id;
+    SELECT COALESCE(is_cash,false) INTO v_is_cash FROM Parties WHERE party_id = v_customer_id;
+
+    INSERT INTO JournalEntries(entry_date, description)
+    VALUES (v_invoice_date, 'Sale Invoice ' || p_invoice_id)
+    RETURNING journal_id INTO j_id;
+
+    UPDATE SalesInvoices SET journal_id = j_id WHERE sales_invoice_id = p_invoice_id;
+
+    -- (1) Debit Customer AR  OR  Cash (cash sale -> no party, cash increases now)
+    IF v_is_cash THEN
+        INSERT INTO JournalLines(journal_id, account_id, debit)
+        VALUES (j_id, cash_acc, total_revenue);
+    ELSE
+        INSERT INTO JournalLines(journal_id, account_id, party_id, debit)
+        VALUES (j_id, party_acc, v_customer_id, total_revenue);
+    END IF;
+
+    -- (2) Credit Revenue
+    INSERT INTO JournalLines(journal_id, account_id, credit)
+    VALUES (j_id, rev_acc, total_revenue);
+
+    -- (3) Debit COGS / Credit Inventory
+    SELECT COALESCE(SUM(pi.unit_price),0) INTO total_cost
+    FROM SoldUnits su
+    JOIN PurchaseUnits pu ON su.unit_id = pu.unit_id
+    JOIN PurchaseItems pi ON pu.purchase_item_id = pi.purchase_item_id
+    JOIN SalesItems si ON su.sales_item_id = si.sales_item_id
+    WHERE si.sales_invoice_id = p_invoice_id;
+
+    IF total_cost > 0 THEN
+        INSERT INTO JournalLines(journal_id, account_id, debit)  VALUES (j_id, cogs_acc, total_cost);
+        INSERT INTO JournalLines(journal_id, account_id, credit) VALUES (j_id, inv_acc, total_cost);
+    END IF;
+END; $$;
+
+-- 3b) PURCHASES --------------------------------------------------------------
+CREATE OR REPLACE FUNCTION rebuild_purchase_journal(p_invoice_id bigint) RETURNS void
+    LANGUAGE plpgsql AS $$
+DECLARE
+    j_id BIGINT;
+    inv_acc BIGINT;
+    party_acc BIGINT;
+    cash_acc BIGINT;
+    v_is_cash BOOLEAN := false;
+    v_total NUMERIC(14,2);
+    v_vendor_id BIGINT;
+BEGIN
+    SELECT journal_id INTO j_id FROM PurchaseInvoices WHERE purchase_invoice_id = p_invoice_id;
+    IF j_id IS NOT NULL THEN
+        DELETE FROM JournalEntries WHERE journal_id = j_id;
+    END IF;
+
+    SELECT vendor_id, total_amount INTO v_vendor_id, v_total
+    FROM PurchaseInvoices WHERE purchase_invoice_id = p_invoice_id;
+
+    SELECT account_id INTO inv_acc  FROM ChartOfAccounts WHERE account_name='Inventory';
+    SELECT account_id INTO cash_acc FROM ChartOfAccounts WHERE account_name='Cash';
+    SELECT ap_account_id INTO party_acc FROM Parties WHERE party_id = v_vendor_id;
+    SELECT COALESCE(is_cash,false) INTO v_is_cash FROM Parties WHERE party_id = v_vendor_id;
+
+    INSERT INTO JournalEntries(entry_date, description)
+    SELECT invoice_date, 'Purchase Invoice ' || purchase_invoice_id
+    FROM PurchaseInvoices WHERE purchase_invoice_id = p_invoice_id
+    RETURNING journal_id INTO j_id;
+
+    UPDATE PurchaseInvoices SET journal_id = j_id WHERE purchase_invoice_id = p_invoice_id;
+
+    -- (6) Debit Inventory
+    INSERT INTO JournalLines(journal_id, account_id, debit)
+    VALUES (j_id, inv_acc, v_total);
+
+    -- (7) Credit Vendor AP  OR  Cash (cash purchase -> no party, cash decreases now)
+    IF v_is_cash THEN
+        INSERT INTO JournalLines(journal_id, account_id, credit)
+        VALUES (j_id, cash_acc, v_total);
+    ELSE
+        INSERT INTO JournalLines(journal_id, account_id, party_id, credit)
+        VALUES (j_id, party_acc, v_vendor_id, v_total);
+    END IF;
+END; $$;
+
+-- 3c) SALES RETURN -----------------------------------------------------------
+CREATE OR REPLACE FUNCTION rebuild_sales_return_journal(p_return_id bigint) RETURNS void
+    LANGUAGE plpgsql AS $$
+DECLARE
+    j_id BIGINT;
+    rev_acc BIGINT;
+    cogs_acc BIGINT;
+    inv_acc BIGINT;
+    party_acc BIGINT;
+    cash_acc BIGINT;
+    v_is_cash BOOLEAN := false;
+    v_total NUMERIC(14,2);
+    v_cost NUMERIC(14,2);
+    v_customer_id BIGINT;
+    v_date DATE;
+BEGIN
+    SELECT journal_id INTO j_id FROM SalesReturns WHERE sales_return_id = p_return_id;
+    IF j_id IS NOT NULL THEN
+        DELETE FROM JournalEntries WHERE journal_id = j_id;
+    END IF;
+
+    SELECT customer_id, total_amount, return_date
+    INTO v_customer_id, v_total, v_date
+    FROM SalesReturns WHERE sales_return_id = p_return_id;
+
+    SELECT COALESCE(SUM(cost_price),0) INTO v_cost
+    FROM SalesReturnItems WHERE sales_return_id = p_return_id;
+
+    SELECT account_id INTO rev_acc  FROM ChartOfAccounts WHERE account_name='Sales Revenue';
+    SELECT account_id INTO cogs_acc FROM ChartOfAccounts WHERE account_name='Cost of Goods Sold';
+    SELECT account_id INTO inv_acc  FROM ChartOfAccounts WHERE account_name='Inventory';
+    SELECT account_id INTO cash_acc FROM ChartOfAccounts WHERE account_name='Cash';
+    SELECT ar_account_id INTO party_acc FROM Parties WHERE party_id = v_customer_id;
+    SELECT COALESCE(is_cash,false) INTO v_is_cash FROM Parties WHERE party_id = v_customer_id;
+
+    INSERT INTO JournalEntries(entry_date, description)
+    VALUES (v_date, 'Sales Return ' || p_return_id)
+    RETURNING journal_id INTO j_id;
+
+    UPDATE SalesReturns SET journal_id = j_id WHERE sales_return_id = p_return_id;
+
+    -- (1) Debit Sales Revenue
+    IF v_total > 0 THEN
+        INSERT INTO JournalLines(journal_id, account_id, debit)
+        VALUES (j_id, rev_acc, v_total);
+    END IF;
+
+    -- (2) Credit Customer AR  OR  Cash (cash sale return -> refund cash, no party)
+    IF v_total > 0 THEN
+        IF v_is_cash THEN
+            INSERT INTO JournalLines(journal_id, account_id, credit)
+            VALUES (j_id, cash_acc, v_total);
+        ELSE
+            INSERT INTO JournalLines(journal_id, account_id, party_id, credit)
+            VALUES (j_id, party_acc, v_customer_id, v_total);
+        END IF;
+    END IF;
+
+    -- (3) Debit Inventory / (4) Credit COGS
+    IF v_cost > 0 THEN
+        INSERT INTO JournalLines(journal_id, account_id, debit)  VALUES (j_id, inv_acc, v_cost);
+        INSERT INTO JournalLines(journal_id, account_id, credit) VALUES (j_id, cogs_acc, v_cost);
+    END IF;
+END; $$;
+
+-- 3d) PURCHASE RETURN --------------------------------------------------------
+CREATE OR REPLACE FUNCTION rebuild_purchase_return_journal(p_return_id bigint) RETURNS void
+    LANGUAGE plpgsql AS $$
+DECLARE
+    j_id BIGINT;
+    inv_acc BIGINT;
+    party_acc BIGINT;
+    cash_acc BIGINT;
+    v_is_cash BOOLEAN := false;
+    v_total NUMERIC(14,2);
+    v_vendor_id BIGINT;
+    v_date DATE;
+BEGIN
+    SELECT journal_id INTO j_id FROM PurchaseReturns WHERE purchase_return_id = p_return_id;
+    IF j_id IS NOT NULL THEN
+        DELETE FROM JournalEntries WHERE journal_id = j_id;
+    END IF;
+
+    SELECT vendor_id, total_amount, return_date
+    INTO v_vendor_id, v_total, v_date
+    FROM PurchaseReturns WHERE purchase_return_id = p_return_id;
+
+    SELECT account_id INTO inv_acc  FROM ChartOfAccounts WHERE account_name='Inventory';
+    SELECT account_id INTO cash_acc FROM ChartOfAccounts WHERE account_name='Cash';
+    SELECT ap_account_id INTO party_acc FROM Parties WHERE party_id = v_vendor_id;
+    SELECT COALESCE(is_cash,false) INTO v_is_cash FROM Parties WHERE party_id = v_vendor_id;
+
+    INSERT INTO JournalEntries(entry_date, description)
+    VALUES (v_date, 'Purchase Return ' || p_return_id)
+    RETURNING journal_id INTO j_id;
+
+    UPDATE PurchaseReturns SET journal_id = j_id WHERE purchase_return_id = p_return_id;
+
+    -- (1) Debit Vendor AP  OR  Cash (cash purchase return -> cash refunded in, no party)
+    IF v_total > 0 THEN
+        IF v_is_cash THEN
+            INSERT INTO JournalLines(journal_id, account_id, debit)
+            VALUES (j_id, cash_acc, v_total);
+        ELSE
+            INSERT INTO JournalLines(journal_id, account_id, party_id, debit)
+            VALUES (j_id, party_acc, v_vendor_id, v_total);
+        END IF;
+    END IF;
+
+    -- (2) Credit Inventory
+    IF v_total > 0 THEN
+        INSERT INTO JournalLines(journal_id, account_id, credit)
+        VALUES (j_id, inv_acc, v_total);
+    END IF;
+END; $$;
+-- fix_return_serial_integrity.sql
+-- ============================================================================
+-- Data-integrity fix for serial returns.
+--
+-- BUG (sale return): create_sale_return looked up a serial with
+--   "WHERE pu.serial_number = v_serial"  -- no status filter, no ordering
+-- A serial accumulates MANY SoldUnits rows over its sell -> return -> sell
+-- history. The unfiltered lookup grabbed an arbitrary (stale) row, so a serial
+-- currently sold on a *cash* sale could be "returned" against the ORIGINAL
+-- credit customer, saving a bogus return at the OLD price and wrongly flagging
+-- the unit back in stock while the active sale still holds it.
+--
+-- FIX: every return lookup now targets only the CURRENTLY-ACTIVE unit:
+--   * sale returns     -> the SoldUnits row with status='Sold' (newest), and the
+--                         return's customer must match that active sale.
+--   * purchase returns -> the PurchaseUnits row for THIS vendor that is
+--                         in_stock=TRUE (can't return a serial a customer holds,
+--                         or double-return one).
+-- The update_* variants get the same guards plus a precise reverse step.
+--
+-- Pure logic fix: signatures, journals and accounting are unchanged. Idempotent.
+-- Apply with:
+--   python manage.py apply_sql_all_tenants tenancy/sql/fix_return_serial_integrity.sql
+-- ============================================================================
+
+-- 1) CREATE SALE RETURN -------------------------------------------------------
+CREATE OR REPLACE FUNCTION create_sale_return(p_party_name text, p_serials jsonb, p_created_by integer DEFAULT NULL::integer) RETURNS bigint
+    LANGUAGE plpgsql AS $$
+DECLARE
+    v_return_id   BIGINT;
+    v_customer_id BIGINT;
+    v_serial      TEXT;
+    v_unit        RECORD;
+    v_total       NUMERIC(14,2) := 0;
+BEGIN
+    SELECT party_id INTO v_customer_id FROM Parties WHERE party_name = p_party_name LIMIT 1;
+    IF v_customer_id IS NULL THEN
+        RAISE EXCEPTION 'Party "%" not found', p_party_name;
+    END IF;
+
+    INSERT INTO SalesReturns(customer_id, return_date, total_amount, created_by)
+    VALUES (v_customer_id, CURRENT_DATE, 0, p_created_by)
+    RETURNING sales_return_id INTO v_return_id;
+
+    FOR v_serial IN SELECT jsonb_array_elements_text(p_serials)
+    LOOP
+        -- Only the currently-active sale of this serial (status='Sold'), newest first.
+        SELECT su.sold_unit_id, su.unit_id, su.sold_price, si.item_id,
+               si.sales_invoice_id, pu.serial_number, pi2.unit_price, s.customer_id
+        INTO v_unit
+        FROM SoldUnits su
+        JOIN SalesItems si ON su.sales_item_id = si.sales_item_id
+        JOIN SalesInvoices s ON si.sales_invoice_id = s.sales_invoice_id
+        JOIN PurchaseUnits pu ON su.unit_id = pu.unit_id
+        JOIN PurchaseItems pi2 ON pu.purchase_item_id = pi2.purchase_item_id
+        WHERE pu.serial_number = v_serial
+          AND su.status = 'Sold'
+        ORDER BY su.sold_unit_id DESC
+        LIMIT 1;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Serial % is not currently sold (nothing to return)', v_serial;
+        END IF;
+        IF v_unit.customer_id <> v_customer_id THEN
+            RAISE EXCEPTION 'Serial % was not sold to this customer', v_serial;
+        END IF;
+
+        UPDATE SoldUnits SET status = 'Returned' WHERE sold_unit_id = v_unit.sold_unit_id;
+        UPDATE PurchaseUnits SET in_stock = TRUE WHERE unit_id = v_unit.unit_id;
+
+        INSERT INTO StockMovements(item_id, serial_number, movement_type, reference_type, reference_id, quantity)
+        VALUES (v_unit.item_id, v_serial, 'IN', 'SalesReturn', v_return_id, 1);
+
+        INSERT INTO SalesReturnItems(sales_return_id, item_id, sold_price, cost_price, serial_number)
+        VALUES (v_return_id, v_unit.item_id, v_unit.sold_price, v_unit.unit_price, v_serial);
+
+        v_total := v_total + v_unit.sold_price;
+    END LOOP;
+
+    UPDATE SalesReturns SET total_amount = v_total WHERE sales_return_id = v_return_id;
+    PERFORM rebuild_sales_return_journal(v_return_id);
+    RETURN v_return_id;
+END; $$;
+
+-- 2) UPDATE SALE RETURN -------------------------------------------------------
+CREATE OR REPLACE FUNCTION update_sale_return(p_return_id bigint, p_serials jsonb, p_created_by integer DEFAULT NULL::integer) RETURNS void
+    LANGUAGE plpgsql AS $$
+DECLARE
+    rec           RECORD;
+    v_serial      TEXT;
+    v_unit        RECORD;
+    v_total       NUMERIC(14,2) := 0;
+    v_cost        NUMERIC(14,2) := 0;
+    v_customer_id BIGINT;
+BEGIN
+    -- Reverse old items: flip ONLY the specific Returned row this return created
+    -- (newest Returned row for the serial), not every SoldUnits row for the unit.
+    FOR rec IN
+        SELECT serial_number, item_id
+        FROM SalesReturnItems
+        WHERE sales_return_id = p_return_id
+    LOOP
+        UPDATE SoldUnits SET status = 'Sold'
+        WHERE sold_unit_id = (
+            SELECT su2.sold_unit_id
+            FROM SoldUnits su2
+            JOIN PurchaseUnits pu2 ON su2.unit_id = pu2.unit_id
+            WHERE pu2.serial_number = rec.serial_number
+              AND su2.status = 'Returned'
+            ORDER BY su2.sold_unit_id DESC
+            LIMIT 1
+        );
+
+        UPDATE PurchaseUnits SET in_stock = FALSE WHERE serial_number = rec.serial_number;
+
+        INSERT INTO StockMovements(item_id, serial_number, movement_type, reference_type, reference_id, quantity)
+        VALUES (rec.item_id, rec.serial_number, 'OUT', 'SalesReturn-Update-Reverse', p_return_id, 1);
+    END LOOP;
+
+    DELETE FROM SalesReturnItems WHERE sales_return_id = p_return_id;
+
+    SELECT customer_id INTO v_customer_id FROM SalesReturns WHERE sales_return_id = p_return_id;
+
+    FOR v_serial IN SELECT jsonb_array_elements_text(p_serials)
+    LOOP
+        SELECT su.sold_unit_id, su.unit_id, su.sold_price, si.item_id,
+               si.sales_invoice_id, pu.serial_number, pi.unit_price, s.customer_id
+        INTO v_unit
+        FROM SoldUnits su
+        JOIN SalesItems si    ON su.sales_item_id = si.sales_item_id
+        JOIN SalesInvoices s  ON si.sales_invoice_id = s.sales_invoice_id
+        JOIN PurchaseUnits pu ON su.unit_id = pu.unit_id
+        JOIN PurchaseItems pi ON pu.purchase_item_id = pi.purchase_item_id
+        WHERE pu.serial_number = v_serial
+          AND su.status = 'Sold'
+        ORDER BY su.sold_unit_id DESC
+        LIMIT 1;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Serial % is not currently sold (nothing to return)', v_serial;
+        END IF;
+        IF v_unit.customer_id <> v_customer_id THEN
+            RAISE EXCEPTION 'Serial % was not sold to this customer', v_serial;
+        END IF;
+
+        UPDATE SoldUnits SET status = 'Returned' WHERE sold_unit_id = v_unit.sold_unit_id;
+        UPDATE PurchaseUnits SET in_stock = TRUE WHERE unit_id = v_unit.unit_id;
+
+        INSERT INTO StockMovements(item_id, serial_number, movement_type, reference_type, reference_id, quantity)
+        VALUES (v_unit.item_id, v_serial, 'IN', 'SalesReturn-Update', p_return_id, 1);
+
+        INSERT INTO SalesReturnItems(sales_return_id, item_id, sold_price, cost_price, serial_number)
+        VALUES (p_return_id, v_unit.item_id, v_unit.sold_price, v_unit.unit_price, v_serial);
+
+        v_total := v_total + v_unit.sold_price;
+        v_cost  := v_cost  + v_unit.unit_price;
+    END LOOP;
+
+    UPDATE SalesReturns
+    SET total_amount = v_total,
+        created_by   = COALESCE(p_created_by, created_by)
+    WHERE sales_return_id = p_return_id;
+
+    PERFORM rebuild_sales_return_journal(p_return_id);
+END; $$;
+
+-- 3) CREATE PURCHASE RETURN ---------------------------------------------------
+CREATE OR REPLACE FUNCTION create_purchase_return(p_party_name text, p_serials jsonb, p_created_by integer DEFAULT NULL::integer) RETURNS bigint
+    LANGUAGE plpgsql AS $$
+DECLARE
+    v_return_id BIGINT;
+    v_vendor_id BIGINT;
+    v_serial    TEXT;
+    v_rec       RECORD;
+    v_total     NUMERIC(14,2) := 0;
+BEGIN
+    SELECT party_id INTO v_vendor_id FROM Parties WHERE party_name = p_party_name LIMIT 1;
+    IF v_vendor_id IS NULL THEN
+        RAISE EXCEPTION 'Vendor "%" not found', p_party_name;
+    END IF;
+
+    INSERT INTO PurchaseReturns(vendor_id, return_date, total_amount, created_by)
+    VALUES (v_vendor_id, CURRENT_DATE, 0, p_created_by)
+    RETURNING purchase_return_id INTO v_return_id;
+
+    FOR v_serial IN SELECT jsonb_array_elements_text(p_serials)
+    LOOP
+        -- This vendor's unit for the serial, and only if still in stock
+        -- (not currently sold to a customer, not already returned).
+        SELECT pu.unit_id, pu.purchase_item_id, pi2.unit_price, pi2.item_id,
+               pi2.purchase_invoice_id, pu.serial_number
+        INTO v_rec
+        FROM PurchaseUnits pu
+        JOIN PurchaseItems pi2 ON pu.purchase_item_id = pi2.purchase_item_id
+        JOIN PurchaseInvoices pinv ON pi2.purchase_invoice_id = pinv.purchase_invoice_id
+        WHERE pu.serial_number = v_serial
+          AND pinv.vendor_id = v_vendor_id
+          AND pu.in_stock = TRUE;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Serial % not found for this vendor or not currently in stock', v_serial;
+        END IF;
+
+        UPDATE PurchaseUnits SET in_stock = FALSE WHERE unit_id = v_rec.unit_id;
+
+        INSERT INTO StockMovements(item_id, serial_number, movement_type, reference_type, reference_id, quantity)
+        VALUES (v_rec.item_id, v_serial, 'OUT', 'PurchaseReturn', v_return_id, 1);
+
+        INSERT INTO PurchaseReturnItems(purchase_return_id, item_id, unit_price, serial_number)
+        VALUES (v_return_id, v_rec.item_id, v_rec.unit_price, v_serial);
+
+        v_total := v_total + v_rec.unit_price;
+    END LOOP;
+
+    UPDATE PurchaseReturns SET total_amount = v_total WHERE purchase_return_id = v_return_id;
+    PERFORM rebuild_purchase_return_journal(v_return_id);
+    RETURN v_return_id;
+END; $$;
+
+-- 4) UPDATE PURCHASE RETURN ---------------------------------------------------
+CREATE OR REPLACE FUNCTION update_purchase_return(p_return_id bigint, p_serials jsonb, p_created_by integer DEFAULT NULL::integer) RETURNS void
+    LANGUAGE plpgsql AS $$
+DECLARE
+    rec         RECORD;
+    v_serial    TEXT;
+    v_unit      RECORD;
+    v_total     NUMERIC(14,2) := 0;
+    v_vendor_id BIGINT;
+BEGIN
+    SELECT vendor_id INTO v_vendor_id FROM PurchaseReturns WHERE purchase_return_id = p_return_id;
+    IF v_vendor_id IS NULL THEN
+        RAISE EXCEPTION 'Purchase Return % not found', p_return_id;
+    END IF;
+
+    -- Reverse old items (restore stock)
+    FOR rec IN
+        SELECT serial_number, item_id
+        FROM PurchaseReturnItems
+        WHERE purchase_return_id = p_return_id
+    LOOP
+        UPDATE PurchaseUnits SET in_stock = TRUE WHERE serial_number = rec.serial_number;
+
+        INSERT INTO StockMovements(item_id, serial_number, movement_type, reference_type, reference_id, quantity)
+        VALUES (rec.item_id, rec.serial_number, 'IN', 'PurchaseReturn-Update-Reverse', p_return_id, 1);
+    END LOOP;
+
+    DELETE FROM PurchaseReturnItems WHERE purchase_return_id = p_return_id;
+
+    FOR v_serial IN SELECT jsonb_array_elements_text(p_serials)
+    LOOP
+        -- This vendor's unit for the serial, and only if still in stock.
+        SELECT pu.unit_id, pu.serial_number, pi.item_id, pi.unit_price, p.vendor_id
+        INTO v_unit
+        FROM PurchaseUnits pu
+        JOIN PurchaseItems pi     ON pu.purchase_item_id = pi.purchase_item_id
+        JOIN PurchaseInvoices p   ON pi.purchase_invoice_id = p.purchase_invoice_id
+        WHERE pu.serial_number = v_serial
+          AND p.vendor_id = v_vendor_id
+          AND pu.in_stock = TRUE;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Serial % not found for this vendor or not currently in stock', v_serial;
+        END IF;
+
+        UPDATE PurchaseUnits SET in_stock = FALSE WHERE unit_id = v_unit.unit_id;
+
+        INSERT INTO StockMovements(item_id, serial_number, movement_type, reference_type, reference_id, quantity)
+        VALUES (v_unit.item_id, v_serial, 'OUT', 'PurchaseReturn-Update', p_return_id, 1);
+
+        INSERT INTO PurchaseReturnItems(purchase_return_id, item_id, unit_price, serial_number)
+        VALUES (p_return_id, v_unit.item_id, v_unit.unit_price, v_serial);
+
+        v_total := v_total + v_unit.unit_price;
+    END LOOP;
+
+    UPDATE PurchaseReturns
+    SET total_amount = v_total,
+        created_by   = COALESCE(p_created_by, created_by)
+    WHERE purchase_return_id = p_return_id;
+
+    PERFORM rebuild_purchase_return_journal(p_return_id);
+END; $$;

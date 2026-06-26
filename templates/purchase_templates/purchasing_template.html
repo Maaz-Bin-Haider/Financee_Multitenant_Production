@@ -128,6 +128,20 @@
     <form onsubmit="buildAndSubmit(event)" id="purchaseForm">
       <div class="sale-card-body">
 
+        <!-- Purchase Type: Credit (default) vs Cash -->
+        <div class="sale-field-group" style="margin-bottom:14px;">
+          <label class="sale-field-label"><i class="fa-solid fa-money-bill-wave"></i> Purchase Type</label>
+          <div id="purchaseTypeToggle" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="purchase_type" value="credit" checked onchange="onPurchaseTypeChange()"> Credit Purchase
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="purchase_type" value="cash" onchange="onPurchaseTypeChange()"> Cash Purchase
+            </label>
+            <span id="cashPaidBadge" style="display:none;align-self:center;font-weight:600;color:#1a7f37;">● Paid (Cash)</span>
+          </div>
+        </div>
+
         <!-- Vendor + Date -->
         <div class="sale-meta-grid">
           <div class="sale-field-group">

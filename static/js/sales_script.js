@@ -1563,8 +1563,9 @@ function buildAndSubmit(event) {
 
   const currentId = document.getElementById("current_sale_id").value || null;
   const description = (document.getElementById("sale_description")?.value || "").trim();
+  const saleType = (document.querySelector('input[name="sale_type"]:checked')?.value || "credit");
   const payload   = { sale_id: currentId, party_name: partyName,
-                      sale_date: saleDate, items, action, description };
+                      sale_date: saleDate, items, action, description, sale_type: saleType };
 
   _submitSale(payload);
 }
@@ -1737,6 +1738,7 @@ function renderSaleData(data) {
   document.getElementById("current_sale_id").value   = data.sales_invoice_id || "";
   const _descEl = document.getElementById("sale_description");
   if (_descEl) _descEl.value = data.description || "";
+  if (typeof reflectSaleType === "function") reflectSaleType(data.Party || "");
 
   // Update badge
   const badge = document.getElementById("invoiceIdBadge");
@@ -2105,4 +2107,31 @@ function viewSaleDetails(saleID) {
   document.getElementById("current_sale_id").value = saleID;
   navigateSale("current");
   Swal.close();
+}
+// ── Cash Sale toggle ─────────────────────────────────────────────────────────
+function onSaleTypeChange() {
+  const type   = document.querySelector('input[name="sale_type"]:checked')?.value || "credit";
+  const nameEl = document.getElementById("search_name");
+  const badge  = document.getElementById("cashPaidBadge");
+  if (!nameEl) return;
+  if (type === "cash") {
+    nameEl.value = "Cash Sale";
+    nameEl.readOnly = true;
+    nameEl.required = false;
+    nameEl.style.opacity = "0.6";
+    if (badge) badge.style.display = "inline";
+  } else {
+    if (nameEl.value === "Cash Sale") nameEl.value = "";
+    nameEl.readOnly = false;
+    nameEl.required = true;
+    nameEl.style.opacity = "1";
+    if (badge) badge.style.display = "none";
+  }
+}
+
+// Reflect sale type when an existing invoice loads (Cash Sale party => cash mode)
+function reflectSaleType(partyName) {
+  const isCash = (partyName === "Cash Sale");
+  const radio = document.querySelector(`input[name="sale_type"][value="${isCash ? "cash" : "credit"}"]`);
+  if (radio) { radio.checked = true; onSaleTypeChange(); }
 }

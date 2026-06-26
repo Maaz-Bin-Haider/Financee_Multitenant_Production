@@ -641,8 +641,9 @@ def purchasing(request):
             
             try:
                 data = json.loads(request.body)
+                _is_cash_purchase = (data.get("purchase_type") or "credit").lower() == "cash"
                 # validation example
-                if not data.get("party_name"):
+                if not _is_cash_purchase and not data.get("party_name"):
                     return JsonResponse({"success": False, "message": "Party name is required."})
                 
                 if not data.get("purchase_date"):
@@ -653,13 +654,14 @@ def purchasing(request):
                 
 
                 try:
-                    # Validating Party name
-                    with connection.cursor() as cursor:
-                        cursor.execute("SELECT 1 FROM Parties WHERE UPPER(party_name) = %s",[data.get("party_name").upper()])
-                        exists = cursor.fetchone()
+                    # Validating Party name (skipped for cash purchase -> uses Cash party)
+                    if not _is_cash_purchase:
+                        with connection.cursor() as cursor:
+                            cursor.execute("SELECT 1 FROM Parties WHERE UPPER(party_name) = %s",[data.get("party_name").upper()])
+                            exists = cursor.fetchone()
 
-                        if not exists:
-                            return JsonResponse({"success": False, "message": f"Party with '{data.get("party_name")}' Not exists!"})
+                            if not exists:
+                                return JsonResponse({"success": False, "message": f"Party with '{data.get("party_name")}' Not exists!"})
                 except Exception as e:
                     logger.exception('swallowed exception in %s', __name__)
                     return JsonResponse({"success": False, "message": "Invalid Party-Name"})
@@ -788,17 +790,21 @@ def purchasing(request):
                                 "status": "error",
                                 "message": "You do not have permission to Create Purchase"
                             })
-                        # Find the vendor ID
+                        # Find the party id (cash purchase -> sentinel Cash party)
                         with connection.cursor() as cursor:
-                            cursor.execute("""
-                                SELECT party_id 
-                                FROM Parties 
-                                WHERE party_name = %s
-                            """, [data.get("party_name")])
-                            result = cursor.fetchone()
-                            if not result:
-                                return JsonResponse({"success": False, "message": f"Party '{data.get("party_name")}' not found in Parties."})
-                            party_id = result[0]
+                            if (data.get("purchase_type") or "credit").lower() == "cash":
+                                cursor.execute("SELECT get_cash_party_id('purchase')")
+                                party_id = cursor.fetchone()[0]
+                            else:
+                                cursor.execute("""
+                                    SELECT party_id 
+                                    FROM Parties 
+                                    WHERE party_name = %s
+                                """, [data.get("party_name")])
+                                result = cursor.fetchone()
+                                if not result:
+                                    return JsonResponse({"success": False, "message": f"Party '{data.get("party_name")}' not found in Parties."})
+                                party_id = result[0]
                             
                             
                             # Prepare your purchase items data

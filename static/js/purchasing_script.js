@@ -3384,8 +3384,9 @@ function buildAndSubmit(event) {
 
   const purchaseId = document.getElementById("current_purchase_id")?.value || null;
   const description = (document.getElementById("purchase_description")?.value || "").trim();
+  const purchaseType = (document.querySelector('input[name="purchase_type"]:checked')?.value || "credit");
   const payload    = { party_name: partyName, purchase_date: purchaseDate,
-                       items, action, description };
+                       items, action, description, purchase_type: purchaseType };
   if (purchaseId) payload.purchase_id = purchaseId;
 
   fetch("/purchase/purchasing/", {
@@ -3598,6 +3599,7 @@ function renderPurchaseData(data) {
   document.getElementById("current_purchase_id").value = data.purchase_invoice_id || "";
   const _pDescEl = document.getElementById("purchase_description");
   if (_pDescEl) _pDescEl.value = data.description || "";
+  if (typeof reflectPurchaseType === "function") reflectPurchaseType(data.Party || "");
 
   const badge = document.getElementById("invoiceIdBadge");
   if (badge) badge.textContent = data.purchase_invoice_id ? `#${data.purchase_invoice_id}` : "#NEW";
@@ -3956,4 +3958,30 @@ function viewPurchaseDetails(purchaseId) {
   document.getElementById("current_purchase_id").value = purchaseId;
   navigatePurchase("current");
   Swal.close();
+}
+// ── Cash Purchase toggle ─────────────────────────────────────────────────────
+function onPurchaseTypeChange() {
+  const type   = document.querySelector('input[name="purchase_type"]:checked')?.value || "credit";
+  const nameEl = document.getElementById("search_name");
+  const badge  = document.getElementById("cashPaidBadge");
+  if (!nameEl) return;
+  if (type === "cash") {
+    nameEl.value = "Cash Purchase";
+    nameEl.readOnly = true;
+    nameEl.required = false;
+    nameEl.style.opacity = "0.6";
+    if (badge) badge.style.display = "inline";
+  } else {
+    if (nameEl.value === "Cash Purchase") nameEl.value = "";
+    nameEl.readOnly = false;
+    nameEl.required = true;
+    nameEl.style.opacity = "1";
+    if (badge) badge.style.display = "none";
+  }
+}
+
+function reflectPurchaseType(partyName) {
+  const isCash = (partyName === "Cash Purchase");
+  const radio = document.querySelector(`input[name="purchase_type"][value="${isCash ? "cash" : "credit"}"]`);
+  if (radio) { radio.checked = true; onPurchaseTypeChange(); }
 }

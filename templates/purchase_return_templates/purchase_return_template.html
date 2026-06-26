@@ -165,6 +165,20 @@
     <form id="purchaseReturnForm" onsubmit="submitReturn(event)">
       <div class="sale-card-body">
 
+        <!-- Return Type: Credit (default) vs Cash -->
+        <div class="sale-field-group" style="margin-bottom:14px;">
+          <label class="sale-field-label"><i class="fa-solid fa-money-bill-wave"></i> Return Type</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="return_type" value="credit" checked onchange="onPurchaseReturnTypeChange()"> Credit Purchase Return
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="return_type" value="cash" onchange="onPurchaseReturnTypeChange()"> Cash Purchase Return
+            </label>
+            <span id="cashReturnBadge" style="display:none;align-self:center;font-weight:600;color:#1a7f37;">● Cash</span>
+          </div>
+        </div>
+
         <!-- Vendor + Date row -->
         <div class="sale-meta-grid">
           <div class="sale-field-group">

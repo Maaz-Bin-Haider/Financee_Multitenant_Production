@@ -1158,3 +1158,18 @@ function downloadReturnPDF() {
 
   doc.save(`PurchaseReturn_${returnId}.pdf`);
 }
+// ── Cash Purchase Return toggle ──────────────────────────────────────────────
+function onPurchaseReturnTypeChange() {
+  const type   = document.querySelector('input[name="return_type"]:checked')?.value || "credit";
+  const nameEl = document.getElementById("search_name");
+  const badge  = document.getElementById("cashReturnBadge");
+  if (!nameEl) return;
+  if (type === "cash") {
+    nameEl.value = "Cash Purchase"; nameEl.readOnly = true; nameEl.style.opacity = "0.6";
+    if (badge) badge.style.display = "inline";
+  } else {
+    if (nameEl.value === "Cash Purchase") nameEl.value = "";
+    nameEl.readOnly = false; nameEl.style.opacity = "1";
+    if (badge) badge.style.display = "none";
+  }
+}
