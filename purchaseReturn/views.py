@@ -774,8 +774,9 @@ def createPurchaseReturn(request):
 
                                 # Validating provided party name for serial with actual party name  
                                 vendor_name = cursor.fetchone()
-                                if not vendor_name[0] == data.get("party_name"):
-                                    return JsonResponse({"success": False, "message": f"The serial number '{serial}' was purchased from {vendor_name}, not from {data.get('party_name')}."})
+                                if not (vendor_name and vendor_name[0] == data.get("party_name")):
+                                    _bought_from = vendor_name[0] if vendor_name else "no one"
+                                    return JsonResponse({"success": False, "message": f"The serial number '{serial}' was purchased from {_bought_from}, not from {data.get('party_name')}."})
                         except Exception as e:
                             return JsonResponse({ "success": False, "message":f"The Serial '{serial}' does not exists in stock!" })
                 except Exception as e:
@@ -835,8 +836,12 @@ def createPurchaseReturn(request):
                             )
                         return JsonResponse({"success": True, "message": "Purchase-Return Updated Sucessfully"}) 
                     except Exception as e:
-                        
-                        return JsonResponse({"success": False, "message": f"Unable to Update Purchase-Return, Try Again! {e}"})
+                        _m = None
+                        for _o in (e, getattr(e, "__cause__", None)):
+                            _d = getattr(_o, "diag", None)
+                            if _d and getattr(_d, "message_primary", None):
+                                _m = _d.message_primary; break
+                        return JsonResponse({"success": False, "message": _m or "Unable to Update Purchase-Return, Try Again!"})
             except Exception as e:
                 logger.exception('swallowed exception in %s', __name__)
                 pass
@@ -863,8 +868,13 @@ def createPurchaseReturn(request):
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT delete_purchase_return(%s)",[purchase_return_ID])
                     return JsonResponse({"success": True, "message": "Deleted Successfully"})
-            except Exception:
-                return JsonResponse({"success": False, "message": "Unable to delete this Purchase-Return! Try Again.."})
+            except Exception as e:
+                _m = None
+                for _o in (e, getattr(e, "__cause__", None)):
+                    _d = getattr(_o, "diag", None)
+                    if _d and getattr(_d, "message_primary", None):
+                        _m = _d.message_primary; break
+                return JsonResponse({"success": False, "message": _m or "Unable to delete this Purchase-Return! Try Again.."})
 
 
     return render(request,'purchase_return_templates/purchase_return_template.html')

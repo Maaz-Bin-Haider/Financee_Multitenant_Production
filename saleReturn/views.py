@@ -769,8 +769,9 @@ def createSaleReturn(request):
 
                                 # Validating provided party name for serial with actual party name  
                                 customer_name = cursor.fetchone()
-                                if not customer_name[0] == data.get("party_name"):
-                                    return JsonResponse({"success": False, "message": f"The serial number '{serial}' was sold to {customer_name}, not to {data.get('party_name')}."})
+                                if not (customer_name and customer_name[0] == data.get("party_name")):
+                                    _sold_to = customer_name[0] if customer_name else "no one"
+                                    return JsonResponse({"success": False, "message": f"The serial number '{serial}' was sold to {_sold_to}, not to {data.get('party_name')}."})
                         except Exception as e:
                             return JsonResponse({ "success": False, "message":f"The Serial '{serial}' is Invalid!" })
                 except Exception as e:
@@ -830,7 +831,12 @@ def createSaleReturn(request):
                             )
                         return JsonResponse({"success": True, "message": "Sale-Return Updated Sucessfully"}) 
                     except Exception as e:
-                        return JsonResponse({"success": False, "message": f"Unable to Update Sale-Return, Try Again!"})
+                        _m = None
+                        for _o in (e, getattr(e, "__cause__", None)):
+                            _d = getattr(_o, "diag", None)
+                            if _d and getattr(_d, "message_primary", None):
+                                _m = _d.message_primary; break
+                        return JsonResponse({"success": False, "message": _m or "Unable to Update Sale-Return, Try Again!"})
             except Exception as e:
                 logger.exception('swallowed exception in %s', __name__)
                 return JsonResponse({"success": False, "message": f"Invalid Sale-Return Data!"})
@@ -857,8 +863,13 @@ def createSaleReturn(request):
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT delete_sale_return(%s)",[sale_return_ID])
                     return JsonResponse({"success": True, "message": "Deleted Successfully"})
-            except Exception:
-                return JsonResponse({"success": False, "message": "Unable to delete this Sale-Return! Try Again.."})
+            except Exception as e:
+                _m = None
+                for _o in (e, getattr(e, "__cause__", None)):
+                    _d = getattr(_o, "diag", None)
+                    if _d and getattr(_d, "message_primary", None):
+                        _m = _d.message_primary; break
+                return JsonResponse({"success": False, "message": _m or "Unable to delete this Sale-Return! Try Again.."})
 
 
     return render(request,'sale_return_templates/sale_return_template.html')
