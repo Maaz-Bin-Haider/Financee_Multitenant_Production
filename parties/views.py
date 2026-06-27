@@ -606,9 +606,14 @@ def get_party_by_name(party_name:str):
 def auto_complete_party(request):
     if 'term' in request.GET:
         term = (request.GET.get('term') or '').upper()
+        include_cash = request.GET.get('include_cash') == '1'
 
         with connection.cursor() as cursor:
-            cursor.execute("SELECT party_name FROM Parties WHERE UPPER(party_name) LIKE %s AND COALESCE(is_cash, false) = false ORDER BY CASE WHEN UPPER(party_name) LIKE %s THEN 0 ELSE 1 END, party_name LIMIT 10",['%' + term + '%', term + '%'])
+            if include_cash:
+                # Reports/ledger picker: cash sentinel accounts are selectable here
+                cursor.execute("SELECT party_name FROM Parties WHERE UPPER(party_name) LIKE %s ORDER BY CASE WHEN UPPER(party_name) LIKE %s THEN 0 ELSE 1 END, party_name LIMIT 10",['%' + term + '%', term + '%'])
+            else:
+                cursor.execute("SELECT party_name FROM Parties WHERE UPPER(party_name) LIKE %s AND COALESCE(is_cash, false) = false ORDER BY CASE WHEN UPPER(party_name) LIKE %s THEN 0 ELSE 1 END, party_name LIMIT 10",['%' + term + '%', term + '%'])
             rows = cursor.fetchall()
         
         suggestions = [row[0] for row in rows]

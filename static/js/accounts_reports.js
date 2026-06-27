@@ -103,7 +103,7 @@ function renderLedgerForm() {
       <div class="filter-field autocomplete-container">
         <label><i class="fa-solid fa-building"></i>&nbsp;Party Name</label>
         <input type="text" id="search_name" placeholder="Type to search party…"
-               autocomplete="off" data-autocomplete-url="/parties/autocomplete-party">
+               autocomplete="off" data-autocomplete-url="/parties/autocomplete-party?include_cash=1">
         <div id="suggestions" style="display:none;"></div>
       </div>
       <div class="filter-field">

@@ -4510,7 +4510,7 @@ function downloadLedger2CSV() {
 /* ── Autocomplete ──────────────────────────────────────────── */
 function initLedger2Autocomplete() {
   const $input = $("#l2_party_name"), $sugg = $("#l2_suggestions");
-  const url    = "/parties/autocomplete-party";
+  const url    = "/parties/autocomplete-party?include_cash=1";
   let idx = -1, current = [];
 
   $input.on("input", function () {
