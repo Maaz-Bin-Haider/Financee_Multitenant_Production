@@ -47,11 +47,13 @@ def sales(request):
                     # Validating Party name (skipped for cash sale -> uses Cash party)
                     if not _is_cash_sale:
                         with connection.cursor() as cursor:
-                            cursor.execute("SELECT 1 FROM Parties WHERE UPPER(party_name) = %s",[data.get("party_name").upper()])
+                            cursor.execute("SELECT COALESCE(is_cash, false) FROM Parties WHERE UPPER(party_name) = %s",[data.get("party_name").upper()])
                             exists = cursor.fetchone()
 
                             if not exists:
                                 return JsonResponse({"success": False, "message": f"Party with '{data.get("party_name")}' Not exists!"})
+                            if exists[0]:
+                                return JsonResponse({"success": False, "message": "Cash accounts can't be selected here. Choose Sale Type = Cash Sale instead."})
                 except Exception as e:
                     logger.exception('swallowed exception in %s', __name__)
                     return JsonResponse({"success": False, "message": "Invalid Party-Name"})
@@ -203,6 +205,10 @@ def sales(request):
                                 if not result:
                                     return JsonResponse({"success": False, "message": f"Party '{data.get("party_name")}' not found in Parties."})
                                 party_id = result[0]
+                                # A cash sentinel party cannot be used on a credit sale
+                                cursor.execute("SELECT COALESCE(is_cash, false) FROM Parties WHERE party_id = %s", [party_id])
+                                if cursor.fetchone()[0]:
+                                    return JsonResponse({"success": False, "message": "That is a cash account. Choose 'Cash Sale' as the Sale Type for cash sales."})
                             
                             
                             # Prepare your sale items data
@@ -293,9 +299,11 @@ def sales(request):
                             if not result:
                                 return JsonResponse({"success": False, "message": f"Party '{data.get("party_name")}' not found in Parties."})
                             party_id = result[0]
-                            
-                            
-                            # Prepare your sale items data
+                            # A cash sentinel party cannot be used on a credit sale update
+                            if (data.get("sale_type") or "credit").lower() != "cash":
+                                cursor.execute("SELECT COALESCE(is_cash, false) FROM Parties WHERE party_id = %s", [party_id])
+                                if cursor.fetchone()[0]:
+                                    return JsonResponse({"success": False, "message": "That is a cash account. Choose 'Cash Sale' as the Sale Type for cash sales."})
                             items_data = []
                             for item in data.get("items"):
                                 items_data.append(item)

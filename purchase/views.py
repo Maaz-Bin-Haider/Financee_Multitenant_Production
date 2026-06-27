@@ -657,11 +657,13 @@ def purchasing(request):
                     # Validating Party name (skipped for cash purchase -> uses Cash party)
                     if not _is_cash_purchase:
                         with connection.cursor() as cursor:
-                            cursor.execute("SELECT 1 FROM Parties WHERE UPPER(party_name) = %s",[data.get("party_name").upper()])
+                            cursor.execute("SELECT COALESCE(is_cash, false) FROM Parties WHERE UPPER(party_name) = %s",[data.get("party_name").upper()])
                             exists = cursor.fetchone()
 
                             if not exists:
                                 return JsonResponse({"success": False, "message": f"Party with '{data.get("party_name")}' Not exists!"})
+                            if exists[0]:
+                                return JsonResponse({"success": False, "message": "Cash accounts can't be selected here. Choose Purchase Type = Cash Purchase instead."})
                 except Exception as e:
                     logger.exception('swallowed exception in %s', __name__)
                     return JsonResponse({"success": False, "message": "Invalid Party-Name"})
@@ -805,9 +807,10 @@ def purchasing(request):
                                 if not result:
                                     return JsonResponse({"success": False, "message": f"Party '{data.get("party_name")}' not found in Parties."})
                                 party_id = result[0]
-                            
-                            
-                            # Prepare your purchase items data
+                                # A cash sentinel party cannot be used on a credit purchase
+                                cursor.execute("SELECT COALESCE(is_cash, false) FROM Parties WHERE party_id = %s", [party_id])
+                                if cursor.fetchone()[0]:
+                                    return JsonResponse({"success": False, "message": "That is a cash account. Choose 'Cash Purchase' as the Purchase Type for cash purchases."})
                             items_data = []
                             for item in data.get("items"):
                                 items_data.append(item)
@@ -902,8 +905,11 @@ def purchasing(request):
                             if not result:
                                 return JsonResponse({"success": False, "message": f"Party '{data.get("party_name")}' not found in Parties."})
                             party_id = result[0]
-                            
-                            
+                            # A cash sentinel party cannot be used on a credit purchase update
+                            if (data.get("purchase_type") or "credit").lower() != "cash":
+                                cursor.execute("SELECT COALESCE(is_cash, false) FROM Parties WHERE party_id = %s", [party_id])
+                                if cursor.fetchone()[0]:
+                                    return JsonResponse({"success": False, "message": "That is a cash account. Choose 'Cash Purchase' as the Purchase Type for cash purchases."})
                             # Prepare your purchase items data
                             items_data = []
                             for item in data.get("items"):

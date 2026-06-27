@@ -608,7 +608,7 @@ def auto_complete_party(request):
         term = (request.GET.get('term') or '').upper()
 
         with connection.cursor() as cursor:
-            cursor.execute("SELECT party_name FROM Parties WHERE UPPER(party_name) LIKE %s ORDER BY CASE WHEN UPPER(party_name) LIKE %s THEN 0 ELSE 1 END, party_name LIMIT 10",['%' + term + '%', term + '%'])
+            cursor.execute("SELECT party_name FROM Parties WHERE UPPER(party_name) LIKE %s AND COALESCE(is_cash, false) = false ORDER BY CASE WHEN UPPER(party_name) LIKE %s THEN 0 ELSE 1 END, party_name LIMIT 10",['%' + term + '%', term + '%'])
             rows = cursor.fetchall()
         
         suggestions = [row[0] for row in rows]
