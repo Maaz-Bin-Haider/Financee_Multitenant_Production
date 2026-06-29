@@ -209,11 +209,28 @@ LOGGING = {
     },
 }
 
-# --- 6. (OPTIONAL, later) Redis cache + cached sessions ---------------------
-# Not required at 50 tenants / 750 users. Add only if you introduce real caching
-# (e.g. memoizing expensive report functions) or move sessions out of the DB.
-# CACHES = {"default": {
-#     "BACKEND": "django.core.cache.backends.redis.RedisCache",
-#     "LOCATION": env("REDIS_URL", default="redis://redis:6379/0"),
-# }}
-# SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# --- 6. Cache / rate-limit backend -----------------------------------------
+# Local memory works for development. In multi-worker production set
+# REDIS_URL=redis://redis:6379/0 so rate limits and future cached reports are
+# shared across workers/containers.
+REDIS_URL = env("REDIS_URL", default="")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "financee-fixed-local",
+        }
+    }
+
+# --- 7. Tenancy guardrails --------------------------------------------------
+# Cross-tenant admin activity is useful for small installations but expensive
+# at scale. Keep it opt-in in the hardened copy.
+TENANCY_CROSS_TENANT_ACTIVITY = env.bool("TENANCY_CROSS_TENANT_ACTIVITY", default=False)
+TENANT_SCHEMA_VERSION = env.int("TENANT_SCHEMA_VERSION", default=1)

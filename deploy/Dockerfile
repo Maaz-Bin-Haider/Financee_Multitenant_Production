@@ -26,11 +26,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # ---- python deps (cached layer) ----
-COPY requirements.txt .
+COPY requirements.txt requirements-lock.txt* ./
 # Pin Django to the version the code targets and add the production server +
 # whitenoise fallback (optional) explicitly. requirements.txt currently leaves
 # Django unpinned — pin it in your repo to avoid surprise upgrades.
-RUN pip install -r requirements.txt gunicorn
+RUN if [ -f requirements-lock.txt ]; then pip install -r requirements-lock.txt; else pip install -r requirements.txt; fi
 
 # ---- app ----
 COPY . .

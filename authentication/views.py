@@ -2,9 +2,13 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from financee.security import rate_limit, safe_json_error, user_has_active_company
 
+@rate_limit("login", limit=10, window=60, methods={"POST"})
 def login_view(request):
     if request.user.is_authenticated:
+        if not user_has_active_company(request.user) and request.user.is_staff:
+            return redirect('/admin/')
         return redirect('home:home')
     if request.method == 'POST':
         try:
@@ -30,11 +34,8 @@ def login_view(request):
                     'status': 'error',
                     'message': 'Invalid username or password.'
                 })
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': f'An unexpected error occurred: {str(e)}'
-            })
+        except Exception:
+            return safe_json_error("Login failed. Please try again.", status=500)
 
     return render(request, 'authentication_templates/login_template.html')
 
@@ -44,11 +45,8 @@ def logout_view(request):
     try:
         logout(request)
         return redirect('authentication:login')
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': f'Logout failed: {str(e)}'
-        })
+    except Exception:
+        return safe_json_error("Logout failed. Please try again.", status=500)
 
 
 

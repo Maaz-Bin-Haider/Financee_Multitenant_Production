@@ -15,6 +15,7 @@ business logic. It only customises the admin panel.
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin, GroupAdmin
 from django.contrib.auth.models import User, Group
+from django.contrib import messages
 from django.db import connection
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -698,6 +699,32 @@ class FinanceeAdminSite(admin.AdminSite):
 # Single shared instance used by the URL conf.
 financee_admin_site = FinanceeAdminSite(name="financee_admin")
 
+class FinanceeUserAdmin(UserAdmin):
+    """
+    Avoid destructive user deletes in a schema-per-tenant system.
+
+    Tenant business tables keep user ids for audit columns across every schema.
+    Deactivating a user preserves audit history and avoids cross-schema FK/admin
+    collector failures.
+    """
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is None:
+            return super().has_delete_permission(request, obj)
+        if hasattr(obj, "membership"):
+            return False
+        return super().has_delete_permission(request, obj)
+
+    def delete_model(self, request, obj):
+        if hasattr(obj, "membership"):
+            messages.error(
+                request,
+                "This user is linked to a company. Deactivate the user instead of deleting it.",
+            )
+            return
+        return super().delete_model(request, obj)
+
+
 # Register the same models the stock admin exposed (Users & Groups).
-financee_admin_site.register(User, UserAdmin)
+financee_admin_site.register(User, FinanceeUserAdmin)
 financee_admin_site.register(Group, GroupAdmin)

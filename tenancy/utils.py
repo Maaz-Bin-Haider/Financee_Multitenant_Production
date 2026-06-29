@@ -17,6 +17,8 @@ Design notes
 """
 import re
 
+from django.conf import settings
+from django.core.cache import cache
 from django.db import connection
 
 PUBLIC_SCHEMA = "public"
@@ -92,3 +94,25 @@ def list_tenant_schemas():
             "ORDER BY schema_name"
         )
         return [r[0] for r in cur.fetchall()]
+
+
+def tenant_schema_version_ok(schema_name: str) -> bool:
+    """Return True when a tenant schema has the expected business schema version."""
+    if not schema_name or schema_name == PUBLIC_SCHEMA:
+        return True
+    validate_schema_name(schema_name)
+    expected = getattr(settings, "TENANT_SCHEMA_VERSION", 1)
+    cache_key = f"tenant_schema_version_ok:{schema_name}:{expected}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return bool(cached)
+    try:
+        with connection.cursor() as cur:
+            cur.execute("SELECT version FROM tenant_schema_version WHERE id = true LIMIT 1")
+            row = cur.fetchone()
+    except Exception:
+        cache.set(cache_key, False, timeout=30)
+        return False
+    ok = bool(row and int(row[0]) >= expected)
+    cache.set(cache_key, ok, timeout=300 if ok else 30)
+    return ok

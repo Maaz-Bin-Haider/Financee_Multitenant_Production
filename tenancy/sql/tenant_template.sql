@@ -496,7 +496,9 @@ BEGIN
         FOR v_serial IN SELECT jsonb_array_elements_text(v_item->'serials')
         LOOP
             SELECT unit_id INTO v_unit_id FROM PurchaseUnits
-            WHERE serial_number = v_serial AND in_stock = TRUE LIMIT 1;
+            WHERE serial_number = v_serial AND in_stock = TRUE
+            LIMIT 1
+            FOR UPDATE;
             IF v_unit_id IS NULL THEN
                 RAISE EXCEPTION 'Serial % not found or already sold', v_serial;
             END IF;
@@ -5585,8 +5587,9 @@ BEGIN
             -- get matching purchase unit
             SELECT unit_id INTO v_unit_id
             FROM PurchaseUnits
-            WHERE serial_number = v_serial
-            LIMIT 1;
+            WHERE serial_number = v_serial AND in_stock = TRUE
+            LIMIT 1
+            FOR UPDATE;
 
             IF v_unit_id IS NULL THEN
                 RAISE EXCEPTION 'Serial % not found in PurchaseUnits', v_serial;
@@ -5697,7 +5700,10 @@ BEGIN
         FOR v_serial IN SELECT jsonb_array_elements_text(v_item->'serials')
         LOOP
             SELECT unit_id INTO v_unit_id
-            FROM PurchaseUnits WHERE serial_number = v_serial LIMIT 1;
+            FROM PurchaseUnits
+            WHERE serial_number = v_serial AND in_stock = TRUE
+            LIMIT 1
+            FOR UPDATE;
 
             IF v_unit_id IS NULL THEN
                 RAISE EXCEPTION 'Serial % not found in PurchaseUnits', v_serial;
@@ -8250,6 +8256,29 @@ BEGIN
     );
 END;
 $function$;
+
+CREATE TABLE IF NOT EXISTS tenant_schema_version (
+    id boolean PRIMARY KEY DEFAULT true,
+    version integer NOT NULL,
+    applied_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT tenant_schema_version_singleton CHECK (id)
+);
+
+INSERT INTO tenant_schema_version (id, version)
+VALUES (true, 1)
+ON CONFLICT (id) DO UPDATE
+SET version = GREATEST(tenant_schema_version.version, EXCLUDED.version),
+    applied_at = CURRENT_TIMESTAMP;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_purchaseunits_serial_number
+    ON purchaseunits (upper(serial_number));
+
+CREATE INDEX IF NOT EXISTS idx_purchaseunits_serial_in_stock
+    ON purchaseunits (upper(serial_number), in_stock);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_soldunits_one_active_sale_per_unit
+    ON soldunits (unit_id)
+    WHERE status = 'Sold';
 CREATE OR REPLACE FUNCTION monthly_income_statement(p_from_date date, p_to_date date)
 RETURNS json
 LANGUAGE plpgsql
@@ -11184,7 +11213,8 @@ BEGIN
         WHERE pu.serial_number = v_serial
           AND su.status = 'Sold'
         ORDER BY su.sold_unit_id DESC
-        LIMIT 1;
+        LIMIT 1
+        FOR UPDATE OF su, pu;
 
         IF NOT FOUND THEN
             RAISE EXCEPTION 'Serial % is not currently sold (nothing to return)', v_serial;
@@ -11262,7 +11292,8 @@ BEGIN
         WHERE pu.serial_number = v_serial
           AND su.status = 'Sold'
         ORDER BY su.sold_unit_id DESC
-        LIMIT 1;
+        LIMIT 1
+        FOR UPDATE OF su, pu;
 
         IF NOT FOUND THEN
             RAISE EXCEPTION 'Serial % is not currently sold (nothing to return)', v_serial;
@@ -11323,7 +11354,8 @@ BEGIN
         JOIN PurchaseInvoices pinv ON pi2.purchase_invoice_id = pinv.purchase_invoice_id
         WHERE pu.serial_number = v_serial
           AND pinv.vendor_id = v_vendor_id
-          AND pu.in_stock = TRUE;
+          AND pu.in_stock = TRUE
+        FOR UPDATE OF pu;
 
         IF NOT FOUND THEN
             RAISE EXCEPTION 'Serial % not found for this vendor or not currently in stock', v_serial;
@@ -11384,7 +11416,8 @@ BEGIN
         JOIN PurchaseInvoices p   ON pi.purchase_invoice_id = p.purchase_invoice_id
         WHERE pu.serial_number = v_serial
           AND p.vendor_id = v_vendor_id
-          AND pu.in_stock = TRUE;
+          AND pu.in_stock = TRUE
+        FOR UPDATE OF pu;
 
         IF NOT FOUND THEN
             RAISE EXCEPTION 'Serial % not found for this vendor or not currently in stock', v_serial;

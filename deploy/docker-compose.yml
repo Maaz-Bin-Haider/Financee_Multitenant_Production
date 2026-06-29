@@ -60,12 +60,15 @@ services:
     env_file: .env
     environment:
       DB_HOST: db
+      REDIS_URL: redis://redis:6379/0
     volumes:
       - staticfiles:/app/staticfiles
       - media:/app/media
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/authentication/login/ || exit 1"]
       interval: 30s
@@ -85,7 +88,15 @@ services:
     depends_on:
       - web
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+
 volumes:
   pgdata:
   staticfiles:
   media:
+  redisdata:
