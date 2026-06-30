@@ -23,7 +23,7 @@
     </div>
     <div class="fin-kpi green">
       <div class="kpi-icon"><i class="fa-solid fa-sack-dollar"></i></div>
-      <div><div class="kpi-val" style="font-size:1.15rem;">{{ totals.amount|floatformat:2 }}</div><div class="kpi-label">Monetary Value</div></div>
+      <div><div class="kpi-val kpi-val-money">{{ totals.amount|floatformat:2 }}</div><div class="kpi-label">Monetary Value</div></div>
     </div>
     <div class="fin-kpi violet">
       <div class="kpi-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
@@ -31,12 +31,12 @@
     </div>
     <div class="fin-kpi slate">
       <div class="kpi-icon"><i class="fa-solid fa-database"></i></div>
-      <div><div class="kpi-val" style="font-size:1.05rem;">{{ schema }}</div><div class="kpi-label">Schema</div></div>
+      <div><div class="kpi-val kpi-val-text">{{ schema }}</div><div class="kpi-label">Schema</div></div>
     </div>
   </div>
 
   <!-- Profile + filter toolbar -->
-  <div class="fin-card" style="margin-bottom:18px;">
+  <div class="fin-card fin-profile-card">
     <div class="fin-card-head"><i class="fa-solid fa-id-badge"></i> {{ u.username }}
       <span class="fin-head-spacer"></span>
       {% if u.is_superuser %}<span class="fin-pill fin-pill-super">Superuser</span>
@@ -45,7 +45,7 @@
       {% if u.is_active %}<span class="fin-pill fin-pill-active">Active</span>{% else %}<span class="fin-pill fin-pill-inactive">Inactive</span>{% endif %}
     </div>
     <div class="fin-card-body">
-      <div class="fin-meta" style="margin-bottom:14px;">
+      <div class="fin-meta fin-meta-spaced">
         <span class="k">Full name</span><span class="v">{{ u.get_full_name|default:"—" }}</span>
         <span class="k">Email</span><span class="v">{{ u.email|default:"—" }}</span>
         <span class="k">Groups</span><span class="v">{{ groups }}</span>
@@ -89,7 +89,7 @@
   </div>
 
   <!-- Detailed activity -->
-  <h2 class="fin-section-title" style="margin-top:8px;">Detailed Activity
+  <h2 class="fin-section-title fin-title-tight">Detailed Activity
     <span class="fin-count-badge">{{ entries|length }}</span>
   </h2>
 
@@ -97,12 +97,12 @@
     <table class="fin-table fin-activity-table">
       <thead>
         <tr>
-          <th style="width:34px;">#</th>
-          <th style="width:110px;">Date</th>
-          <th style="width:140px;">Type</th>
+          <th class="col-num">#</th>
+          <th class="col-date">Date</th>
+          <th class="col-type">Type</th>
           <th>Details</th>
-          <th style="width:120px; text-align:right;">Amount</th>
-          <th style="width:150px;">Recorded</th>
+          <th class="col-money">Amount</th>
+          <th class="col-recorded">Recorded</th>
         </tr>
       </thead>
       <tbody>
@@ -112,7 +112,7 @@
           <td>{% if e.date %}{{ e.date|date:"d M Y" }}{% else %}—{% endif %}</td>
           <td><span class="fin-type-badge type-{{ e.type|slugify }}"><i class="fa-solid {{ e.icon }}"></i> {{ e.type }}</span></td>
           <td class="fin-desc">{{ e.description }}</td>
-          <td style="text-align:right;">{% if e.amount != None %}<strong>{{ e.amount|floatformat:2 }}</strong>{% else %}<span class="fin-muted">—</span>{% endif %}</td>
+          <td class="fin-money-cell">{% if e.amount != None %}<strong>{{ e.amount|floatformat:2 }}</strong>{% else %}<span class="fin-muted">—</span>{% endif %}</td>
           <td class="fin-muted">{% if e.recorded_at %}{{ e.recorded_at|date:"d M Y, H:i" }}{% else %}—{% endif %}</td>
         </tr>
         {% empty %}
@@ -123,7 +123,7 @@
   </div>
 
   <!-- Recent admin actions -->
-  <h2 class="fin-section-title" style="margin-top:22px;">Recent Admin Actions</h2>
+  <h2 class="fin-section-title fin-title-spaced">Recent Admin Actions</h2>
   <div class="fin-card">
     <div class="fin-card-body">
       {% if recent_actions %}
@@ -133,7 +133,7 @@
           <span>
             <span class="fin-act-flag {{ a.action }}">{{ a.action }}</span>
             {{ a.object }}
-            {% if a.model %}<span class="fin-muted" style="font-size:0.74rem;">({{ a.model }})</span>{% endif %}
+            {% if a.model %}<span class="fin-muted fin-small">({{ a.model }})</span>{% endif %}
           </span>
           <span class="act-time">{{ a.time|date:"d M Y, H:i" }}</span>
         </li>

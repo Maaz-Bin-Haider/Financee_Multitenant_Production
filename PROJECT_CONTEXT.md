@@ -79,6 +79,19 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
 - JSON errors are scrubbed by middleware to avoid leaking internal exception details.
 - Login, dashboard, report, and lookup endpoints have lightweight cache-backed rate limits.
 
+## Admin UI Notes
+
+- Custom admin templates live in `templates/admin/`.
+- The admin theme is owned by `static/css/financee_admin.css`.
+- The admin UI is not stock Django only; it includes a custom dashboard, KPI strip, quick links, user activity overview/detail pages, PDF export links, tenant/company management, and custom user delete behavior.
+- The current admin visual direction is a responsive professional theme with an off-white background, rounded cards, grey admin text/links, and restrained muted accents.
+- Admin home KPI cards use subtle per-card accent colors: soft blue for total users, soft violet for superusers, soft green for active users, soft slate for groups, and soft amber for recorded actions. These accents should stay muted, not vibrant.
+- Admin action buttons follow a semantic color system: default/primary buttons are dark grey with off-white text, add buttons are light green with dark green text, change/reset-password buttons are light yellow with dark muted-yellow text, and delete buttons are light red with maroon text.
+- Avoid light-blue page/panel backgrounds throughout the admin. Panels, selector widgets, changelist headers, filter areas, and recent-action bodies should remain off-white or neutral.
+- Admin links should generally be grey and non-underlined. The Financee brand mark can remain blue; filled primary controls may use dark grey rather than blue.
+- The admin dashboard must remain single-column/responsive: recent actions stack below the main dashboard, and changelist/filter panels must fit small laptops and iPad widths without horizontal scrolling.
+- Avoid inline styles in admin templates; put layout, spacing, and color in `financee_admin.css` so small laptop and iPad behavior stays consistent.
+
 ## Test Strategy
 
 - `tests/test_system.py` exercises tenant stored functions and report functions through direct SQL.
