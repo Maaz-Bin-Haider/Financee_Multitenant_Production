@@ -1,366 +1,317 @@
-<div align="center">
+# Financee Multitenant Accounting and Inventory System
 
-# 🏢 Accounting Plus Inventory Management System
-### *A Full-Featured Django-Based ERP System*
+Financee is a Django-based accounting and inventory application for multiple companies. Each company is isolated in its own PostgreSQL schema while shared Django data, users, permissions, and tenant registry tables live in `public`.
 
-![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Django](https://img.shields.io/badge/Django-4.x-092E20?style=for-the-badge&logo=django&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-336791?style=for-the-badge&logo=postgresql&logoColor=white)
-![AWS](https://img.shields.io/badge/AWS-EC2-FF9900?style=for-the-badge&logo=amazon-aws&logoColor=white)
-![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
-![Gunicorn](https://img.shields.io/badge/Gunicorn-499848?style=for-the-badge&logo=gunicorn&logoColor=white)
+The application is intentionally SQL-centric: Django handles HTTP routing, authentication, permissions, templates, tenant activation, admin screens, and request validation; PostgreSQL stored functions, triggers, and views handle the accounting and inventory transactions.
 
-> An enterprise-grade ERP system integrating **double-entry accounting**, **serial-number-based inventory tracking**, complete **purchase/sale cycles**, **returns management**, and **real-time financial reporting** — built with Django and powered by a PostgreSQL stored-procedure architecture.
+## Current Stack
 
-</div>
+| Layer | Technology |
+| --- | --- |
+| Web framework | Django, pinned in `requirements.txt` / `requirements-lock.txt` |
+| Database | PostgreSQL, schema-per-tenant design |
+| Cache / rate limits | Django cache; Redis in Docker production |
+| App server | Gunicorn |
+| Reverse proxy | Nginx |
+| Frontend | Django templates, static CSS, vanilla JavaScript |
+| PDF/report support | ReportLab |
+| Deployment | Docker Compose stack in `deploy/` |
 
----
+> Note: `financee/settings.py` still contains a generated Django 5.2 header comment. The dependency files are the actual runtime source of truth.
 
-## 📑 Table of Contents
+## Architecture
 
-- [Overview](#-overview)
-- [System Architecture](#️-system-architecture)
-- [Tech Stack](#-tech-stack)
-- [Modules](#-modules)
-- [Key Features](#-key-features)
-- [Project Structure](#-project-structure)
-- [Permission System](#-permission-system)
-- [API Endpoints](#-api-endpoints)
-- [Database Design](#-database-design)
-- [Deployment](#-deployment)
-- [Getting Started](#-getting-started)
-
----
-
-## 🌟 Overview
-
-This system is designed to serve small-to-medium businesses requiring a unified platform for:
-
-- **Accounting** – Full double-entry bookkeeping with automated journal entries
-- **Inventory Management** – Serial-number tracking with FIFO valuation
-- **Trading Operations** – Purchase, Sales, and Returns workflows
-- **Financial Reporting** – Profit & Loss, Balance Sheet, Stock Reports
-
-All business logic is executed through **PostgreSQL stored functions**, making the backend thin, reliable, and extremely fast. Django handles routing, authentication, permission enforcement, and template rendering.
-
----
-
-## 🏗️ System Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                    CLIENT BROWSER                   │
-└───────────────────────┬─────────────────────────────┘
-                        │ HTTPS
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│              NGINX  (Reverse Proxy)                 │
-│         Static files │ SSL Termination              │
-└───────────────────────┬─────────────────────────────┘
-                        │
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│           GUNICORN  (WSGI Application Server)       │
-└───────────────────────┬─────────────────────────────┘
-                        │
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│              DJANGO APPLICATION                     │
-│  ┌──────────┐ ┌──────────┐ ┌──────────────────────┐ │
-│  │   Auth   │ │  Views   │ │  Django Templates    │ │
-│  │  Module  │ │ (Logic)  │ │  (Frontend / UI)     │ │
-│  └──────────┘ └──────────┘ └──────────────────────┘ │
-└───────────────────────┬─────────────────────────────┘
-                        │ psycopg2
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│           POSTGRESQL DATABASE (AWS EC2)             │
-│   Tables │ Stored Functions │ Triggers │ Views      │
-└─────────────────────────────────────────────────────┘
+```text
+Browser
+  |
+  v
+Nginx
+  |
+  v
+Gunicorn / Django
+  |
+  |-- public schema
+  |     auth_user, auth_group, permissions, sessions,
+  |     tenancy_company, tenancy_membership
+  |
+  |-- tenant_company_1 schema
+  |     business tables, functions, views, triggers
+  |
+  |-- tenant_company_2 schema
+        business tables, functions, views, triggers
 ```
 
----
+### Request Flow
 
-## 🛠️ Tech Stack
+1. A user logs in through `/authentication/login/`.
+2. `TenantSchemaMiddleware` resolves the authenticated user's `Membership`.
+3. The middleware sets PostgreSQL `search_path` to `"<tenant_schema>", public`.
+4. Feature views execute raw SQL / stored functions without hard-coding a schema.
+5. The middleware resets `search_path` to `public` after the response or exception.
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Backend Framework** | Django 4.x | Application logic, routing, auth |
-| **Database** | PostgreSQL 14+ | Data storage, stored procedures, triggers |
-| **DB Driver** | psycopg2-binary | Django–PostgreSQL connectivity |
-| **Config Management** | django-environ | Environment variable management |
-| **Frontend** | Django Templates + HTML/CSS/JS | Server-side rendered UI |
-| **Web Server** | Nginx | Reverse proxy, static file serving |
-| **App Server** | Gunicorn | WSGI production server |
-| **Cloud** | AWS EC2 | Deployment infrastructure |
+Unauthenticated requests use `public`. Authenticated users without an active company are blocked from tenant features and redirected to login, except admin/auth/static paths.
 
----
+## Multitenancy Model
 
-## 📦 Modules
+Only two Django ORM models represent tenancy:
 
-The project is organized as a **multi-app Django project**, each app handling a dedicated business domain:
+| Model | Location | Purpose |
+| --- | --- | --- |
+| `Company` | `tenancy/models.py` | Tenant registry row. Auto-generates `schema_name` as `tenant_company_<id>`. |
+| `Membership` | `tenancy/models.py` | One-to-one mapping from user to company. Enforces one company per user. |
 
-| App | Description |
-|-----|-------------|
-| `authentication` | Login, logout, session management, role-based permissions |
-| `home` | Dashboard — cash balance, party balances, item lookups |
-| `items` | Inventory item creation, updates, autocomplete search |
-| `parties` | Customer/vendor management (add, update) |
-| `sale` | Sales invoice creation, retrieval, summary reports |
-| `purchase` | Purchase invoice management |
-| `sale_return` | Sales return processing |
-| `purchase_return` | Purchase return processing |
-| `payments` | Outgoing payment recording and history |
-| `receipts` | Incoming receipt recording and history |
-| `display_reports` | Accounts Reports, Stock Reports, Profit Reports |
+Creating a `Company` through the custom admin or `provision_tenant` command provisions a physical tenant schema from `tenancy/sql/tenant_template.sql`.
 
----
+Business tables are not Django models. They are created in each tenant schema from SQL.
 
-## ✨ Key Features
+## Database Design
 
-### 🔐 Authentication & Role-Based Access Control
-- Session-based authentication using Django's built-in auth system
-- **Granular module-level permissions** — each module (Sales, Purchase, Payments, etc.) has its own `view`, `add`, `change`, `delete` permissions
-- Permissions assigned per user/group — unauthorized access redirects gracefully to the home dashboard
-- JSON responses for AJAX-based login/logout flows
+The tenant template contains the per-company business database. Core objects include:
 
-### 📊 Dashboard (Home)
-- Real-time **cash balance** display
-- **Party-wise balance** overview (receivables & payables)
-- **Expense party balances** for expense tracking
-- **Item & party autocomplete** APIs for fast data entry
+| Area | Main objects |
+| --- | --- |
+| Accounting | `chartofaccounts`, `journalentries`, `journallines`, `generalledger`, `vw_trial_balance` |
+| Masters | `items`, `parties` |
+| Purchase cycle | `purchaseinvoices`, `purchaseitems`, `purchaseunits` |
+| Sales cycle | `salesinvoices`, `salesitems`, `soldunits` |
+| Returns | `purchasereturns`, `purchasereturnitems`, `salesreturns`, `salesreturnitems` |
+| Cash movement | `payments`, `receipts`, `contra_entries`, `opening_cash` |
+| Inventory | `stockmovements`, `stock_report`, `stock_worth_report`, serial ledger functions |
+| Equity / period close | `owner_equity_transactions`, `period_closes` |
+| Reporting | dashboard functions, sales report JSON functions, monthly reports |
+| Tenant versioning | `tenant_schema_version` |
 
-### 🛒 Sales Module
-- Full invoice creation with multiple line items
-- Party name validation against the database
-- Future-date restriction on invoice dates
-- Sale summary and detailed invoice retrieval
-- AJAX-based form submission with real-time error feedback
+Important SQL entry points include:
 
-### 🏭 Purchase Module
-- Complete purchase cycle: invoice creation → stock update → accounting entry
-- Linked to inventory serial-number tracking
+- `add_party_from_json`, `update_party_from_json`, `get_party_by_name`
+- `add_item_from_json`, `update_item_from_json`, `get_item_by_name`
+- `create_purchase`, `delete_purchase`, `get_current_purchase`, `get_purchase_summary`
+- `create_sale`, `delete_sale`, `get_current_sale`, `get_sales_summary`
+- `create_sale_return`, `update_sale_return`, `delete_sale_return`
+- `create_purchase_return`, `update_purchase_return`, `delete_purchase_return`
+- `make_payment`, `update_payment`, `delete_payment`
+- `make_receipt`, `update_receipt`, `delete_receipt`
+- `make_contra`, `update_contra`, `delete_contra`
+- `create_opening_stock`, `delete_opening_stock`, `reclassify_opening_balance_to_capital`
+- `set_opening_cash_from_json`
+- `add_owner_equity_txn`, `delete_owner_equity_txn`
+- `preview_period_close`, `close_period_from_json`, `reverse_period_close`
+- `sales_summary_json`, `product_profitability_json`, `customer_profitability_json`, `invoice_register_json`
 
-### 🔄 Returns Management
-- **Sale Returns** — reversal of sales with automatic stock restoration
-- **Purchase Returns** — reversal of purchases with full accounting reversal
+When changing business tables or stored functions:
 
-### 💵 Payments & Receipts
-- Date-wise payment/receipt history
-- Old payment/receipt lookup
-- Full party ledger support
-
-### 📈 Reports
-- **Profit Reports** — Gross profit, net profit analysis
-- **Stock Reports** — Current inventory levels, valuation
-- **Accounts Reports** — Party ledgers, balance sheet data
-
----
-
-## 📁 Project Structure
-
-```
-Accounting-Plus-Inventory-System/
-│
-├── financee/                   # Main Django project settings
-│   └── urls.py                 # Root URL configuration
-│
-├── authentication/             # User auth & permissions
-│   ├── views.py                # login_view, logout_view, current_user
-│   ├── urls.py
-│   └── migrations/             # Permission seeders (11 migrations)
-│
-├── home/                       # Dashboard
-│   └── views.py                # Cash balance, party APIs, item APIs
-│
-├── items/                      # Inventory items
-│   └── views.py                # CRUD + autocomplete
-│
-├── parties/                    # Customer/Vendor management
-│   └── views.py
-│
-├── sale/                       # Sales invoicing
-│   └── views.py
-│
-├── purchase/                   # Purchase invoicing
-│   └── views.py
-│
-├── sale_return/                # Sales return
-├── purchase_return/            # Purchase return
-├── payments/                   # Outgoing payments
-├── receipts/                   # Incoming receipts
-│
-├── templates/                  # Django HTML templates
-│   ├── base/base.html          # Base layout
-│   ├── authentication_templates/
-│   ├── home_templates/
-│   ├── items_templates/
-│   ├── parties_templates/
-│   ├── sale_templates/
-│   ├── purchase_templates/
-│   ├── sale_return_templates/
-│   ├── purchase_return_templates/
-│   ├── payments_templates/
-│   ├── receipts_templates/
-│   └── display_report_templates/
-│
-├── requirements.txt
-├── manage.py
-└── .gitignore
-```
-
----
-
-## 🔑 Permission System
-
-Permissions are seeded via Django migrations. Each module defines its own set of permissions:
-
-```python
-# Example – Sales Permissions Migration
-permissions = [
-    ("view_sale",   "Can View Sale Invoices"),
-    ("add_sale",    "Can Create Sale Invoices"),
-    ("change_sale", "Can Edit Sale Invoices"),
-    ("delete_sale", "Can Delete Sale Invoices"),
-]
-```
-
-Every view enforces permission checks:
-```python
-@login_required
-def sales(request):
-    if not request.user.has_perm("auth.view_sale"):
-        messages.error(request, "You do not have permission to View Sale Invoices.")
-        return redirect("home:home")
-```
-
-Modules with dedicated permissions: `Payments`, `Receipts`, `Purchase`, `Sale`, `Purchase Return`, `Sale Return`, `Items`, `Parties`, `Accounts Reports`, `Stock Reports`, `Profit Reports`.
-
----
-
-## 🌐 API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET/POST` | `/auth/login/` | User authentication |
-| `POST` | `/auth/logout/` | Session logout |
-| `GET` | `/auth/current/user/` | Logged-in user info |
-| `GET` | `/api/cash/` | Current cash balance |
-| `GET` | `/api/parties/` | Party list |
-| `GET` | `/api/items/` | Item list |
-| `GET` | `/api/party-balances/` | Receivables & payables |
-| `GET` | `/items/autocomplete-item/` | Item search autocomplete |
-| `GET/POST` | `/sale/sales/` | Sale invoice CRUD |
-| `GET` | `/sale/get-sale/` | Fetch specific invoice |
-| `GET` | `/sale/get-sale-summary/` | Sales summary |
-| `GET/POST` | `/purchase/` | Purchase invoice CRUD |
-| `GET/POST` | `/payments/payment/` | Record payment |
-| `GET` | `/payments/get-old-payments/` | Payment history |
-| `GET/POST` | `/receipts/receipt/` | Record receipt |
-| `GET` | `/receipts/get-old-receipts/` | Receipt history |
-
----
-
-## 🗄️ Database Design
-
-All business logic lives in the **PostgreSQL layer** through stored functions and triggers. Django views simply call these functions via `connection.cursor()`:
-
-```python
-with connection.cursor() as cursor:
-    cursor.execute("SELECT * FROM create_sale_invoice(%s, %s, %s)", [party, date, items])
-    result = cursor.fetchone()
-```
-
-**Key Database Objects:**
-
-| Type | Count | Examples |
-|------|-------|---------|
-| Tables | 18 | ChartOfAccounts, Parties, Items, Sale, Purchase... |
-| Stored Functions | 40+ | `create_sale_invoice()`, `process_purchase_return()` |
-| Triggers | 10+ | Auto journal entries, stock updates |
-| Views | 5+ | Stock summary, party balances, profit views |
-
-> 📖 See the **ERP-System (Database)** repository for complete schema documentation.
-
----
-
-## ☁️ Deployment
-
-```
-AWS EC2 Instance
-│
-├── Ubuntu Server
-│   ├── Nginx             → Port 80/443, static files, reverse proxy
-│   ├── Gunicorn          → WSGI server, Unix socket
-│   ├── Django App        → Application code
-│   └── PostgreSQL        → Database server
-│
-└── Security Group        → Inbound: 22 (SSH), 80 (HTTP), 443 (HTTPS)
-```
-
-**Nginx → Gunicorn communication** is handled via Unix socket for optimal performance.
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Python 3.x
-- PostgreSQL 14+
-- pip
-
-### Installation
+1. Update `tenancy/sql/tenant_template.sql` so new tenants receive the change.
+2. Create an idempotent SQL patch in `tenancy/sql/`.
+3. Apply it to existing tenants with:
 
 ```bash
-# 1. Clone the repository
-git clone <repo-url>
-cd Accounting-Plus-Inventory-System
+python manage.py apply_sql_all_tenants tenancy/sql/<patch>.sql
+```
 
-# 2. Create virtual environment
+Use `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, and `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` patterns so patches are safe to rerun.
+
+## Django Apps
+
+| App | Responsibility |
+| --- | --- |
+| `authentication` | Login, logout, current-user JSON, login rate limit |
+| `tenancy` | Company registry, membership, schema switching, provisioning, tenant SQL rollout commands |
+| `home` | Dashboard page and dashboard JSON APIs |
+| `parties` | Customer/vendor/expense/cash party master screens and autocomplete |
+| `items` | Item master screens, item updates, autocomplete, item list JSON |
+| `purchase` | Purchase invoice create/update/delete, navigation, summary, serial checks |
+| `sale` | Sale invoice create/update/delete, navigation, summary, serial lookup |
+| `purchaseReturn` | Purchase return create/update/delete, serial lookup, summaries |
+| `saleReturn` | Sale return create/update/delete, serial lookup, summaries |
+| `payments` | Outgoing payments, navigation, history, party balance |
+| `receipts` | Incoming receipts, navigation, history, party balance |
+| `contra` | Party-to-party contra entries, navigation, history, party balance |
+| `accountsReports` | Ledgers, trial balance, cash ledger, receivable/payable, stock, serial, valuation, monthly reports |
+| `sales_reports` | Sales analytics APIs and report screen |
+| `set_opening` | Opening cash singleton |
+| `opening_stock` | Opening stock loads and opening-balance reclassification |
+| `owner_equity` | Owner capital drawings/investments |
+| `month_close` | Period close preview, close, and reversal |
+
+## Main URL Surface
+
+| Prefix | Purpose |
+| --- | --- |
+| `/authentication/` | Login, logout, current user |
+| `/admin/` | Custom Financee admin site |
+| `/home/` | Dashboard and dashboard APIs |
+| `/parties/` | Party master |
+| `/items/` | Item master |
+| `/purchase/` | Purchase workflow |
+| `/sale/` | Sales workflow |
+| `/purchaseReturn/` | Purchase returns |
+| `/saleReturn/` | Sales returns |
+| `/payments/` | Payments |
+| `/receipts/` | Receipts |
+| `/contra/` | Contra entries |
+| `/accountsReports/` | Accounting and inventory reports |
+| `/sales-reports/` | Sales analytics |
+| `/set-opening/` | Opening cash |
+| `/opening-stock/` | Opening stock |
+| `/owner-equity/` | Owner equity |
+| `/month-close/` | Period close |
+
+## Permissions and Guards
+
+Permissions are seeded through migrations in `authentication/migrations/`. The middleware has a path-level guard in `financee/security.py`.
+
+Protected prefixes include sales, purchases, returns, payments, receipts, parties, items, contra, opening stock, owner equity, set opening, and month close. Sales report APIs use an "any of these report permissions" rule, so a user can access the report module if they have at least one sales report permission.
+
+The middleware also applies basic rate limits:
+
+- dashboard APIs: 180 requests per minute
+- report APIs: 90 requests per minute
+- lookup/autocomplete endpoints: 240 requests per minute
+- login POST: 10 requests per minute
+
+In production, Redis should be configured through `REDIS_URL` so rate limits apply across workers.
+
+## Admin Site
+
+The project uses `financee/admin_site.py` instead of Django's default admin site directly.
+
+Admin features:
+
+- superuser-only custom admin access
+- Financee branding
+- Company and Membership management
+- tenant schema provisioning when companies are created
+- user activity pages and PDF export
+- optional cross-tenant activity aggregation through `TENANCY_CROSS_TENANT_ACTIVITY`
+
+## Local Setup
+
+Create an environment file. For Docker, copy `deploy/.env.example` to `deploy/.env`. For direct local development, create `.env` at the project root with the same variables:
+
+```env
+SECRET_KEY=change-me
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=
+DB_NAME=financee
+DB_USER=financee
+DB_PASSWORD=change-me
+DB_HOST=localhost
+DB_PORT=5432
+```
+
+Install dependencies:
+
+```bash
 python -m venv venv
-source venv/bin/activate    # Windows: venv\Scripts\activate
+source venv/bin/activate
+pip install -r requirements-lock.txt
+```
 
-# 3. Install dependencies
-pip install -r requirements.txt
+Run public-schema migrations:
 
-# 4. Configure environment
-cp .env.example .env
-# Edit .env with your PostgreSQL credentials and Django secret key
-
-# 5. Set up the database
-# Run the SQL schema from the ERP-System (Database) repo first
-# Then apply Django migrations
+```bash
 python manage.py migrate
+```
 
-# 6. Run the development server
+Create a superuser:
+
+```bash
+python manage.py createsuperuser
+```
+
+Provision a tenant and attach an existing user:
+
+```bash
+python manage.py provision_tenant "Demo Company" --owner alice
+```
+
+Run the development server:
+
+```bash
 python manage.py runserver
 ```
 
-### Environment Variables (`.env`)
+## Docker Deployment
 
-```env
-SECRET_KEY=your_django secret key
-DEBUG=True
+The production stack lives in `deploy/`:
 
-# Database
-DB_NAME=db_name
-DB_USER=db_user
-DB_PASSWORD=db_password
-DB_HOST=localhost
-DB_PORT=5432
+- `db`: PostgreSQL 16
+- `redis`: shared cache / rate limits
+- `web`: Django + Gunicorn
+- `nginx`: reverse proxy and static/media serving
 
+Start it with:
+
+```bash
+cd deploy
+cp .env.example .env
+# edit .env
+docker compose up -d --build
 ```
 
----
+On first database boot, `build_multitenant_db.sql` seeds public objects and an example tenant. On every web container start, `deploy/entrypoint.sh` waits for Postgres, syncs baked static files, and runs `python manage.py migrate --no-input` for the shared public schema.
 
-## 🔗 Related Repository
+Static files are collected at image build time with `ManifestStaticFilesStorage`. The entrypoint copies the baked static tree into the shared static volume so Nginx serves current hashed assets after deploys.
 
-> 📦 **[ERP-System (Database)](../ERP-System)** — Contains the complete PostgreSQL schema, stored functions, triggers, ER diagrams, execution flow diagrams, and database documentation.
+## Tenant Operations
 
----
+Create a tenant:
 
-<div align="center">
+```bash
+python manage.py provision_tenant "Company Name"
+```
 
-**Built with ❤️ using Django & PostgreSQL**
+Create a tenant and assign an existing user:
 
-</div>
+```bash
+python manage.py provision_tenant "Company Name" --owner username
+```
+
+Apply SQL to every tenant:
+
+```bash
+python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql
+```
+
+Preview target schemas without applying:
+
+```bash
+python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql --dry-run
+```
+
+Apply to one tenant:
+
+```bash
+python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql --only tenant_company_3
+```
+
+## Testing
+
+The functional test suite is documented in `tests/README.md`.
+
+Run through Docker:
+
+```bash
+chmod +x tests/run_tests.sh
+./tests/run_tests.sh
+```
+
+Run with tenant reset:
+
+```bash
+./tests/run_tests.sh --reset
+```
+
+The suite has two major harnesses:
+
+- `tests/test_system.py`: direct SQL business-function coverage per tenant
+- `tests/test_http.py`: Django client coverage for real views, permissions, JSON, templates, and write flows
+
+## Project Rules for Future Changes
+
+- Keep `PROJECT_CONTEXT.md` updated whenever architecture, routes, tenant SQL, deployment, environment variables, permissions, or tests change.
+- Business schema changes must update both `tenant_template.sql` and an idempotent rollout SQL file for existing tenants.
+- Do not introduce Django ORM models for tenant business tables unless the multitenant `search_path` strategy is explicitly accounted for.
+- Always reset or preserve `search_path` in management commands and admin utilities that activate tenant schemas manually.
+- Keep tenant-facing errors generic; middleware currently scrubs JSON error details for 4xx/5xx responses.
