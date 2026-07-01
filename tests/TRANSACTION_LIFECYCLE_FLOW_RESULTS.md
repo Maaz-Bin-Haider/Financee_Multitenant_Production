@@ -79,37 +79,38 @@ live schema regardless of accumulated data:
 | # | Flow | Expected Result | Latest Result |
 |---|---|---|---|
 | 47 | `delete_purchase` on an untouched (unsold) invoice | Delete succeeds | Passed |
-| 48 | `delete_purchase` on an invoice whose serial is already sold | Should be **blocked** | **KNOWN BUG (XFAIL)** — succeeds and cascade-deletes `SoldUnits` |
-| 49 | Sale with `qty` (5) greater than serial count (2) | Should be **rejected** | **KNOWN BUG (XFAIL)** — accepted; revenue/stock diverge |
-| 50 | Sale with `qty` (1) less than serial count (2) | Should be **rejected** | **KNOWN BUG (XFAIL)** — accepted |
+| 48 | `delete_purchase` on an invoice whose serial is already sold | Blocked | Passed (fixed) |
+| 49 | Sale with `qty` (5) greater than serial count (2) | Rejected | Passed (fixed) |
+| 50 | Sale with `qty` (1) less than serial count (2) | Rejected | Passed (fixed) |
 | 51 | Same serial listed twice in one sale invoice | Blocked by in-stock guard | Passed |
 | 52 | Sale with a negative unit price | Rejected | Passed (blocked by `journallines` CHECK constraint) |
-| 53 | Price-only purchase edit after sale, then sale return | Return cost basis matches the sale's COGS | **KNOWN BUG (XFAIL)** — sale COGS 100 vs return basis 150 (inventory drift) |
+| 53 | Price-only purchase edit after sale, then sale return | Sale COGS reflows to the corrected cost and matches the return basis | Passed (fixed) |
 | 54 | Single sale return spanning two invoices of the same customer | Return succeeds; both serials back in stock | Passed (documents current behavior) |
 
-## Known Bugs (documented, do not fail the suite)
+## Fixed Bugs
 
-These are asserted as `known_bug=True`, so they are reported as `XFAIL` and
-excluded from the pass/fail exit code. Each will flip to a normal pass once the
-underlying SQL is fixed (the runner then prints `XPASS` to prompt removal of the
-flag). Reproduced on both `tenant_company_1` and `tenant_company_2`.
+The three data-integrity defects surfaced by this review were fixed in
+`tenancy/sql/fix_transaction_integrity_guards.sql` (folded into
+`tenant_template.sql`, `production_hardening.sql`, and `build_multitenant_db.sql`;
+tenant schema version bumped to 3). All three now pass as normal checks on both
+tenants.
 
-| Bug | Root cause | Impact |
+| Bug | Root cause | Fix |
 |---|---|---|
-| `delete_purchase` has no sold-serial guard | `soldunits_unit_id_fkey` is `ON DELETE CASCADE`; `delete_purchase` deletes `PurchaseUnits` unconditionally | Deleting a purchase after its serial was sold silently destroys the `SoldUnits`/COGS/stock while the sale invoice + revenue journal survive |
-| `create_sale` / `update_sale_invoice` trust payload `qty` | Revenue and `SalesItems.quantity` use `qty`; only listed serials ship | Revenue and units shipped diverge; trial balance still nets to zero so it is otherwise invisible |
-| Cost-basis drift on return after price edit | Sale COGS is frozen at post time; a later return recaptures cost from the edited `PurchaseItems.unit_price` | Inventory/COGS drift after the supported price-only purchase-edit flow |
+| `delete_purchase` had no sold-serial guard | `soldunits_unit_id_fkey` is `ON DELETE CASCADE`; `delete_purchase` deleted `PurchaseUnits` unconditionally, cascade-deleting sold rows | `assert_purchase_invoice_deletable()` blocks the delete when any serial has sale or purchase-return history |
+| `create_sale` / `update_sale_invoice` trusted payload `qty` | Revenue and `SalesItems.quantity` used `qty` while only listed serials shipped | Both functions reject a `qty` that does not equal the serial count (when serials are supplied) |
+| Cost-basis drift on return after price edit | Sale COGS was frozen at post time; a later return recaptured cost from the edited `PurchaseItems.unit_price` | `update_purchase_invoice` now rebuilds the journal of every sale that consumed a unit from the edited purchase, keeping COGS in sync |
 
 ## Current Summary
 
-Latest Docker run result:
+Latest Docker run result (after the fix):
 
 ```text
-tenant_company_1: 2696/2696 real checks passed
-tenant_company_2: 2696/2696 real checks passed
-PASSED: all deep lifecycle checks passed (8 known bugs still open).
+tenant_company_1: 2702/2702 real checks passed
+tenant_company_2: 2702/2702 real checks passed
+PASSED: all deep lifecycle checks passed.
 ```
 
-All real (non-known-bug) checks pass on both tenants, including the newly added
-financial invariants. Four distinct data-integrity bugs are documented as
-`XFAIL` (8 total across two tenants) and are pending SQL fixes.
+All real checks pass on both tenants, including the newly added financial
+invariants and the three formerly-failing scenarios. No known bugs remain open.
+The `known_bug`/`XFAIL` plumbing is retained for future use.

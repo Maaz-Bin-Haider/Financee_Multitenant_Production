@@ -104,13 +104,15 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
 - `tests/test_system.py` exercises tenant stored functions and report functions through direct SQL.
 - `tests/test_http.py` exercises real Django endpoints through the Django test client.
 - `tests/test_transaction_lifecycle_deep.py` stress-tests real serial lifecycles across purchase, sale, sale return, resale, second return, purchase return, mixed purchase invoice corrections, partial returns, sale-return update/delete after resale, sale invoice update/delete after returns, cash-sale vs credit-sale returns, multi-item mixed serial invoices, and report execution after every entry.
+- `tests/test_transaction_lifecycle_deep.py` also asserts financial invariants at every checkpoint (trial balance balances, no orphaned journal lines, no negative amounts, in_stock vs active-Sold coherence) and supports a `known_bug`/`XFAIL` channel for documenting confirmed-but-unfixed defects without failing the suite.
 - `tests/TRANSACTION_LIFECYCLE_FLOW_RESULTS.md` records the latest deep lifecycle flow matrix and current pass/fail status.
 - `tests/run_tests.sh` runs both harnesses in Docker and can reset tenant schemas with `--reset`.
 
 ## Current Tenant SQL Hardening
 
-- `tenancy/sql/production_hardening.sql` is applied at Docker startup and includes sale-return lifecycle guards.
+- `tenancy/sql/production_hardening.sql` is applied at Docker startup and includes sale-return lifecycle guards plus the transaction integrity guards below.
 - `tenancy/sql/fix_sale_return_lifecycle_guards.sql` contains the standalone idempotent patch for active-sale return lookup and sale invoice mutation blocking after return history.
+- `tenancy/sql/fix_transaction_integrity_guards.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; tenant schema version 3) fixes three data-integrity defects: `delete_purchase` now blocks when serials have sale/purchase-return history; `create_sale`/`update_sale_invoice` reject a `qty` that does not match the serial count; `update_purchase_invoice` rebuilds the journals of sales that consumed the edited units so COGS stays in sync. See `FIXED_ISSUES.md`.
 - Keep `tenancy/sql/tenant_template.sql`, `build_multitenant_db.sql`, and `production_hardening.sql` aligned when tenant SQL behavior changes.
 
 ## Known Documentation Caveats

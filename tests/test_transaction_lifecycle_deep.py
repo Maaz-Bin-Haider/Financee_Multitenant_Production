@@ -887,7 +887,7 @@ class DeepLifecycleRunner:
         self.step(
             section, "delete_purchase with a SOLD serial is blocked",
             "SELECT delete_purchase(%s)", [pid],
-            expect_error=True, known_bug=True,
+            expect_error=True,
         )
         # The delete attempt above is rolled back by step(expect_error=...), so
         # the sale is intact regardless; this is just a sanity check that the
@@ -919,14 +919,14 @@ class DeepLifecycleRunner:
             section, "sale with qty(5) > serials(2) is rejected",
             "SELECT create_sale(%s,%s,%s::jsonb,%s)",
             [customer_id, self.days[1], json.dumps(over), self.user_id],
-            expect_error=True, known_bug=True,
+            expect_error=True,
         )
         under = [{"item_name": self.item, "qty": 1, "unit_price": 200, "serials": serials}]
         self.step(
             section, "sale with qty(1) < serials(2) is rejected",
             "SELECT create_sale(%s,%s,%s::jsonb,%s)",
             [customer_id, self.days[1], json.dumps(under), self.user_id],
-            expect_error=True, known_bug=True,
+            expect_error=True,
         )
         # Both serials must still be in stock after the rejected attempts.
         for serial in serials:
@@ -963,14 +963,26 @@ class DeepLifecycleRunner:
         for serial in serials:
             self.assert_stock(section, serial, True)
 
+    def sale_cogs(self, sale_id):
+        row = self.fetch_one(
+            """
+            SELECT COALESCE(SUM(jl.debit),0)
+            FROM salesinvoices s
+            JOIN journallines jl ON jl.journal_id = s.journal_id
+            JOIN chartofaccounts coa ON coa.account_id = jl.account_id
+            WHERE s.sales_invoice_id = %s AND coa.account_name = 'Cost of Goods Sold'
+            """,
+            [sale_id],
+        )
+        return float(row[0]) if row and row[0] is not None else 0.0
+
     def test_cost_basis_drift_on_return(self):
         """A price-only purchase edit after a sale must not desync COGS.
 
-        The sale's COGS journal is frozen at the original cost, but a later
-        sale return recaptures cost from the (now edited) PurchaseItems price.
-        If they differ, inventory/COGS drift silently. Encoded as known_bug so
-        it reports the drift without failing the suite if the schema doesn't
-        yet keep them in sync.
+        A later sale return recaptures cost from the (edited) PurchaseItems
+        price, so the sale's COGS must be reflowed to match when the purchase is
+        edited; otherwise inventory/COGS drift silently. This verifies the
+        sale's *current* COGS (after the edit) equals the return's cost basis.
         """
         section = "09 cost basis drift on return"
         vendor_id = self.party_id(self.vendor)
@@ -986,17 +998,11 @@ class DeepLifecycleRunner:
             "SELECT create_sale(%s,%s,%s::jsonb,%s)",
             [customer_id, self.days[1], json.dumps(self.sale_item_payload([serial], 300)), self.user_id],
         )
-        sale_cogs_row = self.fetch_one(
-            """
-            SELECT COALESCE(SUM(jl.debit),0)
-            FROM salesinvoices s
-            JOIN journallines jl ON jl.journal_id = s.journal_id
-            JOIN chartofaccounts coa ON coa.account_id = jl.account_id
-            WHERE s.sales_invoice_id = %s AND coa.account_name = 'Cost of Goods Sold'
-            """,
-            [sale_id],
+        self.assert_true(
+            section, "sale COGS posted at original cost 100",
+            abs(self.sale_cogs(sale_id) - 100.0) < 0.005,
+            f"Expected COGS 100 at sale time, got {self.sale_cogs(sale_id):.2f}.",
         )
-        sale_cogs = float(sale_cogs_row[0]) if sale_cogs_row and sale_cogs_row[0] is not None else 0.0
 
         # Price-only purchase edit to 150 while the serial is sold (allowed flow).
         self.step(
@@ -1004,6 +1010,14 @@ class DeepLifecycleRunner:
             "SELECT update_purchase_invoice(%s,%s::jsonb,%s,%s,%s)",
             [pid, json.dumps(self.purchase_item_payload([serial], 150)), self.vendor, self.days[0], self.user_id],
         )
+        # After the edit the sale's COGS must reflow to the corrected cost.
+        cogs_after_edit = self.sale_cogs(sale_id)
+        self.assert_true(
+            section, "sale COGS reflows to corrected cost 150 after purchase edit",
+            abs(cogs_after_edit - 150.0) < 0.005,
+            f"Sale COGS did not reflow: {cogs_after_edit:.2f} (expected 150).",
+        )
+
         return_id = self.step(
             section, "sale return after price edit",
             "SELECT create_sale_return(%s,%s::jsonb,%s)",
@@ -1015,10 +1029,9 @@ class DeepLifecycleRunner:
         )
         return_cost = float(return_cost_row[0]) if return_cost_row and return_cost_row[0] is not None else 0.0
         self.assert_true(
-            section, "return COGS basis matches original sale COGS",
-            abs(sale_cogs - return_cost) < 0.005,
-            f"Sale COGS {sale_cogs:.2f} != return cost basis {return_cost:.2f} (inventory drift).",
-            known_bug=True,
+            section, "return cost basis matches current sale COGS",
+            abs(cogs_after_edit - return_cost) < 0.005,
+            f"Sale COGS {cogs_after_edit:.2f} != return cost basis {return_cost:.2f} (inventory drift).",
         )
         self.run_reports("after cost basis drift check")
 
@@ -1070,13 +1083,17 @@ class DeepLifecycleRunner:
 def discover_tenants(conn):
     cur = conn.cursor()
     try:
+        # One representative membership per schema. A tenant may have several
+        # users; the suite must run once per schema (not once per user) or the
+        # second pass collides on the shared RUN_TAG master data.
         cur.execute(
             """
-            SELECT c.schema_name, m.user_id
+            SELECT c.schema_name, MIN(m.user_id) AS user_id
             FROM public.tenancy_company c
             JOIN public.tenancy_membership m ON m.company_id = c.id
             WHERE c.is_active = true AND c.schema_name IS NOT NULL
-            ORDER BY c.id, m.user_id
+            GROUP BY c.id, c.schema_name
+            ORDER BY c.id
             """
         )
         return cur.fetchall()

@@ -2,6 +2,82 @@
 
 This file records production/setup issues that were diagnosed and fixed, including the root cause, code or SQL changes, and verification steps.
 
+## 2026-07-01: Transaction Integrity Guards (delete_purchase, qty vs serials, COGS reflow)
+
+### Symptoms
+
+A deep coverage review of the sale / purchase / sale-return / purchase-return
+lifecycle found three latent data-integrity defects. Each was reproduced on both
+`tenant_company_1` and `tenant_company_2` with a non-persistent probe and then
+encoded in `tests/test_transaction_lifecycle_deep.py`.
+
+1. Deleting a purchase invoice whose serial had already been sold succeeded and
+   silently destroyed the sale.
+2. A sale with a `qty` that did not match the number of serials was accepted,
+   charging the customer for a different quantity than was shipped.
+3. After the supported price-only purchase edit, a later sale return recorded a
+   different cost basis than the sale's COGS, drifting inventory/COGS.
+
+### Root Cause
+
+1. `soldunits_unit_id_fkey` is `ON DELETE CASCADE`, and `delete_purchase` deleted
+   `PurchaseUnits` unconditionally, so the `SoldUnits` rows were cascade-deleted
+   while the `SalesInvoice` and revenue journal survived — an orphaned sale with
+   destroyed COGS and stock. Unlike `update_purchase_invoice`, `delete_purchase`
+   had no guard.
+2. `create_sale` / `update_sale_invoice` set `SalesItems.quantity` and
+   `total_amount` from the payload `qty` while shipping only the listed serials.
+   Revenue and units shipped diverged; the trial balance still balanced, hiding
+   the discrepancy.
+3. `update_purchase_invoice` rebuilt only the purchase journal. The sale's COGS
+   stayed frozen at the original cost while the return recaptured cost from the
+   edited `PurchaseItems.unit_price`.
+
+### Fix
+
+Added `tenancy/sql/fix_transaction_integrity_guards.sql` (idempotent) and folded
+the same SQL into `tenancy/sql/tenant_template.sql`,
+`tenancy/sql/production_hardening.sql`, and `build_multitenant_db.sql`. Tenant
+schema version bumped to 3.
+
+- New `assert_purchase_invoice_deletable(...)`; `delete_purchase` blocks when any
+  serial has sale or purchase-return history.
+- `create_sale` / `update_sale_invoice` reject a `qty` that does not equal the
+  number of serials supplied.
+- `update_purchase_invoice` rebuilds the journal of every sale that consumed a
+  unit from the edited purchase, keeping COGS in sync with the corrected cost.
+
+### Verification
+
+Applied to both tenants and re-ran the deep suite:
+
+```bash
+docker compose -f deploy/docker-compose.yml exec -T web \
+  python manage.py apply_sql_all_tenants tenancy/sql/fix_transaction_integrity_guards.sql
+docker compose -f deploy/docker-compose.yml exec -T web python tests/test_transaction_lifecycle_deep.py
+```
+
+Result:
+
+```text
+tenant_company_1: 2702/2702 real checks passed
+tenant_company_2: 2702/2702 real checks passed
+PASSED: all deep lifecycle checks passed.
+```
+
+`test_system.py` (111/111 per tenant), `test_returns_full.py` (21/21), and
+`test_cash.py` (20/20) still pass. The updated `tenant_template.sql` was verified
+to build cleanly in a throwaway schema. `production_hardening.sql` runs on every
+container start, so existing tenants self-heal.
+
+### Note (out of scope)
+
+`tests/test_return_fix.py` has one pre-existing failing assertion unrelated to
+this change: it greps for the message "not sold to this customer" when updating a
+re-sold sale return, but the sale-return hardening already returns "…has since
+been re-sold. Reverse the later sale first." The stale substring should be
+updated separately.
+
 ## 2026-07-01: Tenant Login Redirect Loop and Admin Login Regression
 
 ### Symptoms
