@@ -3,7 +3,7 @@ import logging
 import time
 
 from django.core.cache import cache
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 
 
@@ -64,6 +64,8 @@ def tenant_required_response(request):
     message = "No active company is assigned to this user."
     if is_ajax_or_api(request):
         return JsonResponse({"status": "denied", "message": message}, status=403)
+    if getattr(request.user, "is_authenticated", False):
+        return HttpResponse(message, status=403, content_type="text/plain; charset=utf-8")
     return redirect("authentication:login")
 
 

@@ -10811,6 +10811,21 @@ BEGIN
 END;
 $function$;
 
+-- Tenant schema version marker required by TenantSchemaMiddleware.
+-- Older bootstraps without this table are treated as inactive/outdated tenants.
+CREATE TABLE IF NOT EXISTS tenant_schema_version (
+    id boolean PRIMARY KEY DEFAULT true,
+    version integer NOT NULL,
+    applied_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT tenant_schema_version_singleton CHECK (id)
+);
+
+INSERT INTO tenant_schema_version (id, version)
+VALUES (true, 1)
+ON CONFLICT (id) DO UPDATE
+SET version = GREATEST(tenant_schema_version.version, EXCLUDED.version),
+    applied_at = CURRENT_TIMESTAMP;
+
 -- reset search_path back to shared after building the tenant schema
 SET search_path TO public;
 

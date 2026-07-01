@@ -25,9 +25,13 @@ def login_view(request):
 
             if user is not None:
                 login(request, user)
+                redirect_url = "/admin/" if (
+                    not user_has_active_company(user) and user.is_staff
+                ) else "/home/"
                 return JsonResponse({
                     'status': 'success',
-                    'message': f'Welcome back, {user.username}!'
+                    'message': f'Welcome back, {user.username}!',
+                    'redirect_url': redirect_url,
                 })
             else:
                 return JsonResponse({

@@ -29,6 +29,7 @@ Financee is a multitenant accounting and inventory system for multiple companies
 - Existing-tenant SQL rollout command: `tenancy/management/commands/apply_sql_all_tenants.py`
 - Docker production stack: `deploy/docker-compose.yml`, `deploy/Dockerfile`, `deploy/entrypoint.sh`
 - Functional test docs: `tests/README.md`
+- Fixed issue log: `FIXED_ISSUES.md`
 
 ## Key Business Modules
 
@@ -70,7 +71,11 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
 - `python manage.py migrate` applies only public/shared Django migrations.
 - Business schemas are not managed by Django migrations.
 - `REDIS_URL` should be set in production so cache/rate-limit state is shared across workers.
-- Existing/bootstrapped tenant schemas must have `tenant_schema_version`. If an authenticated tenant user loops between `/home/` and `/authentication/login/`, verify their `Membership`, company `is_active`, physical schema existence, and `SELECT * FROM tenant_schema_version` under that tenant search path. Older bootstrapped schemas may need `python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql`.
+- Existing/bootstrapped tenant schemas must have `tenant_schema_version`. If an authenticated tenant user is denied after login, verify their `Membership`, company `is_active`, physical schema existence, and `SELECT * FROM tenant_schema_version` under that tenant search path.
+- `build_multitenant_db.sql` includes the tenant schema version marker for the example `tenant_company_1` schema, and `deploy/entrypoint.sh` applies `tenancy/sql/production_hardening.sql` on every container start so older tenant schemas self-heal.
+- Authenticated users with invalid tenant state receive a stable 403 tenant error instead of being redirected to login, preventing `/home/` and `/authentication/login/` redirect loops.
+- AJAX login responses include `redirect_url`; staff users without an active company are sent to `/admin/`, while tenant users are sent to `/home/`.
+- Keep `FIXED_ISSUES.md` updated when a production/setup issue is diagnosed and fixed, especially if the fix affects tenant provisioning, login routing, deployment startup, or recovery commands.
 
 ## Security and Permission Notes
 

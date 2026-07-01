@@ -43,9 +43,8 @@ fi
 echo "[entrypoint] applying public-schema migrations ..."
 python manage.py migrate --no-input
 
-# OPTIONAL: keep every tenant schema in sync with pending idempotent SQL on each
-# deploy. Uncomment once you have a change file to roll out (e.g. indexes).
-# python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql || true
+echo "[entrypoint] applying required tenant hardening SQL ..."
+python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql
 
 echo "[entrypoint] starting: $*"
 exec "$@"
