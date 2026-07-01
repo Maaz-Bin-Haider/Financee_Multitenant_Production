@@ -46,9 +46,10 @@ def run(t: Tester):
     hits = t.q("SELECT item_name FROM Items WHERE UPPER(item_name) LIKE %s LIMIT 10", [name.upper() + "%"])
     t.check(g, "item autocomplete (view query) finds the item", hits is not None and len(hits) >= 1)
 
-    # get_item_names_like helper is broken on PG16 (ambiguous column). Documented.
-    t.xfail(g, "get_item_names_like helper (unused, ambiguous column)",
-            "SELECT * FROM get_item_names_like(%s)", ["ITEM"])
+    # get_item_names_like helper (ambiguous column fixed by fix_tenant_drift.sql).
+    hits2 = t.q("SELECT * FROM get_item_names_like(%s)", [name[:6]])
+    t.check(g, "get_item_names_like returns matches", hits2 is not None and len(hits2) >= 1,
+            f"rows={None if hits2 is None else len(hits2)}")
 
     t.no_empty_journals(g, "end of items")
 

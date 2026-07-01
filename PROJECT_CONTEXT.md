@@ -109,21 +109,22 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
 - `tests/suite/` is the comprehensive full-system suite (own harness `_harness.py`, one module per domain plus `test_reports.py` for every report and `test_http.py` for endpoints; run with `python tests/suite/run_all.py`). It runs against every active tenant and asserts real accounting invariants (double-entry balance, party balances, COGS, stock/serial coherence), not just "did not error". It reuses the `XFAIL`/`known_bug` convention. See `tests/suite/README.md` and `tests/suite/RESULTS.md`.
 - `tests/run_tests.sh` runs both harnesses in Docker and can reset tenant schemas with `--reset`.
 
-## Known Tenant Schema Drift
+## Tenant Schema Drift (healed)
 
-The `tests/suite/` run surfaced idempotent `tenancy/sql/` patches applied to one tenant but not the other. These are diagnosed but not yet healed (see `FIXED_ISSUES.md` and `tests/suite/RESULTS.md`) and are why some suite checks report `XFAIL`:
+The `tests/suite/` run surfaced idempotent `tenancy/sql/` patches applied to one tenant but not the other. Most were healed by `tenancy/sql/fix_tenant_drift.sql` (applied to all tenants; folded into template/hardening/bootstrap; tenant schema version 4). See `FIXED_ISSUES.md` and `tests/suite/RESULTS.md`.
 
-- `tenant_company_1`: `create_purchase_return` lacks the in-stock guard (sold-serial and double purchase-returns are not blocked); the cash-party feature is absent (`is_cash` column and `get_cash_party_id`); the `item_transaction_history(text)` 1-arg overload is ambiguous.
-- `tenant_company_2`: `item_history_view` is missing.
-- both tenants: `get_item_names_like` is broken on PostgreSQL 16 (ambiguous column) but unused by the active item autocomplete.
+- Fixed: `create_purchase_return` in-stock guard added on all tenants; redundant ambiguous `item_transaction_history(text)` 1-arg overload dropped; `get_item_names_like` ambiguous column qualified.
+- Not a report: `item_history_view` (present only on `tenant_company_1`) is a hardcoded debug artifact, excluded from the suite.
+- Deferred: the cash-party feature (`is_cash`, `get_cash_party_id`) is still absent on `tenant_company_1`; porting it risks regressing the integrity fixes, so it is left for a dedicated migration. The suite feature-detects and only exercises the cash path where present.
 
-Remediation is to apply the existing `tenancy/sql/` patches to the lagging tenant via `apply_sql_all_tenants`. Always roll out tenant SQL to **all** tenants to prevent widening this drift.
+Always roll out tenant SQL to **all** tenants via `apply_sql_all_tenants` to prevent widening drift.
 
 ## Current Tenant SQL Hardening
 
 - `tenancy/sql/production_hardening.sql` is applied at Docker startup and includes sale-return lifecycle guards plus the transaction integrity guards below.
 - `tenancy/sql/fix_sale_return_lifecycle_guards.sql` contains the standalone idempotent patch for active-sale return lookup and sale invoice mutation blocking after return history.
 - `tenancy/sql/fix_transaction_integrity_guards.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; tenant schema version 3) fixes three data-integrity defects: `delete_purchase` now blocks when serials have sale/purchase-return history; `create_sale`/`update_sale_invoice` reject a `qty` that does not match the serial count; `update_purchase_invoice` rebuilds the journals of sales that consumed the edited units so COGS stays in sync. See `FIXED_ISSUES.md`.
+- `tenancy/sql/fix_tenant_drift.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; tenant schema version 4) heals tenant drift found by `tests/suite/`: adds the `create_purchase_return` in-stock guard, drops the redundant ambiguous `item_transaction_history(text)` overload, and qualifies the ambiguous column in `get_item_names_like`.
 - Keep `tenancy/sql/tenant_template.sql`, `build_multitenant_db.sql`, and `production_hardening.sql` aligned when tenant SQL behavior changes.
 
 ## Known Documentation Caveats

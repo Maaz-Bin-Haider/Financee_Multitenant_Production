@@ -22,38 +22,49 @@ docker compose -f deploy/docker-compose.yml exec web python tests/suite/run_all.
 
 Details and per-module counts are in `tests/suite/RESULTS.md`.
 
-### Diagnosed (pending fix): tenant schema drift
+### Tenant schema drift — diagnosed and healed
 
-The suite surfaced that several idempotent `tenancy/sql/` patches were applied to
-one tenant but not the other. These are diagnosed but **not yet fixed**; they are
-tracked as `XFAIL` in the suite so they do not mask regressions.
+The suite surfaced that several idempotent `tenancy/sql/` patches had been applied
+to one tenant but not the other. These were healed by
+`tenancy/sql/fix_tenant_drift.sql` (idempotent; applied to all tenants and folded
+into `tenant_template.sql`, `production_hardening.sql`, and
+`build_multitenant_db.sql`; tenant schema version bumped to 4).
 
-1. `create_purchase_return` on `tenant_company_1` has **no in-stock guard**: a
-   sold serial can be purchase-returned and serials can be double-returned.
-   `tenant_company_2` blocks both. Root cause: `fix_return_serial_integrity*.sql`
-   was never applied to `tenant_company_1`.
-2. The cash-party feature (`parties.is_cash` column, `get_cash_party_id`) is
-   absent on `tenant_company_1` (present on `tenant_company_2`).
-3. `item_history_view` is missing on `tenant_company_2` (present on
-   `tenant_company_1`).
-4. `item_transaction_history(text)` (1-arg) is ambiguous on `tenant_company_1`
-   because a 3-arg-with-defaults variant collides with it.
-5. `get_item_names_like` is broken on PostgreSQL 16 (ambiguous `item_name`
-   column) on both tenants. It is dead code — the active item autocomplete view
-   runs an inline query — but should be fixed or removed.
+1. **Fixed** — `create_purchase_return` on `tenant_company_1` had **no in-stock
+   guard**: a sold serial could be purchase-returned and serials double-returned
+   (`tenant_company_2` already blocked both). The guard was added on all tenants.
+   A fresh `CREATE OR REPLACE` was used rather than replaying the historical
+   `fix_return_serial_integrity.sql`, because that older patch also redefines
+   `create_sale_return`/`update_sale_return` and would have regressed the later
+   sale-return lifecycle guards.
+2. **Fixed** — `item_transaction_history(text)` (1-arg) was ambiguous on
+   `tenant_company_1` (a 3-arg-with-defaults variant collided). The redundant
+   1-arg overload was dropped; the 3-arg defaulted form covers 1-arg calls, as on
+   `tenant_company_2`.
+3. **Fixed** — `get_item_names_like` was broken on PostgreSQL 16 (ambiguous
+   `item_name`) on both tenants; the column is now qualified. (It is not used by
+   the active item autocomplete, which runs an inline query, but is now correct.)
+4. **Not a report** — `item_history_view` existed only on `tenant_company_1` and
+   was hardcoded to `%iPhone 15 Pro%` (a debug artifact). It is left in place and
+   excluded from the suite rather than replicated.
+5. **Deferred** — the cash-party feature (`parties.is_cash`, `get_cash_party_id`)
+   is absent on `tenant_company_1`. Porting it means replaying
+   `add_cash_transactions.sql`, which redefines `rebuild_*` journal functions and
+   risks regressing the transaction-integrity fixes, so it was intentionally left
+   for a dedicated migration. The suite feature-detects and exercises the cash
+   path only where the feature is present.
 
-### Remediation
-
-Apply the relevant existing patch under `tenancy/sql/` to the lagging tenant and
-roll out tenant SQL to **all** tenants going forward:
+### Verification
 
 ```bash
-python manage.py apply_sql_all_tenants tenancy/sql/fix_return_serial_integrity.sql
-python manage.py apply_sql_all_tenants tenancy/sql/fix_return_serial_integrity_part2.sql
+docker compose -f deploy/docker-compose.yml exec -T web \
+  python manage.py apply_sql_all_tenants tenancy/sql/fix_tenant_drift.sql
+docker compose -f deploy/docker-compose.yml exec web python tests/suite/run_all.py
+docker compose -f deploy/docker-compose.yml exec web python tests/test_transaction_lifecycle_deep.py
 ```
 
-After healing, the corresponding suite checks flip from `XFAIL` to `XPASS`;
-remove the `known_bug`/`expect_block`/`xfail` markers in the tests at that point.
+Result: suite `ALL MODULES PASSED` with 0 `XFAIL`; deep lifecycle 2702/2702 on
+both tenants; the folded `tenant_template.sql` builds cleanly.
 
 ## 2026-07-01: Transaction Integrity Guards (delete_purchase, qty vs serials, COGS reflow)
 

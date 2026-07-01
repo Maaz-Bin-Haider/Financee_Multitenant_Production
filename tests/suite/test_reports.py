@@ -85,16 +85,13 @@ def run(t: Tester):
             f"summary={ss}, actual={in_stock_ct}")
     _view(t, "stock_report")
     _view(t, "stock_worth_report")
-    # 1-arg overload is ambiguous on tenants that also have a 3-arg-with-defaults
-    # variant (drift); documented rather than hard-failed. The 3-arg form below
-    # is the one the reports UI calls and is asserted normally.
-    t.xfail(g, "item_transaction_history 1-arg overload (ambiguous on some tenants)",
-            "SELECT * FROM item_transaction_history(%s::text)", [item])
+    # After fix_tenant_drift.sql the redundant 1-arg overload is dropped, so a
+    # single-arg call resolves unambiguously to the 3-arg (defaulted) form.
+    _runs(t, "item_transaction_history (name)", "SELECT * FROM item_transaction_history(%s::text)", [item])
     _runs(t, "item_transaction_history (name,dates)", "SELECT * FROM item_transaction_history(%s,%s,%s)", [item, F, T])
     _runs(t, "get_item_stock_by_name", "SELECT * FROM get_item_stock_by_name(%s)", [item])
     _view(t, "item_last_purchase_view")
     _view(t, "item_last_sale_view")
-    _view(t, "item_history_view")
 
     # ---- SERIAL ----------------------------------------------------------
     _runs(t, "get_serial_ledger", "SELECT * FROM get_serial_ledger(%s)", [serial0])

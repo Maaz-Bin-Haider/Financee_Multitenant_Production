@@ -68,11 +68,9 @@ def run(t: Tester):
     t.err(g, "purchase return wrong vendor blocked",
           "SELECT create_purchase_return(%s,%s::jsonb,%s)", [vend2, json.dumps([serials[3]]), t.user_id],
           contains="")
-    # Guarded on tenants that received the return-integrity patch; documented as
-    # drift (XFAIL) on any tenant whose create_purchase_return lacks the guard.
-    t.expect_block(g, "purchase return of a SOLD serial blocked",
-                   "SELECT create_purchase_return(%s,%s::jsonb,%s)", [vend, json.dumps([serials[2]]), t.user_id],
-                   contains="stock")
+    t.err(g, "purchase return of a SOLD serial blocked",
+          "SELECT create_purchase_return(%s,%s::jsonb,%s)", [vend, json.dumps([serials[2]]), t.user_id],
+          contains="stock")
 
     prid = t.purchase_return(vend, [serials[3]])
     t.check(g, "purchase return created", prid is not None)
@@ -82,9 +80,9 @@ def run(t: Tester):
     t.check(g, "vendor AP moves toward zero after purchase return", vbal_after > vbal_before,
             f"before={vbal_before} after={vbal_after}")
 
-    # double purchase return blocked (drift-tolerant, see note above)
-    t.expect_block(g, "double purchase return blocked",
-                   "SELECT create_purchase_return(%s,%s::jsonb,%s)", [vend, json.dumps([serials[3]]), t.user_id])
+    t.err(g, "double purchase return blocked",
+          "SELECT create_purchase_return(%s,%s::jsonb,%s)", [vend, json.dumps([serials[3]]), t.user_id],
+          contains="stock")
 
     # navigation + summary + delete
     t.ok(g, "get_current_purchase_return runs", "SELECT get_current_purchase_return(%s)", [prid])
