@@ -329,6 +329,7 @@ The suite has two major harnesses:
 
 - `tests/test_system.py`: direct SQL business-function coverage per tenant
 - `tests/test_http.py`: Django client coverage for real views, permissions, JSON, templates, and write flows
+- `tests/test_transaction_lifecycle_deep.py`: direct SQL stress coverage for real serial lifecycles, mixed purchase invoice corrections, partial returns, sale-return update/delete after resale, sale invoice update/delete after returns, cash-sale vs credit-sale returns, multi-item mixed serial invoices, duplicate/wrong-party return guards, and report execution after every entry
 
 ## Project Rules for Future Changes
 
