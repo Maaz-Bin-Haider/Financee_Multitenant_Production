@@ -2,6 +2,59 @@
 
 This file records production/setup issues that were diagnosed and fixed, including the root cause, code or SQL changes, and verification steps.
 
+## 2026-07-01: Full-System Test Suite Added; Tenant Schema Drift Diagnosed
+
+### Summary
+
+A comprehensive test suite was added under `tests/suite/` covering every domain
+(parties, items, purchases, sales, returns, cash movement, opening cash/stock,
+owner equity, month close), every report (accounts, stock, serial, sales
+analytics, monthly, dashboard functions + views), and the HTTP endpoint layer.
+It runs against every active tenant and asserts real accounting invariants
+(double-entry balance, party balances, COGS, stock/serial coherence). Latest
+run: **ALL MODULES PASSED** (570 real checks across both tenants).
+
+Run it with:
+
+```bash
+docker compose -f deploy/docker-compose.yml exec web python tests/suite/run_all.py
+```
+
+Details and per-module counts are in `tests/suite/RESULTS.md`.
+
+### Diagnosed (pending fix): tenant schema drift
+
+The suite surfaced that several idempotent `tenancy/sql/` patches were applied to
+one tenant but not the other. These are diagnosed but **not yet fixed**; they are
+tracked as `XFAIL` in the suite so they do not mask regressions.
+
+1. `create_purchase_return` on `tenant_company_1` has **no in-stock guard**: a
+   sold serial can be purchase-returned and serials can be double-returned.
+   `tenant_company_2` blocks both. Root cause: `fix_return_serial_integrity*.sql`
+   was never applied to `tenant_company_1`.
+2. The cash-party feature (`parties.is_cash` column, `get_cash_party_id`) is
+   absent on `tenant_company_1` (present on `tenant_company_2`).
+3. `item_history_view` is missing on `tenant_company_2` (present on
+   `tenant_company_1`).
+4. `item_transaction_history(text)` (1-arg) is ambiguous on `tenant_company_1`
+   because a 3-arg-with-defaults variant collides with it.
+5. `get_item_names_like` is broken on PostgreSQL 16 (ambiguous `item_name`
+   column) on both tenants. It is dead code — the active item autocomplete view
+   runs an inline query — but should be fixed or removed.
+
+### Remediation
+
+Apply the relevant existing patch under `tenancy/sql/` to the lagging tenant and
+roll out tenant SQL to **all** tenants going forward:
+
+```bash
+python manage.py apply_sql_all_tenants tenancy/sql/fix_return_serial_integrity.sql
+python manage.py apply_sql_all_tenants tenancy/sql/fix_return_serial_integrity_part2.sql
+```
+
+After healing, the corresponding suite checks flip from `XFAIL` to `XPASS`;
+remove the `known_bug`/`expect_block`/`xfail` markers in the tests at that point.
+
 ## 2026-07-01: Transaction Integrity Guards (delete_purchase, qty vs serials, COGS reflow)
 
 ### Symptoms

@@ -65,7 +65,9 @@ chmod +x tests/run_tests.sh
 docker compose -f deploy/docker-compose.yml exec web python tests/test_transaction_lifecycle_deep.py
 ```
 
-Three harnesses (see `tests/README.md`): `test_system.py` (SQL business functions per tenant), `test_http.py` (Django client over real views/permissions), `test_transaction_lifecycle_deep.py` (serial lifecycle stress: purchase→sale→return→resale, mixed invoices, return guards). `test_transaction_lifecycle_deep.py` intentionally **fails** on duplicate returns / invalid serial-state transitions rather than treating them as no-ops. Opening cash (singleton) and month close (one per period) are single-shot — use `--reset` for a pristine run.
+Harnesses in `tests/` (see `tests/README.md`): `test_system.py` (SQL business functions per tenant), `test_http.py` (Django client over real views/permissions), `test_transaction_lifecycle_deep.py` (serial lifecycle stress: purchase→sale→return→resale, mixed invoices, return guards). `test_transaction_lifecycle_deep.py` intentionally **fails** on duplicate returns / invalid serial-state transitions rather than treating them as no-ops. Opening cash (singleton) and month close (one per period) are single-shot — use `--reset` for a pristine run.
+
+The comprehensive suite is `tests/suite/` (run `python tests/suite/run_all.py` in the container; see `tests/suite/README.md` and `tests/suite/RESULTS.md`). It covers **every** domain and **every** report against all tenants, asserting real accounting invariants (double-entry balance, party balances, COGS, stock/serial coherence). It supports an `XFAIL`/`known_bug` channel and has surfaced genuine **tenant schema drift** — some idempotent `tenancy/sql/` patches were applied to one tenant but not the other (e.g. `create_purchase_return`'s in-stock guard and the cash-party feature are missing on `tenant_company_1`). When you change tenant SQL, apply it to *all* tenants (`apply_sql_all_tenants`) to avoid widening this drift.
 
 ## Gotchas
 

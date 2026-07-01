@@ -106,7 +106,18 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
 - `tests/test_transaction_lifecycle_deep.py` stress-tests real serial lifecycles across purchase, sale, sale return, resale, second return, purchase return, mixed purchase invoice corrections, partial returns, sale-return update/delete after resale, sale invoice update/delete after returns, cash-sale vs credit-sale returns, multi-item mixed serial invoices, and report execution after every entry.
 - `tests/test_transaction_lifecycle_deep.py` also asserts financial invariants at every checkpoint (trial balance balances, no orphaned journal lines, no negative amounts, in_stock vs active-Sold coherence) and supports a `known_bug`/`XFAIL` channel for documenting confirmed-but-unfixed defects without failing the suite.
 - `tests/TRANSACTION_LIFECYCLE_FLOW_RESULTS.md` records the latest deep lifecycle flow matrix and current pass/fail status.
+- `tests/suite/` is the comprehensive full-system suite (own harness `_harness.py`, one module per domain plus `test_reports.py` for every report and `test_http.py` for endpoints; run with `python tests/suite/run_all.py`). It runs against every active tenant and asserts real accounting invariants (double-entry balance, party balances, COGS, stock/serial coherence), not just "did not error". It reuses the `XFAIL`/`known_bug` convention. See `tests/suite/README.md` and `tests/suite/RESULTS.md`.
 - `tests/run_tests.sh` runs both harnesses in Docker and can reset tenant schemas with `--reset`.
+
+## Known Tenant Schema Drift
+
+The `tests/suite/` run surfaced idempotent `tenancy/sql/` patches applied to one tenant but not the other. These are diagnosed but not yet healed (see `FIXED_ISSUES.md` and `tests/suite/RESULTS.md`) and are why some suite checks report `XFAIL`:
+
+- `tenant_company_1`: `create_purchase_return` lacks the in-stock guard (sold-serial and double purchase-returns are not blocked); the cash-party feature is absent (`is_cash` column and `get_cash_party_id`); the `item_transaction_history(text)` 1-arg overload is ambiguous.
+- `tenant_company_2`: `item_history_view` is missing.
+- both tenants: `get_item_names_like` is broken on PostgreSQL 16 (ambiguous column) but unused by the active item autocomplete.
+
+Remediation is to apply the existing `tenancy/sql/` patches to the lagging tenant via `apply_sql_all_tenants`. Always roll out tenant SQL to **all** tenants to prevent widening this drift.
 
 ## Current Tenant SQL Hardening
 
