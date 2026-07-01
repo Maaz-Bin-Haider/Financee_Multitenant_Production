@@ -96,7 +96,11 @@ sr6=one("SELECT sales_return_id FROM salesreturns ORDER BY sales_return_id DESC 
 # re-sell s6 to cash, then try to update the A-return to include s6 again -> reject
 sale(cashid,s6,300)
 oku,msgu=call("SELECT update_sale_return(%s,%s::jsonb,%s)",[sr6,json.dumps([s6]),user.id])
-chk("update_sale_return wrong-party REJECTED", (not oku) and "not sold to this customer" in msgu, msgu)
+# The serial was re-sold after the original return, so the update is rejected by
+# the sale-return lifecycle guard ("re-sold ...") or, on older schemas, by the
+# wrong-party guard ("not sold to this customer"). Either rejection is correct.
+chk("update_sale_return re-sold/wrong-party REJECTED",
+    (not oku) and ("re-sold" in msgu.lower() or "not sold to this customer" in msgu.lower()), msgu)
 
 print("\n==== RETURN INTEGRITY FIX TEST ====")
 p=sum(1 for _,ok,_ in R if ok)
