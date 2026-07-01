@@ -50,7 +50,14 @@ docker compose -f deploy/docker-compose.yml exec web python tests/test_transacti
   body for any problem.
 - `test_transaction_lifecycle_deep.py` prints every lifecycle and report checkpoint.
   It intentionally fails on duplicate returns or invalid serial-state transitions
-  instead of treating them as harmless no-ops.
+  instead of treating them as harmless no-ops. It also asserts financial
+  invariants (trial balance balances, no orphaned journal lines, stock/sold
+  coherence) at every checkpoint, not just that the reports run.
+  - Confirmed-but-unfixed defects are marked `known_bug=True` and print as
+    `[XFAIL]`; they are excluded from the pass/fail exit code so the suite stays
+    green while tracking them. When a fix lands the same check prints `[XPASS]`
+    ("KNOWN BUGS NOW PASSING"), signalling that the `known_bug` flag should be
+    removed. See the "Known Bugs" section of `TRANSACTION_LIFECYCLE_FLOW_RESULTS.md`.
 - `TRANSACTION_LIFECYCLE_FLOW_RESULTS.md` records the exact flow matrix and latest
   pass/fail status from the deep lifecycle harness.
 

@@ -61,21 +61,55 @@ docker compose -f deploy/docker-compose.yml exec -T web sh -c 'RUN_TAG=deep_fixe
 | 45 | Check journal integrity after every checkpoint | No empty journal entries exist | Passed |
 | 46 | Check serial sale integrity after every checkpoint | Each tested serial has at most one active `SoldUnits.status = 'Sold'` row | Passed |
 
-## Failed Flows
+## Financial Invariants (checked at every checkpoint)
 
-| Flow # | Failed Flow | Latest Result |
+Added after the coverage review. The suite previously only *executed* the trial
+balance / party balance reports; it now asserts their values. These hold on a
+live schema regardless of accumulated data:
+
+| Invariant | Check | Latest Result |
 |---|---|---|
-| - | None | All previously failing flows passed in the latest full run. |
+| Double-entry identity | `SUM(debit) = SUM(credit)` across `journallines` | Passed |
+| No orphaned journal lines | Every `journallines` row has a parent `journalentries` | Passed |
+| Sign sanity | No negative `debit`/`credit` amounts | Passed |
+| Stock/sold coherence | Per tested serial, `in_stock` flag matches active `Sold` row (allowing purchase-returned serials) | Passed |
+
+## New Serious Scenarios (coverage review)
+
+| # | Flow | Expected Result | Latest Result |
+|---|---|---|---|
+| 47 | `delete_purchase` on an untouched (unsold) invoice | Delete succeeds | Passed |
+| 48 | `delete_purchase` on an invoice whose serial is already sold | Should be **blocked** | **KNOWN BUG (XFAIL)** — succeeds and cascade-deletes `SoldUnits` |
+| 49 | Sale with `qty` (5) greater than serial count (2) | Should be **rejected** | **KNOWN BUG (XFAIL)** — accepted; revenue/stock diverge |
+| 50 | Sale with `qty` (1) less than serial count (2) | Should be **rejected** | **KNOWN BUG (XFAIL)** — accepted |
+| 51 | Same serial listed twice in one sale invoice | Blocked by in-stock guard | Passed |
+| 52 | Sale with a negative unit price | Rejected | Passed (blocked by `journallines` CHECK constraint) |
+| 53 | Price-only purchase edit after sale, then sale return | Return cost basis matches the sale's COGS | **KNOWN BUG (XFAIL)** — sale COGS 100 vs return basis 150 (inventory drift) |
+| 54 | Single sale return spanning two invoices of the same customer | Return succeeds; both serials back in stock | Passed (documents current behavior) |
+
+## Known Bugs (documented, do not fail the suite)
+
+These are asserted as `known_bug=True`, so they are reported as `XFAIL` and
+excluded from the pass/fail exit code. Each will flip to a normal pass once the
+underlying SQL is fixed (the runner then prints `XPASS` to prompt removal of the
+flag). Reproduced on both `tenant_company_1` and `tenant_company_2`.
+
+| Bug | Root cause | Impact |
+|---|---|---|
+| `delete_purchase` has no sold-serial guard | `soldunits_unit_id_fkey` is `ON DELETE CASCADE`; `delete_purchase` deletes `PurchaseUnits` unconditionally | Deleting a purchase after its serial was sold silently destroys the `SoldUnits`/COGS/stock while the sale invoice + revenue journal survive |
+| `create_sale` / `update_sale_invoice` trust payload `qty` | Revenue and `SalesItems.quantity` use `qty`; only listed serials ship | Revenue and units shipped diverge; trial balance still nets to zero so it is otherwise invisible |
+| Cost-basis drift on return after price edit | Sale COGS is frozen at post time; a later return recaptures cost from the edited `PurchaseItems.unit_price` | Inventory/COGS drift after the supported price-only purchase-edit flow |
 
 ## Current Summary
 
 Latest Docker run result:
 
 ```text
-PASSED: all deep lifecycle checks passed.
+tenant_company_1: 2696/2696 real checks passed
+tenant_company_2: 2696/2696 real checks passed
+PASSED: all deep lifecycle checks passed (8 known bugs still open).
 ```
 
-All previously passing checks still passed after the SQL hardening fix. All
-accounting, stock, monthly, sales, dashboard, retained legacy report, journal
-integrity, and active-sold-row invariant checks passed after the tested
-checkpoints.
+All real (non-known-bug) checks pass on both tenants, including the newly added
+financial invariants. Four distinct data-integrity bugs are documented as
+`XFAIL` (8 total across two tenants) and are pending SQL fixes.

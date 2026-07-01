@@ -59,6 +59,11 @@ class Result:
     name: str
     ok: bool
     detail: str = ""
+    # A known_bug result documents a confirmed defect: when it fails it is
+    # reported separately and does NOT fail the suite (like pytest xfail); when
+    # it passes it signals the defect was fixed. This keeps the green signal
+    # meaningful while still tracking outstanding data-integrity bugs.
+    known_bug: bool = False
 
 
 class DeepLifecycleRunner:
@@ -95,10 +100,10 @@ class DeepLifecycleRunner:
         cur.execute(f'SET search_path TO "{self.schema}", public')
         return cur
 
-    def record(self, section: str, name: str, ok: bool, detail: str = ""):
-        self.results.append(Result(section, name, ok, detail))
+    def record(self, section: str, name: str, ok: bool, detail: str = "", known_bug: bool = False):
+        self.results.append(Result(section, name, ok, detail, known_bug=known_bug))
 
-    def step(self, section, name, sql, params=None, expect_error=False):
+    def step(self, section, name, sql, params=None, expect_error=False, known_bug=False):
         cur = None
         try:
             cur = self.cursor()
@@ -109,9 +114,9 @@ class DeepLifecycleRunner:
             value = row[0] if row else None
             if expect_error:
                 cur.execute("ROLLBACK")
-                self.record(section, name, False, "Expected an error, but the query succeeded.")
+                self.record(section, name, False, "Expected an error, but the query succeeded.", known_bug=known_bug)
             else:
-                self.record(section, name, True)
+                self.record(section, name, True, known_bug=known_bug)
             return value
         except Exception as exc:
             if expect_error and cur is not None:
@@ -124,9 +129,9 @@ class DeepLifecycleRunner:
             except Exception:
                 pass
             if expect_error:
-                self.record(section, name, True, f"Blocked as expected: {exc}")
+                self.record(section, name, True, f"Blocked as expected: {exc}", known_bug=known_bug)
             else:
-                self.record(section, name, False, f"{type(exc).__name__}: {exc}")
+                self.record(section, name, False, f"{type(exc).__name__}: {exc}", known_bug=known_bug)
             return None
         finally:
             if cur is not None:
@@ -140,8 +145,8 @@ class DeepLifecycleRunner:
         finally:
             cur.close()
 
-    def assert_true(self, section, name, condition, detail=""):
-        self.record(section, name, bool(condition), "" if condition else detail)
+    def assert_true(self, section, name, condition, detail="", known_bug=False):
+        self.record(section, name, bool(condition), "" if condition else detail, known_bug=known_bug)
 
     def party_id(self, name):
         row = self.fetch_one("SELECT party_id FROM parties WHERE party_name=%s", [name])
@@ -331,6 +336,76 @@ class DeepLifecycleRunner:
         for serial in self.serials:
             active = self.active_sold_count(serial)
             self.assert_true(section, f"{serial} has at most one active sale", active <= 1, f"Active sold rows: {active}.")
+
+        self.assert_financial_invariants(section)
+
+    def assert_financial_invariants(self, section):
+        """Accounting identities that must hold no matter what has been posted.
+
+        These are pure invariants (independent of how much test data has
+        accumulated in the tenant), so they are safe to assert on a live schema
+        after every checkpoint. The prior version only *executed* the trial
+        balance report; it never checked that it actually balanced.
+        """
+        # (1) Double-entry identity: total debits == total credits.
+        diff = self.fetch_one(
+            "SELECT COALESCE(SUM(debit),0) - COALESCE(SUM(credit),0) FROM journallines"
+        )
+        diff_val = float(diff[0]) if diff and diff[0] is not None else 0.0
+        self.assert_true(
+            section, "trial balance balances (debit == credit)",
+            abs(diff_val) < 0.005, f"Trial balance out by {diff_val:.2f}.",
+        )
+
+        # (2) No orphaned journal lines (a line whose entry no longer exists).
+        orphan = self.fetch_one(
+            "SELECT count(*) FROM journallines jl "
+            "WHERE NOT EXISTS (SELECT 1 FROM journalentries je WHERE je.journal_id=jl.journal_id)"
+        )
+        self.assert_true(
+            section, "no orphaned journal lines",
+            orphan and orphan[0] == 0, f"Orphaned journal lines: {orphan}.",
+        )
+
+        # (3) Sign sanity: no negative debit/credit amounts.
+        bad_sign = self.fetch_one(
+            "SELECT count(*) FROM journallines WHERE COALESCE(debit,0) < 0 OR COALESCE(credit,0) < 0"
+        )
+        self.assert_true(
+            section, "no negative journal amounts",
+            bad_sign and bad_sign[0] == 0, f"Negative journal amounts: {bad_sign}.",
+        )
+
+        # (4) Sold/stock coherence, scoped to this run's serials so accumulated
+        #     legacy data cannot cause noise:
+        #       * in_stock=TRUE must NOT have an active 'Sold' row; and
+        #       * in_stock=FALSE must be explained by either an active 'Sold' row
+        #         or a purchase-return (a legitimately removed serial).
+        incoherent = self.fetch_one(
+            """
+            SELECT count(*)
+            FROM purchaseunits pu
+            WHERE pu.serial_number = ANY(%s)
+              AND (
+                    (pu.in_stock = TRUE  AND EXISTS (
+                        SELECT 1 FROM soldunits su
+                        WHERE su.unit_id = pu.unit_id AND su.status = 'Sold'))
+                 OR (pu.in_stock = FALSE
+                        AND NOT EXISTS (
+                            SELECT 1 FROM soldunits su
+                            WHERE su.unit_id = pu.unit_id AND su.status = 'Sold')
+                        AND NOT EXISTS (
+                            SELECT 1 FROM purchasereturnitems pri
+                            WHERE pri.serial_number = pu.serial_number))
+                  )
+            """,
+            [self.serials],
+        )
+        self.assert_true(
+            section, "in_stock flag matches active sold row",
+            incoherent and incoherent[0] == 0,
+            f"Serials with incoherent in_stock vs Sold state: {incoherent}.",
+        )
 
     def test_purchase_sale_return_resale_purchase_return(self):
         section = "01 lifecycle"
@@ -766,6 +841,217 @@ class DeepLifecycleRunner:
         self.assert_true(section, "multi-item sale invoice still exists", self.sale_invoice_exists(sale_id))
         self.run_reports("after blocked multi-item sale mutation")
 
+    # ================================================================== #
+    #  NEW: serious scenarios surfaced by the coverage review.
+    #  Some assert CORRECT behavior that the schema does not yet enforce;
+    #  those are marked known_bug=True so they document the defect without
+    #  turning the suite red, and will flip to a normal pass once fixed.
+    # ================================================================== #
+    def test_delete_purchase_after_sale_guard(self):
+        """delete_purchase must not be allowed to destroy a sold serial.
+
+        soldunits_unit_id_fkey is ON DELETE CASCADE, so deleting a purchase
+        invoice whose serial is already sold silently removes the SoldUnits row
+        while the SalesInvoice/revenue journal survive -> orphaned sale, wrong
+        COGS and stock. The delete attempt is wrapped in a rolled-back
+        savepoint by step(expect_error=...), so this probe never persists.
+        """
+        section = "06 delete_purchase guard"
+        vendor_id = self.party_id(self.vendor)
+        customer_id = self.party_id(self.customer)
+
+        # Positive control: deleting an untouched purchase still works.
+        clean_serial = self.serials[24]
+        clean_pid = self.step(
+            section, "purchase one untouched serial",
+            "SELECT create_purchase(%s,%s,%s::jsonb,%s)",
+            [vendor_id, self.days[0], json.dumps(self.purchase_item_payload([clean_serial], 100)), self.user_id],
+        )
+        self.step(
+            section, "delete_purchase of unsold invoice succeeds",
+            "SELECT delete_purchase(%s)", [clean_pid],
+        )
+
+        # The guarded case: a serial from this invoice is sold.
+        serials = self.serials[22:24]
+        pid = self.step(
+            section, "purchase two serials then sell one",
+            "SELECT create_purchase(%s,%s,%s::jsonb,%s)",
+            [vendor_id, self.days[0], json.dumps(self.purchase_item_payload(serials, 100)), self.user_id],
+        )
+        sale_id = self.step(
+            section, "sell one serial from the purchase",
+            "SELECT create_sale(%s,%s,%s::jsonb,%s)",
+            [customer_id, self.days[1], json.dumps(self.sale_item_payload([serials[0]], 300)), self.user_id],
+        )
+        self.step(
+            section, "delete_purchase with a SOLD serial is blocked",
+            "SELECT delete_purchase(%s)", [pid],
+            expect_error=True, known_bug=True,
+        )
+        # The delete attempt above is rolled back by step(expect_error=...), so
+        # the sale is intact regardless; this is just a sanity check that the
+        # probe did not persist anything.
+        self.assert_true(
+            section, "sale invoice survives delete probe",
+            self.sale_invoice_exists(sale_id) and self.active_sold_count(serials[0]) == 1,
+        )
+        self.run_reports("after delete_purchase guard")
+
+    def test_qty_serial_integrity(self):
+        """total_amount/quantity must match the serials actually shipped.
+
+        create_sale trusts the payload qty for revenue and SalesItems.quantity
+        while shipping only the serials provided, so revenue and stock diverge
+        (trial balance still nets to zero). Both attempts are rolled back.
+        """
+        section = "07 qty vs serial integrity"
+        vendor_id = self.party_id(self.vendor)
+        customer_id = self.party_id(self.customer)
+        serials = self.serials[25:27]
+        self.step(
+            section, "purchase two serials for qty check",
+            "SELECT create_purchase(%s,%s,%s::jsonb,%s)",
+            [vendor_id, self.days[0], json.dumps(self.purchase_item_payload(serials, 100)), self.user_id],
+        )
+        over = [{"item_name": self.item, "qty": 5, "unit_price": 200, "serials": serials}]
+        self.step(
+            section, "sale with qty(5) > serials(2) is rejected",
+            "SELECT create_sale(%s,%s,%s::jsonb,%s)",
+            [customer_id, self.days[1], json.dumps(over), self.user_id],
+            expect_error=True, known_bug=True,
+        )
+        under = [{"item_name": self.item, "qty": 1, "unit_price": 200, "serials": serials}]
+        self.step(
+            section, "sale with qty(1) < serials(2) is rejected",
+            "SELECT create_sale(%s,%s,%s::jsonb,%s)",
+            [customer_id, self.days[1], json.dumps(under), self.user_id],
+            expect_error=True, known_bug=True,
+        )
+        # Both serials must still be in stock after the rejected attempts.
+        for serial in serials:
+            self.assert_stock(section, serial, True)
+
+    def test_sale_input_guards(self):
+        """Direct-SQL input guards the Django views normally enforce."""
+        section = "08 sale input guards"
+        vendor_id = self.party_id(self.vendor)
+        customer_id = self.party_id(self.customer)
+        serials = self.serials[27:29]
+        self.step(
+            section, "purchase two serials for input guards",
+            "SELECT create_purchase(%s,%s,%s::jsonb,%s)",
+            [vendor_id, self.days[0], json.dumps(self.purchase_item_payload(serials, 100)), self.user_id],
+        )
+        # Same serial twice in one invoice -> the in_stock guard must block it.
+        dup = [{"item_name": self.item, "qty": 2, "unit_price": 200, "serials": [serials[0], serials[0]]}]
+        self.step(
+            section, "duplicate serial in one sale is blocked",
+            "SELECT create_sale(%s,%s,%s::jsonb,%s)",
+            [customer_id, self.days[1], json.dumps(dup), self.user_id],
+            expect_error=True,
+        )
+        # Negative price is rejected (currently by a journallines CHECK
+        # constraint rather than an explicit validation, but it is blocked).
+        neg = [{"item_name": self.item, "qty": 1, "unit_price": -50, "serials": [serials[0]]}]
+        self.step(
+            section, "negative unit price is rejected",
+            "SELECT create_sale(%s,%s,%s::jsonb,%s)",
+            [customer_id, self.days[1], json.dumps(neg), self.user_id],
+            expect_error=True,
+        )
+        for serial in serials:
+            self.assert_stock(section, serial, True)
+
+    def test_cost_basis_drift_on_return(self):
+        """A price-only purchase edit after a sale must not desync COGS.
+
+        The sale's COGS journal is frozen at the original cost, but a later
+        sale return recaptures cost from the (now edited) PurchaseItems price.
+        If they differ, inventory/COGS drift silently. Encoded as known_bug so
+        it reports the drift without failing the suite if the schema doesn't
+        yet keep them in sync.
+        """
+        section = "09 cost basis drift on return"
+        vendor_id = self.party_id(self.vendor)
+        customer_id = self.party_id(self.customer)
+        serial = self.serials[29]
+        pid = self.step(
+            section, "purchase serial @100",
+            "SELECT create_purchase(%s,%s,%s::jsonb,%s)",
+            [vendor_id, self.days[0], json.dumps(self.purchase_item_payload([serial], 100)), self.user_id],
+        )
+        sale_id = self.step(
+            section, "sell serial @300",
+            "SELECT create_sale(%s,%s,%s::jsonb,%s)",
+            [customer_id, self.days[1], json.dumps(self.sale_item_payload([serial], 300)), self.user_id],
+        )
+        sale_cogs_row = self.fetch_one(
+            """
+            SELECT COALESCE(SUM(jl.debit),0)
+            FROM salesinvoices s
+            JOIN journallines jl ON jl.journal_id = s.journal_id
+            JOIN chartofaccounts coa ON coa.account_id = jl.account_id
+            WHERE s.sales_invoice_id = %s AND coa.account_name = 'Cost of Goods Sold'
+            """,
+            [sale_id],
+        )
+        sale_cogs = float(sale_cogs_row[0]) if sale_cogs_row and sale_cogs_row[0] is not None else 0.0
+
+        # Price-only purchase edit to 150 while the serial is sold (allowed flow).
+        self.step(
+            section, "price-only purchase update to 150",
+            "SELECT update_purchase_invoice(%s,%s::jsonb,%s,%s,%s)",
+            [pid, json.dumps(self.purchase_item_payload([serial], 150)), self.vendor, self.days[0], self.user_id],
+        )
+        return_id = self.step(
+            section, "sale return after price edit",
+            "SELECT create_sale_return(%s,%s::jsonb,%s)",
+            [self.customer, json.dumps([serial]), self.user_id],
+        )
+        return_cost_row = self.fetch_one(
+            "SELECT COALESCE(SUM(cost_price),0) FROM salesreturnitems WHERE sales_return_id=%s",
+            [return_id],
+        )
+        return_cost = float(return_cost_row[0]) if return_cost_row and return_cost_row[0] is not None else 0.0
+        self.assert_true(
+            section, "return COGS basis matches original sale COGS",
+            abs(sale_cogs - return_cost) < 0.005,
+            f"Sale COGS {sale_cogs:.2f} != return cost basis {return_cost:.2f} (inventory drift).",
+            known_bug=True,
+        )
+        self.run_reports("after cost basis drift check")
+
+    def test_cross_invoice_single_customer_return(self):
+        """Document: one return call may span two invoices of the same customer."""
+        section = "10 cross-invoice return"
+        vendor_id = self.party_id(self.vendor)
+        customer_id = self.party_id(self.customer)
+        serials = self.serials[30:32]
+        self.step(
+            section, "purchase two serials",
+            "SELECT create_purchase(%s,%s,%s::jsonb,%s)",
+            [vendor_id, self.days[0], json.dumps(self.purchase_item_payload(serials, 100)), self.user_id],
+        )
+        self.step(
+            section, "sell serial A on invoice 1",
+            "SELECT create_sale(%s,%s,%s::jsonb,%s)",
+            [customer_id, self.days[1], json.dumps(self.sale_item_payload([serials[0]], 200)), self.user_id],
+        )
+        self.step(
+            section, "sell serial B on invoice 2",
+            "SELECT create_sale(%s,%s,%s::jsonb,%s)",
+            [customer_id, self.days[2], json.dumps(self.sale_item_payload([serials[1]], 220)), self.user_id],
+        )
+        self.step(
+            section, "single return spanning both invoices",
+            "SELECT create_sale_return(%s,%s::jsonb,%s)",
+            [self.customer, json.dumps(serials), self.user_id],
+        )
+        for serial in serials:
+            self.assert_stock(section, serial, True)
+        self.run_reports("after cross-invoice return")
+
     def run(self):
         self.setup_master_data()
         self.test_purchase_sale_return_resale_purchase_return()
@@ -773,6 +1059,11 @@ class DeepLifecycleRunner:
         self.test_partial_returns_and_sale_mutation_guards()
         self.test_sale_return_delete_update_after_resale()
         self.test_multi_item_mixed_serial_invoice()
+        self.test_delete_purchase_after_sale_guard()
+        self.test_qty_serial_integrity()
+        self.test_sale_input_guards()
+        self.test_cost_basis_drift_on_return()
+        self.test_cross_invoice_single_customer_return()
         return self.results
 
 
@@ -811,21 +1102,40 @@ def main():
     for schema, result in all_results:
         by_schema.setdefault(schema, []).append(result)
 
+    def mark_for(r):
+        if r.known_bug:
+            return "XPASS" if r.ok else "XFAIL"  # XPASS = known bug now fixed
+        return "OK  " if r.ok else "FAIL"
+
     print("\nFinancee deep transaction lifecycle results")
     print("=" * 80)
     for schema, results in by_schema.items():
-        passed = sum(1 for r in results if r.ok)
-        print(f"\n{schema}: {passed}/{len(results)} passed")
+        # "passed" counts real (non-known-bug) checks only.
+        real = [r for r in results if not r.known_bug]
+        passed = sum(1 for r in real if r.ok)
+        print(f"\n{schema}: {passed}/{len(real)} real checks passed")
         current_section = None
         for result in results:
             if result.section != current_section:
                 current_section = result.section
                 print(f"  {current_section}")
-            mark = "OK " if result.ok else "FAIL"
             suffix = f" - {result.detail}" if result.detail else ""
-            print(f"    [{mark}] {result.name}{suffix}")
+            print(f"    [{mark_for(result)}] {result.name}{suffix}")
 
-    failures = [(schema, r) for schema, r in all_results if not r.ok]
+    failures = [(schema, r) for schema, r in all_results if not r.ok and not r.known_bug]
+    known_fail = [(schema, r) for schema, r in all_results if not r.ok and r.known_bug]
+    known_pass = [(schema, r) for schema, r in all_results if r.ok and r.known_bug]
+
+    print("\n" + "=" * 80)
+    if known_fail:
+        print(f"KNOWN BUGS (documented, not counted as failures): {len(known_fail)}")
+        for schema, result in known_fail:
+            print(f"- [XFAIL] {schema} / {result.section} / {result.name}: {result.detail}")
+    if known_pass:
+        print(f"\nKNOWN BUGS NOW PASSING (consider removing known_bug flag): {len(known_pass)}")
+        for schema, result in known_pass:
+            print(f"- [XPASS] {schema} / {result.section} / {result.name}")
+
     print("\n" + "=" * 80)
     if failures:
         print(f"FAILED: {len(failures)} deep lifecycle checks failed.")
@@ -833,7 +1143,8 @@ def main():
             print(f"- {schema} / {result.section} / {result.name}: {result.detail}")
         return 1
 
-    print("PASSED: all deep lifecycle checks passed.")
+    print("PASSED: all deep lifecycle checks passed"
+          + (f" ({len(known_fail)} known bugs still open)." if known_fail else "."))
     return 0
 
 
