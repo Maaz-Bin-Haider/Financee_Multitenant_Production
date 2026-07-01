@@ -325,11 +325,11 @@ Run with tenant reset:
 ./tests/run_tests.sh --reset
 ```
 
-The suite has two major harnesses:
+The suite has three major harnesses:
 
 - `tests/test_system.py`: direct SQL business-function coverage per tenant
 - `tests/test_http.py`: Django client coverage for real views, permissions, JSON, templates, and write flows
-- `tests/test_transaction_lifecycle_deep.py`: direct SQL stress coverage for real serial lifecycles, mixed purchase invoice corrections, partial returns, sale-return update/delete after resale, sale invoice update/delete after returns, cash-sale vs credit-sale returns, multi-item mixed serial invoices, duplicate/wrong-party return guards, and report execution after every entry
+- `tests/test_transaction_lifecycle_deep.py`: direct SQL stress coverage for real serial lifecycles, mixed purchase invoice corrections, partial returns, sale-return update/delete after resale, sale invoice update/delete after returns, cash-sale vs credit-sale returns, multi-item mixed serial invoices, duplicate/wrong-party return guards, and report execution after every entry. It also asserts financial invariants at every checkpoint (trial balance balances, no orphaned journal lines, stock/sold coherence) and covers the transaction-integrity guards from `tenancy/sql/fix_transaction_integrity_guards.sql` (delete_purchase sold-serial guard, qty-vs-serial validation, COGS reflow on purchase price edits). Confirmed-but-unfixed defects can be marked `known_bug=True` and are reported as `XFAIL` without failing the suite. See `tests/TRANSACTION_LIFECYCLE_FLOW_RESULTS.md`.
 
 ## Project Rules for Future Changes
 
