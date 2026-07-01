@@ -166,3 +166,60 @@ python manage.py apply_sql_all_tenants tenancy/sql/<patch>.sql
 ```
 
 - For Docker deployments, required tenant patches should remain idempotent if they run from `deploy/entrypoint.sh`.
+
+## 2026-07-01: Legacy Profit Reports UI Removed
+
+### Symptoms
+
+The sidebar still exposed an outdated `Profit Reports` section even though its replacements already existed in other parts of the application.
+
+The retired page contained:
+
+- Company Valuation
+- Sale-wise Profit
+
+### Root Cause
+
+The legacy page remained wired into the sidebar, URLconf, views, template, and JavaScript after replacement reporting surfaces were added.
+
+Replacement coverage now lives in:
+
+- Dashboard Sales & Profit widgets
+- Dashboard Revenue & Profit Trend
+- Monthly Reports
+- Sales Reports
+
+### Fix
+
+Removed the retired UI/routing layer:
+
+- Removed the `Profit Reports` sidebar link from `templates/base/base.html`.
+- Removed `/accountsReports/company-valuation/` and `/accountsReports/sale-wise-report/` from `accountsReports/urls.py`.
+- Removed `company_valuation_report` and `sale_wise_report` from `accountsReports/views.py`.
+- Removed `templates/display_report_templates/profit_reports_template.html`.
+- Removed `static/js/profit_reports.js`.
+- Removed the old `/accountsReports/company-valuation/` probe from `tests/test_http.py`.
+
+### What Was Intentionally Kept
+
+No database objects were removed.
+
+The following were intentionally left in place for compatibility:
+
+- SQL functions/views such as `standing_company_worth_view` and `sale_wise_profit(...)`.
+- Historical permissions such as `auth.view_company_valuation` and `auth.view_sale_wise_profit_report`.
+- `static/css/profit_reports.css`, because `templates/display_report_templates/monthly_reports_template.html` still imports it for shared report styling.
+
+### Verification
+
+Reference scan confirmed:
+
+- `static/js/profit_reports.js` was only used by the retired Profit Reports template.
+- `static/css/profit_reports.css` is still used by Monthly Reports, so it was not removed.
+
+Expected behavior:
+
+- No `Profit Reports` item appears in the sidebar.
+- `/accountsReports/company-valuation/` returns 404.
+- `/accountsReports/sale-wise-report/` returns 404.
+- Monthly Reports, Sales Reports, and dashboard sales/profit widgets remain available.

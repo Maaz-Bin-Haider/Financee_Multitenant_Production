@@ -126,7 +126,7 @@ Use `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, and `ALTER TABLE
 | `payments` | Outgoing payments, navigation, history, party balance |
 | `receipts` | Incoming receipts, navigation, history, party balance |
 | `contra` | Party-to-party contra entries, navigation, history, party balance |
-| `accountsReports` | Ledgers, trial balance, cash ledger, receivable/payable, stock, serial, valuation, monthly reports |
+| `accountsReports` | Ledgers, trial balance, cash ledger, receivable/payable, stock, serial, and monthly reports |
 | `sales_reports` | Sales analytics APIs and report screen |
 | `set_opening` | Opening cash singleton |
 | `opening_stock` | Opening stock loads and opening-balance reclassification |
@@ -155,6 +155,8 @@ Use `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, and `ALTER TABLE
 | `/opening-stock/` | Opening stock |
 | `/owner-equity/` | Owner equity |
 | `/month-close/` | Period close |
+
+The legacy `/accountsReports/company-valuation/` and `/accountsReports/sale-wise-report/` Profit Reports page has been retired from the UI/routes. Its replacement coverage lives in Monthly Reports, Sales Reports, and dashboard sales/profit widgets. Database objects and historical permissions were left in place for compatibility.
 
 ## Permissions and Guards
 

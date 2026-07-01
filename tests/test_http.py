@@ -86,7 +86,7 @@ GETS = [
     "/accountsReports/trial-balance/", "/accountsReports/accounts-receivable/",
     "/accountsReports/accounts-payable/", "/accountsReports/stock-report/",
     "/accountsReports/stock-worth-report/", "/accountsReports/stock-summary/",
-    "/accountsReports/company-valuation/", "/accountsReports/monthly-position/",
+    "/accountsReports/monthly-position/",
     "/accountsReports/monthly-income/",
     "/sales-reports/", f"/sales-reports/api/summary/{DR}",
     f"/sales-reports/api/product-profitability/{DR}", f"/sales-reports/api/customer-profitability/{DR}",

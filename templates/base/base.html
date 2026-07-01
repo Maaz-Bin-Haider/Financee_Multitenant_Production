@@ -104,9 +104,6 @@
             <a href="{% url 'accountsReports:monthly_position_report' %}" class="{% if request.resolver_match.url_name == 'monthly_position_report' or request.resolver_match.url_name == 'monthly_income_report' %}active{% endif %}">
                 <i class="fa-solid fa-chart-pie"></i> Monthly Reports
             </a>
-            <a href="{% url 'accountsReports:company_valuation' %}" class="{% if request.resolver_match.url_name == 'company_valuation' %}active{% endif %}">
-                <i class="fa-solid fa-chart-pie"></i> Profit Reports
-            </a>
             {% if perms.auth.can_set_or_update_opening %}
             <a href="{% url 'set_opening:set_opening' %}" class="{% if request.resolver_match.url_name == 'set_opening' %}active{% endif %}">
                 <i class="fa-solid fa-sliders"></i> Set Opening
