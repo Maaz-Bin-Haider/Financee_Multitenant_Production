@@ -286,6 +286,26 @@ Apply to one tenant:
 python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql --only tenant_company_3
 ```
 
+### Tenant Login Redirect Loop
+
+If a company user signs in successfully but the browser reports too many redirects between `/home/` and `/authentication/login/`, the user is usually authenticated but the tenant guard is rejecting the assigned company schema.
+
+Check that the user has a `Membership`, the company is active, the physical tenant schema exists, and the tenant schema has `tenant_schema_version`. Older databases bootstrapped before the schema-version guard may have business tables but no version table.
+
+Apply the existing hardening patch to all tenants:
+
+```bash
+python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql
+```
+
+With Docker:
+
+```bash
+docker compose -f deploy/docker-compose.yml exec -T web python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql
+```
+
+After applying it, clear the browser cookie/session for the host or use a fresh private window before logging in again.
+
 ## Testing
 
 The functional test suite is documented in `tests/README.md`.

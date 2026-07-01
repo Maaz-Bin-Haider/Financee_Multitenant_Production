@@ -70,6 +70,7 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
 - `python manage.py migrate` applies only public/shared Django migrations.
 - Business schemas are not managed by Django migrations.
 - `REDIS_URL` should be set in production so cache/rate-limit state is shared across workers.
+- Existing/bootstrapped tenant schemas must have `tenant_schema_version`. If an authenticated tenant user loops between `/home/` and `/authentication/login/`, verify their `Membership`, company `is_active`, physical schema existence, and `SELECT * FROM tenant_schema_version` under that tenant search path. Older bootstrapped schemas may need `python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql`.
 
 ## Security and Permission Notes
 
