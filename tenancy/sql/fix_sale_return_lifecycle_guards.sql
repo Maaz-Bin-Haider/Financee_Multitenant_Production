@@ -1,29 +1,14 @@
--- Production hardening rollout for existing tenant schemas.
--- Run with:
---   python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql
-
-CREATE TABLE IF NOT EXISTS tenant_schema_version (
-    id boolean PRIMARY KEY DEFAULT true,
-    version integer NOT NULL,
-    applied_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT tenant_schema_version_singleton CHECK (id)
-);
-
-INSERT INTO tenant_schema_version (id, version)
-VALUES (true, 2)
-ON CONFLICT (id) DO UPDATE
-SET version = GREATEST(tenant_schema_version.version, EXCLUDED.version),
-    applied_at = CURRENT_TIMESTAMP;
-
-CREATE UNIQUE INDEX IF NOT EXISTS ux_purchaseunits_serial_number
-    ON purchaseunits (upper(serial_number));
-
-CREATE INDEX IF NOT EXISTS idx_purchaseunits_serial_in_stock
-    ON purchaseunits (upper(serial_number), in_stock);
-
-CREATE UNIQUE INDEX IF NOT EXISTS ux_soldunits_one_active_sale_per_unit
-    ON soldunits (unit_id)
-    WHERE status = 'Sold';
+-- fix_sale_return_lifecycle_guards.sql
+-- ============================================================================
+-- Hardens sale/return serial lifecycle rules:
+--   * sale returns must target the currently active SoldUnits row only
+--   * duplicate sale returns are blocked because no active sale remains
+--   * cash-vs-credit returns are matched against the active sale customer
+--   * sale invoices with return history cannot be updated or deleted
+--
+-- Idempotent. Apply with:
+--   python manage.py apply_sql_all_tenants tenancy/sql/fix_sale_return_lifecycle_guards.sql
+-- ============================================================================
 
 CREATE OR REPLACE FUNCTION assert_sale_invoice_has_no_returns(p_invoice_id bigint) RETURNS void
     LANGUAGE plpgsql AS $$
@@ -377,3 +362,8 @@ BEGIN
 
     PERFORM rebuild_sales_journal(p_invoice_id);
 END; $$;
+
+UPDATE tenant_schema_version
+SET version = GREATEST(version, 2),
+    applied_at = CURRENT_TIMESTAMP
+WHERE id = true;

@@ -223,3 +223,46 @@ Expected behavior:
 - `/accountsReports/company-valuation/` returns 404.
 - `/accountsReports/sale-wise-report/` returns 404.
 - Monthly Reports, Sales Reports, and dashboard sales/profit widgets remain available.
+
+## 2026-07-01: Sale Return Lifecycle Guards Hardened
+
+### Symptoms
+
+The deep transaction lifecycle test found failures in serial return workflows:
+
+- Duplicate sale returns could be accepted for already-returned serials.
+- A sale invoice could be updated or deleted even after one of its serials had sale-return history.
+- Cash-sale versus credit-sale return lookup could bind to historical sale rows instead of the currently active sale.
+- The same mutation risks reproduced on multi-item invoices with mixed serial states.
+
+### Root Cause
+
+Some tenant schemas still had older sale-return functions that did not consistently resolve the currently active `SoldUnits.status = 'Sold'` row. Sale invoice update/delete functions also lacked a guard against downstream sale-return history.
+
+### Fix
+
+Added `tenancy/sql/fix_sale_return_lifecycle_guards.sql` and folded the same idempotent SQL into `tenancy/sql/production_hardening.sql`, `tenancy/sql/tenant_template.sql`, and `build_multitenant_db.sql`.
+
+The fix:
+
+- Resolves sale returns against the newest active sold unit only.
+- Blocks duplicate sale returns when no active sold unit remains.
+- Enforces the active sale customer for cash and credit returns.
+- Blocks `update_sale_invoice(...)` and `delete_sale(...)` when any serial in the sale has return history.
+- Preserves journal rebuild behavior for valid sale updates.
+
+### Verification
+
+Applied the hardening SQL to both tenant schemas:
+
+```bash
+docker compose -f deploy/docker-compose.yml exec -T web python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql
+```
+
+Regression results:
+
+```text
+PASSED: all deep lifecycle checks passed.
+tenant_company_1: 111/111 passed, 0 failed
+tenant_company_2: 111/111 passed, 0 failed
+```
