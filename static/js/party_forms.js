@@ -320,35 +320,38 @@ $(function () {
           $btnText.text(origText);
 
           if (data.status === "success") {
-            Swal.fire({
-              icon: "success",
-              title: "Party Created",
-              text: data.message,
-              showConfirmButton: false,
-              timer: 2500,
-              timerProgressBar: true,
-              customClass: { popup: "swal-party" },
-            }).then(() => location.reload());
+            // Swal.fire({
+            //   icon: "success",
+            //   title: "Party Created",
+            //   text: data.message,
+            //   showConfirmButton: false,
+            //   timer: 2500,
+            //   timerProgressBar: true,
+            //   customClass: { popup: "swal-party" },
+            // }).then(() => location.reload());
+            Alerts.success(data.message, { title: "Party Created" }).then(() => location.reload());
           } else {
-            Swal.fire({
-              icon: "error",
-              title: "Could Not Save",
-              text: data.message,
-              confirmButtonText: "Got it",
-              customClass: { popup: "swal-party" },
-            });
+            // Swal.fire({
+            //   icon: "error",
+            //   title: "Could Not Save",
+            //   text: data.message,
+            //   confirmButtonText: "Got it",
+            //   customClass: { popup: "swal-party" },
+            // });
+            Alerts.error(data.message, { title: "Could Not Save" });
           }
         })
         .catch(() => {
           $btn.removeClass("loading");
           $btnText.text(origText);
-          Swal.fire({
-            icon: "error",
-            title: "Network Error",
-            text: "Something went wrong. Please try again.",
-            confirmButtonText: "OK",
-            customClass: { popup: "swal-party" },
-          });
+          // Swal.fire({
+          //   icon: "error",
+          //   title: "Network Error",
+          //   text: "Something went wrong. Please try again.",
+          //   confirmButtonText: "OK",
+          //   customClass: { popup: "swal-party" },
+          // });
+          Alerts.error("Something went wrong. Please try again.", { title: "Network Error" });
         });
     });
   }
@@ -361,18 +364,23 @@ $(function () {
   // Django messages are injected via the template tag; 
   // we expose a helper so the template can trigger them.
   window.showDjangoMessage = function (level, text) {
-    const icon = level === "success" ? "success" : "error";
-    const title = level === "success" ? "Updated Successfully" : "Error";
-    Swal.fire({
-      icon,
-      title,
-      text,
-      showConfirmButton: level !== "success",
-      timer: level === "success" ? 2500 : undefined,
-      timerProgressBar: level === "success",
-      confirmButtonText: "OK",
-      customClass: { popup: "swal-party" },
-    });
+    // const icon = level === "success" ? "success" : "error";
+    // const title = level === "success" ? "Updated Successfully" : "Error";
+    // Swal.fire({
+    //   icon,
+    //   title,
+    //   text,
+    //   showConfirmButton: level !== "success",
+    //   timer: level === "success" ? 2500 : undefined,
+    //   timerProgressBar: level === "success",
+    //   confirmButtonText: "OK",
+    //   customClass: { popup: "swal-party" },
+    // });
+    if (level === "success") {
+      Alerts.success(text, { title: "Updated Successfully" });
+    } else {
+      Alerts.error(text);
+    }
   };
 
 

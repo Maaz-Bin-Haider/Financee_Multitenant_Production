@@ -157,8 +157,10 @@ async function generate() {
   const cfg = REPORTS[SR.key];
   const from = document.getElementById("sr-from").value;
   const to = document.getElementById("sr-to").value;
-  if (!from || !to) { Swal.fire("Pick dates", "Please choose a from and to date.", "warning"); return; }
-  if (from > to) { Swal.fire("Check dates", "‘From’ is after ‘To’.", "warning"); return; }
+  // if (!from || !to) { Swal.fire("Pick dates", "Please choose a from and to date.", "warning"); return; }
+  // if (from > to) { Swal.fire("Check dates", "‘From’ is after ‘To’.", "warning"); return; }
+  if (!from || !to) { Alerts.warning("Please choose a from and to date.", { title: "Pick dates" }); return; }
+  if (from > to) { Alerts.warning("‘From’ is after ‘To’.", { title: "Check dates" }); return; }
 
   let url = SR_BASE + cfg.endpoint + `?from=${from}&to=${to}`;
   if (cfg.granularity) url += `&granularity=${document.getElementById("sr-gran").value}`;
@@ -354,7 +356,8 @@ function renderTrend(cfg, d) {
 
 /* ---------- export ---------- */
 function exportPDF() {
-  if (!SR.rows.length) { Swal.fire("Nothing to export", "Generate a report first.", "info"); return; }
+  // if (!SR.rows.length) { Swal.fire("Nothing to export", "Generate a report first.", "info"); return; }
+  if (!SR.rows.length) { Alerts.notify("Generate a report first.", { title: "Nothing to export" }); return; }
   const cfg = REPORTS[SR.key];
   const { jsPDF } = window.jspdf;
   const landscape = SR.columns.length > 6;
@@ -412,7 +415,8 @@ function exportPDF() {
 }
 
 function exportCSV() {
-  if (!SR.rows.length) { Swal.fire("Nothing to export", "Generate a report first.", "info"); return; }
+  // if (!SR.rows.length) { Swal.fire("Nothing to export", "Generate a report first.", "info"); return; }
+  if (!SR.rows.length) { Alerts.notify("Generate a report first.", { title: "Nothing to export" }); return; }
   const cfg = REPORTS[SR.key];
   const esc = (v) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
   const lines = [SR.columns.map((c) => esc(c.label)).join(",")];

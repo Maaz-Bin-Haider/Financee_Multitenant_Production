@@ -89,7 +89,8 @@ async function oeSave() {
   const desc      = document.getElementById("oe-desc").value;
 
   if (isNaN(amount) || amount <= 0) {
-    Swal.fire("Invalid amount", "Enter an amount greater than 0.", "warning");
+    // Swal.fire("Invalid amount", "Enter an amount greater than 0.", "warning");
+    Alerts.warning("Enter an amount greater than 0.", { title: "Invalid amount" });
     return;
   }
 
@@ -106,28 +107,37 @@ async function oeSave() {
     });
     const d = await r.json();
     if (!r.ok || d.status !== "success") {
-      Swal.fire("Error", d.message || "Could not save.", "error");
+      // Swal.fire("Error", d.message || "Could not save.", "error");
+      Alerts.error(d.message || "Could not save.");
     } else {
       document.getElementById("oe-amount").value = "";
       document.getElementById("oe-desc").value = "";
       await oeLoadList();
-      Swal.fire({ icon: "success", title: "Recorded", timer: 1100, showConfirmButton: false });
+      // Swal.fire({ icon: "success", title: "Recorded", timer: 1100, showConfirmButton: false });
+      Alerts.success("", { title: "Recorded" });
     }
   } catch (e) {
-    Swal.fire("Error", "Request failed. " + e.message, "error");
+    // Swal.fire("Error", "Request failed. " + e.message, "error");
+    Alerts.error("Request failed. " + e.message);
   } finally {
     btn.disabled = false;
   }
 }
 
 async function oeDelete(txnId) {
-  const ok = await Swal.fire({
+  // const ok = await Swal.fire({
+  //   title: "Delete this entry?",
+  //   text: "Its journal entry will be removed too.",
+  //   icon: "warning", showCancelButton: true, confirmButtonText: "Delete",
+  //   confirmButtonColor: "#dc2626",
+  // });
+  // if (!ok.isConfirmed) return;
+  const ok = await Alerts.confirm({
     title: "Delete this entry?",
     text: "Its journal entry will be removed too.",
-    icon: "warning", showCancelButton: true, confirmButtonText: "Delete",
-    confirmButtonColor: "#dc2626",
+    confirmText: "Delete", danger: true,
   });
-  if (!ok.isConfirmed) return;
+  if (!ok) return;
   try {
     const r = await fetch(OE_API.del, {
       method: "POST",
@@ -136,18 +146,21 @@ async function oeDelete(txnId) {
     });
     const d = await r.json();
     if (!r.ok || d.status !== "success") {
-      Swal.fire("Error", d.message || "Could not delete.", "error");
+      // Swal.fire("Error", d.message || "Could not delete.", "error");
+      Alerts.error(d.message || "Could not delete.");
     } else {
       await oeLoadList();
     }
   } catch (e) {
-    Swal.fire("Error", "Request failed. " + e.message, "error");
+    // Swal.fire("Error", "Request failed. " + e.message, "error");
+    Alerts.error("Request failed. " + e.message);
   }
 }
 
 /* ─────────────────────────── Export: PDF / CSV ─────────────────────────── */
 function oeExportPDF() {
-  if (!_oeRows.length) { Swal.fire("Nothing to export", "There are no entries yet.", "info"); return; }
+  // if (!_oeRows.length) { Swal.fire("Nothing to export", "There are no entries yet.", "info"); return; }
+  if (!_oeRows.length) { Alerts.notify("There are no entries yet.", { title: "Nothing to export" }); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   doc.setFontSize(15); doc.text("Owner Equity — Withdrawals & Capital", 14, 18);
@@ -183,7 +196,8 @@ function oeExportPDF() {
 }
 
 function oeExportCSV() {
-  if (!_oeRows.length) { Swal.fire("Nothing to export", "There are no entries yet.", "info"); return; }
+  // if (!_oeRows.length) { Swal.fire("Nothing to export", "There are no entries yet.", "info"); return; }
+  if (!_oeRows.length) { Alerts.notify("There are no entries yet.", { title: "Nothing to export" }); return; }
   const esc = (v) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
   const rows = [["Date", "Type", "Account", "Amount", "Note"].map(esc)];
   _oeRows.forEach((t) => {

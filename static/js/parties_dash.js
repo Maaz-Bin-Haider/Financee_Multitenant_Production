@@ -48,19 +48,22 @@ $(function () {
       .then(function (data) {
         if (data.status === "success") {
           listLoaded = false;
-          Swal.fire({ icon: "success", title: "Success", text: data.message,
-                      showConfirmButton: false, timer: 2200, timerProgressBar: true })
+          // Swal.fire({ icon: "success", title: "Success", text: data.message,
+          //             showConfirmButton: false, timer: 2200, timerProgressBar: true })
+          Alerts.success(data.message)
               .then(function () {
                 addForm.reset();
                 document.getElementById("add_opening_balance").value = "0";
                 document.getElementById("add_party_name").focus();
               });
         } else {
-          Swal.fire({ icon: "error", title: "Error", text: data.message, confirmButtonColor: "#3085d6" });
+          // Swal.fire({ icon: "error", title: "Error", text: data.message, confirmButtonColor: "#3085d6" });
+          Alerts.error(data.message);
         }
       })
       .catch(function () {
-        Swal.fire({ icon: "error", title: "Error", text: "Something went wrong while saving.", confirmButtonColor: "#d33" });
+        // Swal.fire({ icon: "error", title: "Error", text: "Something went wrong while saving.", confirmButtonColor: "#d33" });
+        Alerts.error("Something went wrong while saving.");
       });
   });
 
@@ -171,7 +174,8 @@ $(function () {
   function doSearch() {
     var name = searchInput.value.trim();
     if (!name) {
-      Swal.fire({ icon: "info", title: "Enter a name", text: "Please type a party name to search.", confirmButtonColor: "#3085d6" });
+      // Swal.fire({ icon: "info", title: "Enter a name", text: "Please type a party name to search.", confirmButtonColor: "#3085d6" });
+      Alerts.warning("Please type a party name to search.", { title: "Enter a name" });
       return;
     }
     fetch(UPDATE_URL + "?search_name=" + encodeURIComponent(name), {
@@ -184,11 +188,13 @@ $(function () {
         } else {
           editCard.style.display = "none";
           placeholder.style.display = "block";
-          Swal.fire({ icon: "error", title: "Not found", text: "Party '" + name + "' was not found.", confirmButtonColor: "#3085d6" });
+          // Swal.fire({ icon: "error", title: "Not found", text: "Party '" + name + "' was not found.", confirmButtonColor: "#3085d6" });
+          Alerts.error("Party '" + name + "' was not found.", { title: "Not found" });
         }
       })
       .catch(function () {
-        Swal.fire({ icon: "error", title: "Error", text: "Could not search for the party.", confirmButtonColor: "#d33" });
+        // Swal.fire({ icon: "error", title: "Error", text: "Could not search for the party.", confirmButtonColor: "#d33" });
+        Alerts.error("Could not search for the party.");
       });
   }
 
@@ -198,7 +204,8 @@ $(function () {
   updForm.addEventListener("submit", function (e) {
     e.preventDefault();
     if (!document.getElementById("upd_party_id").value) {
-      Swal.fire({ icon: "info", title: "No party selected", text: "Please search and select a party first.", confirmButtonColor: "#3085d6" });
+      // Swal.fire({ icon: "info", title: "No party selected", text: "Please search and select a party first.", confirmButtonColor: "#3085d6" });
+      Alerts.warning("Please search and select a party first.", { title: "No party selected" });
       return;
     }
     var fd = new FormData(updForm);
@@ -211,15 +218,18 @@ $(function () {
       .then(function (data) {
         if (data.status === "success") {
           listLoaded = false;
-          Swal.fire({ icon: "success", title: "Success", text: data.message,
-                      showConfirmButton: false, timer: 2200, timerProgressBar: true })
+          // Swal.fire({ icon: "success", title: "Success", text: data.message,
+          //             showConfirmButton: false, timer: 2200, timerProgressBar: true })
+          Alerts.success(data.message)
               .then(function () { resetUpdateSection(); });
         } else {
-          Swal.fire({ icon: "error", title: "Error", text: data.message, confirmButtonColor: "#3085d6" });
+          // Swal.fire({ icon: "error", title: "Error", text: data.message, confirmButtonColor: "#3085d6" });
+          Alerts.error(data.message);
         }
       })
       .catch(function () {
-        Swal.fire({ icon: "error", title: "Error", text: "Something went wrong while updating.", confirmButtonColor: "#d33" });
+        // Swal.fire({ icon: "error", title: "Error", text: "Something went wrong while updating.", confirmButtonColor: "#d33" });
+        Alerts.error("Something went wrong while updating.");
       });
   });
 

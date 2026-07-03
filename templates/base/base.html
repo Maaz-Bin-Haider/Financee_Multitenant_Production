@@ -40,6 +40,9 @@
   <!-- Dark Mode Css -->
   <link rel="stylesheet" href="{% static 'css/dark_mode.css' %}">
 
+  <!-- Unified alert layer (animations + theming for alerts.js) -->
+  <link rel="stylesheet" href="{% static 'css/alerts.css' %}">
+
   {% block SeperateCssFile %}{% endblock SeperateCssFile %}
 
   <style>
@@ -158,6 +161,9 @@
     </main>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Unified alert layer: exposes the global `Alerts` helper. Must load
+       after SweetAlert2 and before any page script that raises alerts. -->
+  <script src="{% static 'js/alerts.js' %}"></script>
   <script>
     function filterNavLinks() {
     const query = document.getElementById("sidebarSearch").value.toLowerCase();
@@ -180,11 +186,12 @@
         document.addEventListener("DOMContentLoaded", function () {
             {% for message in messages %}
                 {% if 'error' in message.tags %}
-                Swal.fire({
-                    icon: "error",
-                    title: "Access Denied",
-                    text: "{{ message|escapejs }}",
-                });
+                // Swal.fire({
+                //     icon: "error",
+                //     title: "Access Denied",
+                //     text: "{{ message|escapejs }}",
+                // });
+                Alerts.error("{{ message|escapejs }}", { title: "Access Denied" });
                 {% endif %}
             {% endfor %}
         });

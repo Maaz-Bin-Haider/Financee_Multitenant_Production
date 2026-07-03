@@ -169,11 +169,12 @@ function navigateContra(action) {
     .then(res => res.json())
     .then(data => {
       if (data.error) {
-        Swal.fire({
-          title: "End of Records",
-          text: action === "previous" ? "You are at the first contra entry." : "You are at the latest contra entry.",
-          icon: "info", toast: true, position: "top-end", timer: 2000, showConfirmButton: false
-        });
+        // Swal.fire({
+        //   title: "End of Records",
+        //   text: action === "previous" ? "You are at the first contra entry." : "You are at the latest contra entry.",
+        //   icon: "info", toast: true, position: "top-end", timer: 2000, showConfirmButton: false
+        // });
+        Alerts.notify(action === "previous" ? "You are at the first contra entry." : "You are at the latest contra entry.", { title: "End of Records" });
         return;
       }
       populateForm(data);
@@ -190,14 +191,21 @@ document.addEventListener("DOMContentLoaded", function () {
     const btn = e.submitter;
     if (btn && btn.value === "delete" && !confirmedDelete) {
       e.preventDefault();
-      Swal.fire({
+      // Swal.fire({
+      //   title: "Delete this contra entry?",
+      //   text: "This will reverse the transfer. This action cannot be undone.",
+      //   icon: "warning", showCancelButton: true,
+      //   confirmButtonColor: "#dc2626", cancelButtonColor: "#6b7280",
+      //   confirmButtonText: "Yes, delete", cancelButtonText: "Cancel"
+      // }).then(result => {
+      //   if (result.isConfirmed) { confirmedDelete = true; form.requestSubmit(btn); }
+      // });
+      Alerts.confirm({
         title: "Delete this contra entry?",
         text: "This will reverse the transfer. This action cannot be undone.",
-        icon: "warning", showCancelButton: true,
-        confirmButtonColor: "#dc2626", cancelButtonColor: "#6b7280",
-        confirmButtonText: "Yes, delete", cancelButtonText: "Cancel"
-      }).then(result => {
-        if (result.isConfirmed) { confirmedDelete = true; form.requestSubmit(btn); }
+        confirmText: "Yes, delete", danger: true
+      }).then(confirmed => {
+        if (confirmed) { confirmedDelete = true; form.requestSubmit(btn); }
       });
     }
   });
@@ -209,11 +217,13 @@ function fetchContras(url) {
   $.ajax({
     url: url, type: "GET", dataType: "json",
     beforeSend: function () {
-      Swal.fire({ title: "Loading…", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      // Swal.fire({ title: "Loading…", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      Alerts.loading("Loading…");
     },
     success: function (response) {
       if (!response || response.length === 0) {
-        Swal.fire({ title: "No Contra Entries Found", text: "No entries match this query.", icon: "info", confirmButtonColor: "#2563eb" });
+        // Swal.fire({ title: "No Contra Entries Found", text: "No entries match this query.", icon: "info", confirmButtonColor: "#2563eb" });
+        Alerts.notify("No entries match this query.", { title: "No Contra Entries Found" });
         return;
       }
 
@@ -247,7 +257,7 @@ function fetchContras(url) {
       });
       html += `</div>`;
 
-      Swal.fire({
+      Alerts.dialog({  /* was Swal.fire — centered detail view, standardized animation */
         title: "🔁 Contra History", html: html, width: "660px",
         showConfirmButton: true, confirmButtonText: "Close", confirmButtonColor: "#6b7280",
         didOpen: () => {
@@ -275,7 +285,8 @@ function fetchContras(url) {
       });
     },
     error: function () {
-      Swal.fire({ title: "Error", text: "Could not load contra entries. Please try again.", icon: "error", confirmButtonColor: "#dc2626" });
+      // Swal.fire({ title: "Error", text: "Could not load contra entries. Please try again.", icon: "error", confirmButtonColor: "#dc2626" });
+      Alerts.error("Could not load contra entries. Please try again.");
     }
   });
 }
@@ -284,7 +295,7 @@ $("#btnOldContras").on("click", function () { fetchContras("/contra/get-old-cont
 
 $("#btnContrasDateWise").on("click", function () {
   const today = new Date().toISOString().split("T")[0];
-  Swal.fire({
+  Alerts.dialog({  /* was Swal.fire — centered input dialog, standardized animation */
     title: "Filter by Date Range",
     html: `
       <div style="text-align:left;padding:0 8px;">

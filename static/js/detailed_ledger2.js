@@ -4203,10 +4203,12 @@ function fetchDetailedLedger2() {
   const toDate    = document.getElementById("l2_to_date").value;
 
   if (!partyName || !fromDate || !toDate) {
-    Swal.fire("Missing Fields", "Please fill in all fields.", "warning"); return;
+    // Swal.fire("Missing Fields", "Please fill in all fields.", "warning"); return;
+    Alerts.warning("Please fill in all fields.", { title: "Missing Fields" }); return;
   }
 
-  Swal.fire({ title: "Loading Ledger…", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  // Swal.fire({ title: "Loading Ledger…", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  Alerts.loading("Loading Ledger…");
 
   fetch("/accountsReports/detailed-ledger2/", {
     method: "POST",
@@ -4216,10 +4218,12 @@ function fetchDetailedLedger2() {
     .then(res => res.json())
     .then(data => {
       Swal.close();
-      if (data.error) { Swal.fire("Error", data.error, "error"); return; }
+      // if (data.error) { Swal.fire("Error", data.error, "error"); return; }
+      if (data.error) { Alerts.error(data.error); return; }
       renderDetailedLedger2(data, partyName, fromDate, toDate);
     })
-    .catch(() => Swal.fire("Error", "Failed to fetch ledger data.", "error"));
+    // .catch(() => Swal.fire("Error", "Failed to fetch ledger data.", "error"));
+    .catch(() => Alerts.error("Failed to fetch ledger data."));
 }
 
 /* ================================================================
@@ -4230,7 +4234,8 @@ function fetchDetailedLedger2() {
 function downloadLedger2PDF(withDetails) {
   const { jsPDF } = window.jspdf;
   const d = window._ledger2Data;
-  if (!d) { Swal.fire("No Data", "Generate the ledger first.", "warning"); return; }
+  // if (!d) { Swal.fire("No Data", "Generate the ledger first.", "warning"); return; }
+  if (!d) { Alerts.warning("Generate the ledger first.", { title: "No Data" }); return; }
 
   const orientation = withDetails ? "p" : "l";
   const doc  = new jsPDF(orientation, "pt", "a4");

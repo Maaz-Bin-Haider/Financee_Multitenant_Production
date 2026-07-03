@@ -729,11 +729,13 @@ function addSerial(autoFocus = true) {
           itemInput.value  = "";
           itemPrice.value  = "";
           serialInput.classList.remove("serial-valid");
-          Swal.fire({ icon: "error", title: "Not Found", text: data.message || "Serial not found in stock." });
+          // Swal.fire({ icon: "error", title: "Not Found", text: data.message || "Serial not found in stock." });
+          Alerts.error(data.message || "Serial not found in stock.", { title: "Not Found" });
         }
         recalcAmount();
       })
-      .catch(() => Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch serial details." }));
+      // .catch(() => Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch serial details." }));
+      .catch(() => Alerts.error("Failed to fetch serial details."));
   });
 
   row.appendChild(serialInput);
@@ -769,7 +771,8 @@ function submitReturn(event) {
 
   const partyName = document.getElementById("search_name").value.trim();
   if (!partyName) {
-    Swal.fire({ icon: "warning", title: "Missing Party", text: "Enter a party name first." });
+    // Swal.fire({ icon: "warning", title: "Missing Party", text: "Enter a party name first." });
+    Alerts.warning("Enter a party name first.", { title: "Missing Party" });
     return;
   }
 
@@ -778,7 +781,8 @@ function submitReturn(event) {
                        .map(i => i.value.trim()).filter(Boolean);
 
   if (serials.length === 0) {
-    Swal.fire({ icon: "warning", title: "No Serials", text: "Enter at least one serial number." });
+    // Swal.fire({ icon: "warning", title: "No Serials", text: "Enter at least one serial number." });
+    Alerts.warning("Enter at least one serial number.", { title: "No Serials" });
     return;
   }
 
@@ -799,12 +803,15 @@ function submitReturn(event) {
   .then(r => r.json())
   .then(data => {
     if (data.success)
-      Swal.fire({ icon: "success", title: "✅ Success", text: data.message || "Return saved successfully!", timer: 1500, showConfirmButton: false })
+      // Swal.fire({ icon: "success", title: "✅ Success", text: data.message || "Return saved successfully!", timer: 1500, showConfirmButton: false })
+      Alerts.success(data.message || "Return saved successfully!")
           .then(() => window.location.reload());
     else
-      Swal.fire({ icon: "error", title: "Error", text: data.message || "Failed to save return." });
+      // Swal.fire({ icon: "error", title: "Error", text: data.message || "Failed to save return." });
+      Alerts.error(data.message || "Failed to save return.");
   })
-  .catch(err => Swal.fire({ icon: "error", title: "Network Error", text: err.message }));
+  // .catch(err => Swal.fire({ icon: "error", title: "Network Error", text: err.message }));
+  .catch(err => Alerts.error(err.message, { title: "Network Error" }));
 }
 
 // ── renderPurchaseReturnData — populate card from navigation response ──────────
@@ -882,9 +889,10 @@ async function navigatePurchaseReturn(action) {
     let data = await res.json();
 
     if (data.success === false)
-      return Swal.fire({ icon: "info", title: "End of Records",
-        text: data.message || "No more purchase returns in this direction.",
-        toast: true, position: "top-end", timer: 2000, showConfirmButton: false });
+      // return Swal.fire({ icon: "info", title: "End of Records",
+      //   text: data.message || "No more purchase returns in this direction.",
+      //   toast: true, position: "top-end", timer: 2000, showConfirmButton: false });
+      return Alerts.notify(data.message || "No more purchase returns in this direction.", { title: "End of Records" });
 
     if (typeof data === "string") { try { data = JSON.parse(data); } catch {} }
     if (typeof data === "object" && !data.hasOwnProperty("purchase_return_id")) {
@@ -892,7 +900,8 @@ async function navigatePurchaseReturn(action) {
     }
     renderPurchaseReturnData(data);
   } catch (e) {
-    Swal.fire({ icon: "error", title: "Error", text: e.message });
+    // Swal.fire({ icon: "error", title: "Error", text: e.message });
+    Alerts.error(e.message);
   }
 }
 
@@ -900,16 +909,22 @@ async function navigatePurchaseReturn(action) {
 const deleteBtn = document.getElementById("deleteBtn");
 function confirmDelete(e) {
   e.preventDefault();
-  Swal.fire({
+  // Swal.fire({
+  //   title: "Are you sure?",
+  //   text:  "This purchase return will be permanently deleted!",
+  //   icon:  "warning",
+  //   showCancelButton:    true,
+  //   confirmButtonColor:  "#d33",
+  //   cancelButtonColor:   "#3085d6",
+  //   confirmButtonText:   "Yes, delete it!"
+  // }).then(result => {
+  //   if (result.isConfirmed) {
+  Alerts.confirm({
     title: "Are you sure?",
     text:  "This purchase return will be permanently deleted!",
-    icon:  "warning",
-    showCancelButton:    true,
-    confirmButtonColor:  "#d33",
-    cancelButtonColor:   "#3085d6",
-    confirmButtonText:   "Yes, delete it!"
-  }).then(result => {
-    if (result.isConfirmed) {
+    confirmText: "Yes, delete it!", danger: true,
+  }).then(confirmed => {
+    if (confirmed) {
       deleteBtn.removeEventListener("click", confirmDelete);
       deleteBtn.setAttribute("clicked", "true");
       document.getElementById("purchaseReturnForm").requestSubmit(deleteBtn);
@@ -995,7 +1010,8 @@ async function fetchPurchaseReturnSummary(from = null, to = null) {
     const data = await fetch(url).then(r => r.json());
 
     if (!data.success && !Array.isArray(data))
-      return Swal.fire({ icon: "error", title: "Error", text: data.message || "Failed to fetch summary." });
+      // return Swal.fire({ icon: "error", title: "Error", text: data.message || "Failed to fetch summary." });
+      return Alerts.error(data.message || "Failed to fetch summary.");
 
     let rows = "";
     if (Array.isArray(data) && data.length > 0) {
@@ -1034,7 +1050,7 @@ async function fetchPurchaseReturnSummary(from = null, to = null) {
         </table>
       </div>`;
 
-    Swal.fire({
+    Alerts.dialog({  /* was Swal.fire — centered detail view, standardized animation */
       title: "↩️ Purchase Return History", html, width: "750px",
       confirmButtonText: "Close", showConfirmButton: true,
       allowEscapeKey: true, allowOutsideClick: false,
@@ -1044,7 +1060,8 @@ async function fetchPurchaseReturnSummary(from = null, to = null) {
       }
     });
   } catch (err) {
-    Swal.fire({ icon: "error", title: "Network Error", text: err.message });
+    // Swal.fire({ icon: "error", title: "Network Error", text: err.message });
+    Alerts.error(err.message, { title: "Network Error" });
   }
 }
 
@@ -1059,7 +1076,7 @@ function purchaseReturnHistory()  { fetchPurchaseReturnSummary(); }
 
 function purchaseReturnDateWise() {
   const today = new Date().toISOString().split("T")[0];
-  Swal.fire({
+  Alerts.dialog({  /* was Swal.fire — centered input dialog, standardized animation */
     title: "📅 Select Date Range",
     html: `<label>From Date</label><br>
            <input type="date" id="fromDate" class="swal2-input" style="width:70%">
@@ -1084,7 +1101,8 @@ function viewPurchaseReturnDetails(id) {
 // ── PDF Download ──────────────────────────────────────────────────────────────
 function downloadReturnPDF() {
   const { jsPDF } = window.jspdf;
-  if (!jsPDF) { Swal.fire({ icon: "error", title: "PDF Error", text: "PDF library not loaded." }); return; }
+  // if (!jsPDF) { Swal.fire({ icon: "error", title: "PDF Error", text: "PDF library not loaded." }); return; }
+  if (!jsPDF) { Alerts.error("PDF library not loaded.", { title: "PDF Error" }); return; }
 
   const returnId  = document.getElementById("current_return_id").value || "NEW";
   const vendor    = document.getElementById("search_name").value || "—";

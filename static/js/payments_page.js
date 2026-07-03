@@ -610,19 +610,20 @@ function navigatePayment(action) {
     .then(res => res.json())
     .then(data => {
       if (data.error) {
-        Swal.fire({
-          title:               "End of Records",
-          text:                action === "previous"
-                                 ? "You are at the first payment."
-                                 : "You are at the latest payment.",
-          icon:                "info",
-          confirmButtonColor:  "#2563eb",
-          confirmButtonText:   "OK",
-          toast:               true,
-          position:            "top-end",
-          timer:               2000,
-          showConfirmButton:   false
-        });
+        // Swal.fire({
+        //   title:               "End of Records",
+        //   text:                action === "previous"
+        //                          ? "You are at the first payment."
+        //                          : "You are at the latest payment.",
+        //   icon:                "info",
+        //   confirmButtonColor:  "#2563eb",
+        //   confirmButtonText:   "OK",
+        //   toast:               true,
+        //   position:            "top-end",
+        //   timer:               2000,
+        //   showConfirmButton:   false
+        // });
+        Alerts.notify(action === "previous" ? "You are at the first payment." : "You are at the latest payment.", { title: "End of Records" });
         return;
       }
       populateForm(data);
@@ -640,17 +641,27 @@ document.addEventListener("DOMContentLoaded", function () {
     const btn = e.submitter;
     if (btn && btn.value === "delete" && !confirmedDelete) {
       e.preventDefault();
-      Swal.fire({
-        title:              "Delete this payment?",
-        text:               "This action cannot be undone.",
-        icon:               "warning",
-        showCancelButton:   true,
-        confirmButtonColor: "#dc2626",
-        cancelButtonColor:  "#6b7280",
-        confirmButtonText:  "Yes, delete",
-        cancelButtonText:   "Cancel"
-      }).then(result => {
-        if (result.isConfirmed) {
+      // Swal.fire({
+      //   title:              "Delete this payment?",
+      //   text:               "This action cannot be undone.",
+      //   icon:               "warning",
+      //   showCancelButton:   true,
+      //   confirmButtonColor: "#dc2626",
+      //   cancelButtonColor:  "#6b7280",
+      //   confirmButtonText:  "Yes, delete",
+      //   cancelButtonText:   "Cancel"
+      // }).then(result => {
+      //   if (result.isConfirmed) {
+      //     confirmedDelete = true;
+      //     form.requestSubmit(btn);
+      //   }
+      // });
+      Alerts.confirm({
+        title: "Delete this payment?",
+        text: "This action cannot be undone.",
+        confirmText: "Yes, delete", danger: true
+      }).then(confirmed => {
+        if (confirmed) {
           confirmedDelete = true;
           form.requestSubmit(btn);
         }
@@ -667,20 +678,22 @@ function fetchPayments(url) {
     type:     "GET",
     dataType: "json",
     beforeSend: function () {
-      Swal.fire({
-        title:             "Loading…",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading()
-      });
+      // Swal.fire({
+      //   title:             "Loading…",
+      //   allowOutsideClick: false,
+      //   didOpen: () => Swal.showLoading()
+      // });
+      Alerts.loading("Loading…");
     },
     success: function (response) {
       if (!response || response.length === 0) {
-        Swal.fire({
-          title: "No Payments Found",
-          text:  "No payments match this query.",
-          icon:  "info",
-          confirmButtonColor: "#2563eb"
-        });
+        // Swal.fire({
+        //   title: "No Payments Found",
+        //   text:  "No payments match this query.",
+        //   icon:  "info",
+        //   confirmButtonColor: "#2563eb"
+        // });
+        Alerts.notify("No payments match this query.", { title: "No Payments Found" });
         return;
       }
 
@@ -728,7 +741,7 @@ function fetchPayments(url) {
 
       html += `</div>`;
 
-      Swal.fire({
+      Alerts.dialog({  /* was Swal.fire — centered detail view, standardized animation */
         title:             "📑 Payment History",
         html:              html,
         width:             "660px",
@@ -769,12 +782,13 @@ function fetchPayments(url) {
       });
     },
     error: function () {
-      Swal.fire({
-        title: "Error",
-        text:  "Could not load payments. Please try again.",
-        icon:  "error",
-        confirmButtonColor: "#dc2626"
-      });
+      // Swal.fire({
+      //   title: "Error",
+      //   text:  "Could not load payments. Please try again.",
+      //   icon:  "error",
+      //   confirmButtonColor: "#dc2626"
+      // });
+      Alerts.error("Could not load payments. Please try again.");
     }
   });
 }
@@ -787,7 +801,7 @@ $("#btnOldPayments").on("click", function () {
 /* Date-wise button */
 $("#btnVendorPayments").on("click", function () {
   const today = new Date().toISOString().split("T")[0];
-  Swal.fire({
+  Alerts.dialog({  /* was Swal.fire — centered input dialog, standardized animation */
     title:             "Filter by Date Range",
     html: `
       <div style="text-align:left;padding:0 8px;">

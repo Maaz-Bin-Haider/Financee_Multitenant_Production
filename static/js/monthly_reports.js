@@ -34,7 +34,8 @@ function mprFmtDate(str) {
 }
 
 function mprLoader(msg = 'Generating report…') {
-  Swal.fire({ title: msg, didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  // Swal.fire({ title: msg, didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  Alerts.loading(msg);
 }
 
 /* ─────────────────────────── Report switcher ─────────────────────────── */
@@ -67,7 +68,8 @@ function mprRenderPositionForm() {
 
 async function mprFetchPosition() {
   const asOf = document.getElementById('mpr-as-of-date')?.value;
-  if (!asOf) { Swal.fire('Missing date', 'Please choose an as-of date.', 'warning'); return; }
+  // if (!asOf) { Swal.fire('Missing date', 'Please choose an as-of date.', 'warning'); return; }
+  if (!asOf) { Alerts.warning('Please choose an as-of date.', { title: 'Missing date' }); return; }
 
   mprLoader('Fetching company position…');
   try {
@@ -78,12 +80,14 @@ async function mprFetchPosition() {
     });
     const data = await res.json();
     Swal.close();
-    if (!res.ok || data.error) { Swal.fire('Error', data.error || 'Request failed.', 'error'); return; }
+    // if (!res.ok || data.error) { Swal.fire('Error', data.error || 'Request failed.', 'error'); return; }
+    if (!res.ok || data.error) { Alerts.error(data.error || 'Request failed.'); return; }
     _mprLastData = { ...data, report_type: 'position' };
     mprRenderPosition(data);
   } catch (e) {
     Swal.close();
-    Swal.fire('Error', 'Could not fetch data. ' + e.message, 'error');
+    // Swal.fire('Error', 'Could not fetch data. ' + e.message, 'error');
+    Alerts.error('Could not fetch data. ' + e.message);
   }
 }
 
@@ -157,8 +161,10 @@ function mprRenderIncomeForm() {
 async function mprFetchIncome() {
   const from = document.getElementById('mpr-from-date')?.value;
   const to   = document.getElementById('mpr-to-date')?.value;
-  if (!from || !to) { Swal.fire('Missing dates', 'Please choose both dates.', 'warning'); return; }
-  if (from > to)    { Swal.fire('Invalid range', 'From date must be before To date.', 'warning'); return; }
+  // if (!from || !to) { Swal.fire('Missing dates', 'Please choose both dates.', 'warning'); return; }
+  // if (from > to)    { Swal.fire('Invalid range', 'From date must be before To date.', 'warning'); return; }
+  if (!from || !to) { Alerts.warning('Please choose both dates.', { title: 'Missing dates' }); return; }
+  if (from > to)    { Alerts.warning('From date must be before To date.', { title: 'Invalid range' }); return; }
 
   mprLoader('Fetching income statement…');
   try {
@@ -169,12 +175,14 @@ async function mprFetchIncome() {
     });
     const data = await res.json();
     Swal.close();
-    if (!res.ok || data.error) { Swal.fire('Error', data.error || 'Request failed.', 'error'); return; }
+    // if (!res.ok || data.error) { Swal.fire('Error', data.error || 'Request failed.', 'error'); return; }
+    if (!res.ok || data.error) { Alerts.error(data.error || 'Request failed.'); return; }
     _mprLastData = { ...data, report_type: 'income' };
     mprRenderIncome(data);
   } catch (e) {
     Swal.close();
-    Swal.fire('Error', 'Could not fetch data. ' + e.message, 'error');
+    // Swal.fire('Error', 'Could not fetch data. ' + e.message, 'error');
+    Alerts.error('Could not fetch data. ' + e.message);
   }
 }
 

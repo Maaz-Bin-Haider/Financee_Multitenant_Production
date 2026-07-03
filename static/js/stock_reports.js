@@ -20,7 +20,8 @@ function getCSRFToken() {
 }
 
 function showLoader(msg = "Loading…") {
-  Swal.fire({ title: msg, didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  // Swal.fire({ title: msg, didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  Alerts.loading(msg);
 }
 
 function fmt(date) {
@@ -132,15 +133,18 @@ function _fetchDirect(url, title, subtitle = "") {
   showLoader(`Loading ${title}…`);
   fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() } })
   .then(r => r.json())
-  .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
-  .catch(() => Swal.fire("Error", "Unable to fetch data.", "error"));
+  // .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
+  .then(data => { Swal.close(); data.error ? Alerts.error(data.error) : renderTable(data); })
+  // .catch(() => Swal.fire("Error", "Unable to fetch data.", "error"));
+  .catch(() => Alerts.error("Unable to fetch data."));
 }
 
 function fetchItemHistory() {
   const item = $("#item_name").val().trim();
   const from = $("#from_date").val();
   const to   = $("#to_date").val();
-  if (!item) { Swal.fire("Missing Item", "Please enter an item name.", "warning"); return; }
+  // if (!item) { Swal.fire("Missing Item", "Please enter an item name.", "warning"); return; }
+  if (!item) { Alerts.warning("Please enter an item name.", { title: "Missing Item" }); return; }
 
   _rMeta = { title: "Item History", subtitle: `History for: ${item}`,
              filters: { Item: item, From: fmt(from), To: fmt(to) } };
@@ -151,13 +155,16 @@ function fetchItemHistory() {
     body: JSON.stringify({ item_name: item, from_date: from, to_date: to })
   })
   .then(r => r.json())
-  .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
-  .catch(() => Swal.fire("Error", "Unable to fetch item history.", "error"));
+  // .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
+  .then(data => { Swal.close(); data.error ? Alerts.error(data.error) : renderTable(data); })
+  // .catch(() => Swal.fire("Error", "Unable to fetch item history.", "error"));
+  .catch(() => Alerts.error("Unable to fetch item history."));
 }
 
 function _fetchSerial(url, title) {
   const serial = $("#serial_input").val().trim();
-  if (!serial) { Swal.fire("Missing Serial", "Please enter a serial number.", "warning"); return; }
+  // if (!serial) { Swal.fire("Missing Serial", "Please enter a serial number.", "warning"); return; }
+  if (!serial) { Alerts.warning("Please enter a serial number.", { title: "Missing Serial" }); return; }
   _rMeta = { title, subtitle: `Serial: ${serial}`, filters: { Serial: serial } };
   showLoader(`Loading ${title}…`);
   fetch(url, {
@@ -166,8 +173,10 @@ function _fetchSerial(url, title) {
     body: JSON.stringify({ serial })
   })
   .then(r => r.json())
-  .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
-  .catch(() => Swal.fire("Error", "Unable to fetch serial ledger.", "error"));
+  // .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
+  .then(data => { Swal.close(); data.error ? Alerts.error(data.error) : renderTable(data); })
+  // .catch(() => Swal.fire("Error", "Unable to fetch serial ledger.", "error"));
+  .catch(() => Alerts.error("Unable to fetch serial ledger."));
 }
 
 function fetchSerialLedger()             { _fetchSerial("/accountsReports/serial-ledger/",               "Serial Ledger"); }
@@ -177,7 +186,8 @@ function fetchSerialLedgerSaleOnly()     { _fetchSerial("/accountsReports/serial
 
 function fetchItemDetail() {
   const item = $("#item_detail_name").val().trim();
-  if (!item) { Swal.fire("Missing Item", "Please enter an item name.", "warning"); return; }
+  // if (!item) { Swal.fire("Missing Item", "Please enter an item name.", "warning"); return; }
+  if (!item) { Alerts.warning("Please enter an item name.", { title: "Missing Item" }); return; }
   _rMeta = { title: "Item Detail", subtitle: `Detail for: ${item}`, filters: { Item: item } };
   showLoader("Loading item detail…");
   fetch("/accountsReports/item-detail/", {
@@ -186,8 +196,10 @@ function fetchItemDetail() {
     body: JSON.stringify({ item_name: item })
   })
   .then(r => r.json())
-  .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
-  .catch(() => Swal.fire("Error", "Unable to fetch item detail.", "error"));
+  // .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
+  .then(data => { Swal.close(); data.error ? Alerts.error(data.error) : renderTable(data); })
+  // .catch(() => Swal.fire("Error", "Unable to fetch item detail.", "error"));
+  .catch(() => Alerts.error("Unable to fetch item detail."));
 }
 
 // ═══════════════════════════════════════════
@@ -263,7 +275,8 @@ $(document).on("click", "#download_pdf", function () {
     if (cells.length && !cells[0].includes("No records")) rowData.push(cells);
   });
 
-  if (!rowData.length) { Swal.fire("No Data", "Nothing visible to export.", "warning"); return; }
+  // if (!rowData.length) { Swal.fire("No Data", "Nothing visible to export.", "warning"); return; }
+  if (!rowData.length) { Alerts.warning("Nothing visible to export.", { title: "No Data" }); return; }
 
   const doc   = new jsPDF("l", "pt", "a4");   // landscape — stock tables tend to be wide
   const pW    = doc.internal.pageSize.width;
@@ -321,7 +334,8 @@ $(document).on("click", "#download_pdf", function () {
 // ═══════════════════════════════════════════
 $(document).on("click", "#download_csv", function () {
   const tbl = document.getElementById("reportTable");
-  if (!tbl) { Swal.fire("No Data", "Nothing to export.", "warning"); return; }
+  // if (!tbl) { Swal.fire("No Data", "Nothing to export.", "warning"); return; }
+  if (!tbl) { Alerts.warning("Nothing to export.", { title: "No Data" }); return; }
 
   const m    = _rMeta;
   const rows = [];

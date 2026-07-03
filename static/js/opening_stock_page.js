@@ -233,10 +233,11 @@
   function openBulkForRow(row, prefill = "") {
     const itemName = _norm(row.querySelector(".item_name") && row.querySelector(".item_name").value);
     if (!itemName) {
-      Swal.fire({ icon: "warning", title: "Select Item First", text: "Please choose an item before pasting bulk serials." });
+      // Swal.fire({ icon: "warning", title: "Select Item First", text: "Please choose an item before pasting bulk serials." });
+      Alerts.warning("Please choose an item before pasting bulk serials.", { title: "Select Item First" });
       return;
     }
-    Swal.fire({
+    Alerts.dialog({  /* was Swal.fire — centered input dialog, standardized animation */
       title: "📋 Bulk Paste — " + esc(itemName),
       html: `<div style="text-align:left;font-size:13px;color:#6b7280;margin-bottom:10px;line-height:1.5;">
                Paste serial numbers (newline, tab, comma, or semicolon separated).<br>
@@ -263,7 +264,7 @@
       setTimeout(() => revalidateRowSerials(row), 100);
       calculateTotal();
       const totalDups = intraDups + crossDups;
-      Swal.fire({
+      Alerts.dialog({  /* was Swal.fire — centered rich-content result summary */
         icon: accepted.length ? "success" : "warning", title: "Bulk Serial Result",
         html: `<div style="text-align:left;line-height:1.8;font-size:14px;">
                  <div>📥 Total pasted: <b>${tokens.length}</b></div>
@@ -347,8 +348,10 @@
 
   function save() {
     const { items, bad } = collectItems();
-    if (bad) { Swal.fire({ icon: "warning", title: "Check your entries", text: bad }); return; }
-    if (!items.length) { Swal.fire({ icon: "warning", title: "Nothing to save", text: "Add at least one item with serials." }); return; }
+    // if (bad) { Swal.fire({ icon: "warning", title: "Check your entries", text: bad }); return; }
+    // if (!items.length) { Swal.fire({ icon: "warning", title: "Nothing to save", text: "Add at least one item with serials." }); return; }
+    if (bad) { Alerts.warning(bad, { title: "Check your entries" }); return; }
+    if (!items.length) { Alerts.warning("Add at least one item with serials.", { title: "Nothing to save" }); return; }
     const payload = {
       as_of_date: document.getElementById("as_of_date").value || null,
       vendor_name: _norm(document.getElementById("search_name").value) || null,
@@ -359,10 +362,12 @@
     postJSON(U.create, payload).then(({ ok, data }) => {
       btn.disabled = false;
       if (ok && data.status === "success") {
-        Swal.fire({ icon: "success", title: "Opening stock saved", text: `${data.units} unit(s) across ${data.items} item(s) — total ${fmt(data.total_cost)}.` });
+        // Swal.fire({ icon: "success", title: "Opening stock saved", text: `${data.units} unit(s) across ${data.items} item(s) — total ${fmt(data.total_cost)}.` });
+        Alerts.success(`${data.units} unit(s) across ${data.items} item(s) — total ${fmt(data.total_cost)}.`, { title: "Opening stock saved" });
         resetForm(); loadList(); loadOBE();
       } else {
-        Swal.fire({ icon: "error", title: "Could not save", text: (data && data.message) || "Something went wrong." });
+        // Swal.fire({ icon: "error", title: "Could not save", text: (data && data.message) || "Something went wrong." });
+        Alerts.error((data && data.message) || "Something went wrong.", { title: "Could not save" });
       }
     });
   }
@@ -406,7 +411,8 @@
   const modal = document.getElementById("details-modal");
   function viewDetails(id) {
     fetch(U.details + "?id=" + encodeURIComponent(id)).then((r) => r.json()).then((d) => {
-      if (!d || d.error) { Swal.fire({ icon: "error", title: "Not found", text: (d && d.error) || "" }); return; }
+      // if (!d || d.error) { Swal.fire({ icon: "error", title: "Not found", text: (d && d.error) || "" }); return; }
+      if (!d || d.error) { Alerts.error((d && d.error) || "", { title: "Not found" }); return; }
       document.getElementById("details-title").textContent = "Opening Stock #" + d.opening_stock_id + (d.vendor ? " · " + d.vendor : "");
       const items = (d.items || []).map((it) => {
         const serials = (it.serials || []).map((s) =>
@@ -430,18 +436,26 @@
   }
 
   function deleteLoad(id) {
-    Swal.fire({
-      icon: "warning", title: "Delete this opening stock?",
+    // Swal.fire({
+    //   icon: "warning", title: "Delete this opening stock?",
+    //   text: "This removes the units and reverses the opening entry. Blocked if any unit was already sold.",
+    //   showCancelButton: true, confirmButtonText: "Delete", confirmButtonColor: "#dc2626",
+    // }).then((res) => {
+    //   if (!res.isConfirmed) return;
+    Alerts.confirm({
+      title: "Delete this opening stock?",
       text: "This removes the units and reverses the opening entry. Blocked if any unit was already sold.",
-      showCancelButton: true, confirmButtonText: "Delete", confirmButtonColor: "#dc2626",
-    }).then((res) => {
-      if (!res.isConfirmed) return;
+      confirmText: "Delete", danger: true,
+    }).then((confirmed) => {
+      if (!confirmed) return;
       postJSON(U.del, { id: Number(id) }).then(({ ok, data }) => {
         if (ok && data.status === "success") {
-          Swal.fire({ icon: "success", title: "Deleted", timer: 1200, showConfirmButton: false });
+          // Swal.fire({ icon: "success", title: "Deleted", timer: 1200, showConfirmButton: false });
+          Alerts.success("", { title: "Deleted" });
           loadList(); loadOBE();
         } else {
-          Swal.fire({ icon: "error", title: "Cannot delete", text: (data && data.message) || "" });
+          // Swal.fire({ icon: "error", title: "Cannot delete", text: (data && data.message) || "" });
+          Alerts.error((data && data.message) || "", { title: "Cannot delete" });
         }
       });
     });
@@ -470,19 +484,28 @@
   const reclassBtn = document.getElementById("reclass-btn");
   if (reclassBtn) {
     reclassBtn.addEventListener("click", () => {
-      Swal.fire({
+      // Swal.fire({
+      //   icon: "question", title: "Reclassify to Owner's Capital?",
+      //   text: "Move the entire Opening Balance Equity into Owner's Capital in one journal entry. Do this only after all opening balances (stock, parties, cash) are entered.",
+      //   showCancelButton: true, confirmButtonText: "Reclassify",
+      // }).then((res) => {
+      //   if (!res.isConfirmed) return;
+      Alerts.confirm({
         icon: "question", title: "Reclassify to Owner's Capital?",
         text: "Move the entire Opening Balance Equity into Owner's Capital in one journal entry. Do this only after all opening balances (stock, parties, cash) are entered.",
-        showCancelButton: true, confirmButtonText: "Reclassify",
-      }).then((res) => {
-        if (!res.isConfirmed) return;
+        confirmText: "Reclassify",
+      }).then((confirmed) => {
+        if (!confirmed) return;
         postJSON(U.reclassify, {}).then(({ ok, data }) => {
           if (ok && (data.status === "success" || data.status === "noop")) {
-            Swal.fire({ icon: "success", title: data.status === "noop" ? "Already cleared" : "Reclassified",
-              text: data.status === "noop" ? "" : `Moved ${fmt(data.amount)} into Owner's Capital.` });
+            // Swal.fire({ icon: "success", title: data.status === "noop" ? "Already cleared" : "Reclassified",
+            //   text: data.status === "noop" ? "" : `Moved ${fmt(data.amount)} into Owner's Capital.` });
+            Alerts.success(data.status === "noop" ? "" : `Moved ${fmt(data.amount)} into Owner's Capital.`,
+              { title: data.status === "noop" ? "Already cleared" : "Reclassified" });
             loadOBE();
           } else {
-            Swal.fire({ icon: "error", title: "Could not reclassify", text: (data && data.message) || "" });
+            // Swal.fire({ icon: "error", title: "Could not reclassify", text: (data && data.message) || "" });
+            Alerts.error((data && data.message) || "", { title: "Could not reclassify" });
           }
         });
       });

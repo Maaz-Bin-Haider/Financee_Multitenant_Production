@@ -74,7 +74,8 @@ The suite surfaced genuine **tenant schema drift** — idempotent `tenancy/sql/`
 ## Gotchas
 
 - **Django version:** the `financee/settings.py` header comment says Django 5.2, but `requirements*.txt` pin **Django 6.0.6**. Dependency files are the source of truth.
-- Some view files keep older **commented-out implementations**; the active function is the uncommented one, usually later in the file.
+- Some view files keep older **commented-out implementations**; the active function is the uncommented one, usually later in the file. The same applies to the alerts migration: the previous inline `Swal.fire` calls in `static/js/*.js` and feature templates were commented out (not deleted) next to their `Alerts.*` replacements.
+- **Alerts:** all user-facing alerts go through the `Alerts` helper (`static/js/alerts.js`, styled by `static/css/alerts.css`, loaded in `base.html`). Use `Alerts.success/error/warning/notify/confirm/loading/dialog` — don't call `Swal.fire` directly. Fixed conventions (positions, animations, which alerts get a confirmation dialog) are documented in `PROJECT_CONTEXT.md` → Frontend Alert Layer.
 - Retired **Profit Reports** routes (`/accountsReports/company-valuation/`, `/sale-wise-report/`) 404 by design; their DB objects and permissions were intentionally left in place for compatibility. Don't remove them without an audit.
 - The admin uses a **custom admin site** (`financee/admin_site.py`), not Django's default. Admin styling rules (muted palette, no inline styles, single-column responsive) are documented in `PROJECT_CONTEXT.md` → Admin UI Notes; put styles in `static/css/financee_admin.css`.
 - Deployment: Docker stack in `deploy/` (Postgres 16, Redis, Gunicorn, Nginx). Static is collected at image build with `ManifestStaticFilesStorage` and synced into the shared volume by the entrypoint.

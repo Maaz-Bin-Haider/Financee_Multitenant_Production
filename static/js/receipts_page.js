@@ -607,18 +607,19 @@ function navigateReceipt(action) {
     .then(res => res.json())
     .then(data => {
       if (data.error) {
-        Swal.fire({
-          title:              "End of Records",
-          text:               action === "previous"
-                                ? "You are at the first receipt."
-                                : "You are at the latest receipt.",
-          icon:               "info",
-          confirmButtonColor: "#2563eb",
-          toast:              true,
-          position:           "top-end",
-          timer:              2000,
-          showConfirmButton:  false
-        });
+        // Swal.fire({
+        //   title:              "End of Records",
+        //   text:               action === "previous"
+        //                         ? "You are at the first receipt."
+        //                         : "You are at the latest receipt.",
+        //   icon:               "info",
+        //   confirmButtonColor: "#2563eb",
+        //   toast:              true,
+        //   position:           "top-end",
+        //   timer:              2000,
+        //   showConfirmButton:  false
+        // });
+        Alerts.notify(action === "previous" ? "You are at the first receipt." : "You are at the latest receipt.", { title: "End of Records" });
         return;
       }
       populateForm(data);
@@ -636,17 +637,27 @@ document.addEventListener("DOMContentLoaded", function () {
     const btn = e.submitter;
     if (btn && btn.value === "delete" && !confirmedDelete) {
       e.preventDefault();
-      Swal.fire({
-        title:              "Delete this receipt?",
-        text:               "This action cannot be undone.",
-        icon:               "warning",
-        showCancelButton:   true,
-        confirmButtonColor: "#dc2626",
-        cancelButtonColor:  "#6b7280",
-        confirmButtonText:  "Yes, delete",
-        cancelButtonText:   "Cancel"
-      }).then(result => {
-        if (result.isConfirmed) {
+      // Swal.fire({
+      //   title:              "Delete this receipt?",
+      //   text:               "This action cannot be undone.",
+      //   icon:               "warning",
+      //   showCancelButton:   true,
+      //   confirmButtonColor: "#dc2626",
+      //   cancelButtonColor:  "#6b7280",
+      //   confirmButtonText:  "Yes, delete",
+      //   cancelButtonText:   "Cancel"
+      // }).then(result => {
+      //   if (result.isConfirmed) {
+      //     confirmedDelete = true;
+      //     form.requestSubmit(btn);
+      //   }
+      // });
+      Alerts.confirm({
+        title: "Delete this receipt?",
+        text: "This action cannot be undone.",
+        confirmText: "Yes, delete", danger: true
+      }).then(confirmed => {
+        if (confirmed) {
           confirmedDelete = true;
           form.requestSubmit(btn);
         }
@@ -663,20 +674,22 @@ function fetchReceipts(url) {
     type:     "GET",
     dataType: "json",
     beforeSend: function () {
-      Swal.fire({
-        title:             "Loading…",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading()
-      });
+      // Swal.fire({
+      //   title:             "Loading…",
+      //   allowOutsideClick: false,
+      //   didOpen: () => Swal.showLoading()
+      // });
+      Alerts.loading("Loading…");
     },
     success: function (response) {
       if (!response || response.length === 0) {
-        Swal.fire({
-          title: "No Receipts Found",
-          text:  "No receipts match this query.",
-          icon:  "info",
-          confirmButtonColor: "#059669"
-        });
+        // Swal.fire({
+        //   title: "No Receipts Found",
+        //   text:  "No receipts match this query.",
+        //   icon:  "info",
+        //   confirmButtonColor: "#059669"
+        // });
+        Alerts.notify("No receipts match this query.", { title: "No Receipts Found" });
         return;
       }
 
@@ -724,7 +737,7 @@ function fetchReceipts(url) {
 
       html += `</div>`;
 
-      Swal.fire({
+      Alerts.dialog({  /* was Swal.fire — centered detail view, standardized animation */
         title:             "📑 Receipt History",
         html:              html,
         width:             "660px",
@@ -765,12 +778,13 @@ function fetchReceipts(url) {
       });
     },
     error: function () {
-      Swal.fire({
-        title: "Error",
-        text:  "Could not load receipts. Please try again.",
-        icon:  "error",
-        confirmButtonColor: "#dc2626"
-      });
+      // Swal.fire({
+      //   title: "Error",
+      //   text:  "Could not load receipts. Please try again.",
+      //   icon:  "error",
+      //   confirmButtonColor: "#dc2626"
+      // });
+      Alerts.error("Could not load receipts. Please try again.");
     }
   });
 }
@@ -783,7 +797,7 @@ $("#btnOldReceipts").on("click", function () {
 /* Date-wise button */
 $("#btnCustomerReceipts").on("click", function () {
   const today = new Date().toISOString().split("T")[0];
-  Swal.fire({
+  Alerts.dialog({  /* was Swal.fire — centered input dialog, standardized animation */
     title:             "Filter by Date Range",
     html: `
       <div style="text-align:left;padding:0 8px;">

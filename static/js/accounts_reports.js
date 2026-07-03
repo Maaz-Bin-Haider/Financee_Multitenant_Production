@@ -21,7 +21,8 @@ function getCSRFToken() {
 }
 
 function showLoader(msg = "Loading…") {
-  Swal.fire({ title: msg, didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  // Swal.fire({ title: msg, didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+  Alerts.loading(msg);
 }
 
 function fmt(date) {
@@ -131,7 +132,8 @@ function renderLedgerForm() {
 function fetchCashLedger() {
   const from = $("#cash_from_date").val();
   const to   = $("#cash_to_date").val();
-  if (!from || !to) { Swal.fire("Missing Fields", "Please select both dates.", "warning"); return; }
+  // if (!from || !to) { Swal.fire("Missing Fields", "Please select both dates.", "warning"); return; }
+  if (!from || !to) { Alerts.warning("Please select both dates.", { title: "Missing Fields" }); return; }
 
   _rMeta = { title: "Cash Ledger", subtitle: "Cash account transactions",
              filters: { From: fmt(from), To: fmt(to) } };
@@ -143,15 +145,18 @@ function fetchCashLedger() {
     body: JSON.stringify({ from_date: from, to_date: to })
   })
   .then(r => r.json())
-  .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
-  .catch(() => Swal.fire("Error", "Unable to fetch cash ledger data.", "error"));
+  // .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
+  .then(data => { Swal.close(); data.error ? Alerts.error(data.error) : renderTable(data); })
+  // .catch(() => Swal.fire("Error", "Unable to fetch cash ledger data.", "error"));
+  .catch(() => Alerts.error("Unable to fetch cash ledger data."));
 }
 
 function fetchLedgerReport() {
   const party = $("#search_name").val().trim();
   const from  = $("#from_date").val();
   const to    = $("#to_date").val();
-  if (!party || !from || !to) { Swal.fire("Missing Fields", "Please fill all fields.", "warning"); return; }
+  // if (!party || !from || !to) { Swal.fire("Missing Fields", "Please fill all fields.", "warning"); return; }
+  if (!party || !from || !to) { Alerts.warning("Please fill all fields.", { title: "Missing Fields" }); return; }
 
   _rMeta = { title: "Party Ledger", subtitle: `Account statement for ${party}`,
              filters: { Party: party, From: fmt(from), To: fmt(to) } };
@@ -163,8 +168,10 @@ function fetchLedgerReport() {
     body: JSON.stringify({ party_name: party, from_date: from, to_date: to })
   })
   .then(r => r.json())
-  .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
-  .catch(() => Swal.fire("Error", "Unable to fetch ledger data.", "error"));
+  // .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
+  .then(data => { Swal.close(); data.error ? Alerts.error(data.error) : renderTable(data); })
+  // .catch(() => Swal.fire("Error", "Unable to fetch ledger data.", "error"));
+  .catch(() => Alerts.error("Unable to fetch ledger data."));
 }
 
 function fetchTrialBalance() {
@@ -174,8 +181,10 @@ function fetchTrialBalance() {
     method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() }
   })
   .then(r => r.json())
-  .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
-  .catch(() => Swal.fire("Error", "Unable to fetch trial balance.", "error"));
+  // .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
+  .then(data => { Swal.close(); data.error ? Alerts.error(data.error) : renderTable(data); })
+  // .catch(() => Swal.fire("Error", "Unable to fetch trial balance.", "error"));
+  .catch(() => Alerts.error("Unable to fetch trial balance."));
 }
 
 function fetchAccountsReceivable() {
@@ -185,8 +194,10 @@ function fetchAccountsReceivable() {
     method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() }
   })
   .then(async r => { const d = await r.json(); return typeof d === "string" ? JSON.parse(d) : d; })
-  .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
-  .catch(e => { console.error(e); Swal.fire("Error", "Unable to fetch Receivable.", "error"); });
+  // .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
+  .then(data => { Swal.close(); data.error ? Alerts.error(data.error) : renderTable(data); })
+  // .catch(e => { console.error(e); Swal.fire("Error", "Unable to fetch Receivable.", "error"); });
+  .catch(e => { console.error(e); Alerts.error("Unable to fetch Receivable."); });
 }
 
 function fetchAccountsPayable() {
@@ -196,8 +207,10 @@ function fetchAccountsPayable() {
     method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() }
   })
   .then(async r => { const d = await r.json(); return typeof d === "string" ? JSON.parse(d) : d; })
-  .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
-  .catch(e => { console.error(e); Swal.fire("Error", "Unable to fetch Payable.", "error"); });
+  // .then(data => { Swal.close(); data.error ? Swal.fire("Error", data.error, "error") : renderTable(data); })
+  .then(data => { Swal.close(); data.error ? Alerts.error(data.error) : renderTable(data); })
+  // .catch(e => { console.error(e); Swal.fire("Error", "Unable to fetch Payable.", "error"); });
+  .catch(e => { console.error(e); Alerts.error("Unable to fetch Payable."); });
 }
 
 // ═══════════════════════════════════════════
@@ -304,7 +317,8 @@ $(document).on("click", "#download_pdf", function () {
     if (cells.length && !cells[0].includes("No records")) rowData.push(cells);
   });
 
-  if (!rowData.length) { Swal.fire("No Data", "Nothing visible to export.", "warning"); return; }
+  // if (!rowData.length) { Swal.fire("No Data", "Nothing visible to export.", "warning"); return; }
+  if (!rowData.length) { Alerts.warning("Nothing visible to export.", { title: "No Data" }); return; }
 
   const doc    = new jsPDF("p", "pt", "a4");
   const pW     = doc.internal.pageSize.width;
@@ -384,7 +398,8 @@ $(document).on("click", "#download_pdf", function () {
 // ═══════════════════════════════════════════
 $(document).on("click", "#download_csv", function () {
   const tbl = document.getElementById("reportTable");
-  if (!tbl) { Swal.fire("No Data", "No data to export.", "warning"); return; }
+  // if (!tbl) { Swal.fire("No Data", "No data to export.", "warning"); return; }
+  if (!tbl) { Alerts.warning("No data to export.", { title: "No Data" }); return; }
 
   const allTh    = [...tbl.querySelectorAll("thead th")];
   const skipCols = allTh.reduce((a, th, i) => { if (th.dataset.noExport === "1") a.push(i); return a; }, []);

@@ -1178,8 +1178,9 @@ function handleSerialCommit(input, row) {
   // Duplicate check
   const existing = collectAllSerials(input);
   if (existing.has(raw.toUpperCase())) {
-    Swal.fire({ icon: "warning", title: "Duplicate Serial",
-      text: `Serial '${raw}' is already added to this invoice.` });
+    // Swal.fire({ icon: "warning", title: "Duplicate Serial",
+    //   text: `Serial '${raw}' is already added to this invoice.` });
+    Alerts.warning(`Serial '${raw}' is already added to this invoice.`, { title: "Duplicate Serial" });
     input.value = "";
     updateQty(row);
     input.focus();
@@ -1190,8 +1191,9 @@ function handleSerialCommit(input, row) {
   input.classList.remove("serial-valid");
   fetchItemBySerial(raw).then(data => {
     if (!data || !data.success) {
-      Swal.fire({ icon: "error", title: "Serial Not Found",
-        text: (data && data.message) || `Serial '${raw}' could not be found in stock.` });
+      // Swal.fire({ icon: "error", title: "Serial Not Found",
+      //   text: (data && data.message) || `Serial '${raw}' could not be found in stock.` });
+      Alerts.error((data && data.message) || `Serial '${raw}' could not be found in stock.`, { title: "Serial Not Found" });
       invalidateSerialCache(raw);
       input.value = "";
       updateQty(row);
@@ -1209,8 +1211,9 @@ function handleSerialCommit(input, row) {
       // Wrong item — move serial to correct row
       input.value = "";
       updateQty(row);
-      Swal.fire({ icon: "info", title: "Serial Belongs to Another Item",
-        html: `Serial <b>${escapeHtml(raw)}</b> belongs to <b>${escapeHtml(data.item_name)}</b>, not this row.<br>It has been moved to the correct row.` });
+      // Swal.fire({ icon: "info", title: "Serial Belongs to Another Item",
+      //   html: `Serial <b>${escapeHtml(raw)}</b> belongs to <b>${escapeHtml(data.item_name)}</b>, not this row.<br>It has been moved to the correct row.` });
+      Alerts.notify(`Serial ${raw} belongs to ${data.item_name}, not this row. It has been moved to the correct row.`, { title: "Serial Belongs to Another Item" });
       addSerialToItem(data.item_name, raw);
       return;
     }
@@ -1365,7 +1368,7 @@ function addItemRow(shouldFocus = true) {
 
 // ── Bulk serial dialog ───────────────────────────────────────────────────────
 function openBulkSerialsDialog() {
-  Swal.fire({
+  Alerts.dialog({  /* was Swal.fire — centered input dialog, standardized animation */
     title: "📋 Bulk Paste Serials",
     html: `
       <div style="text-align:left;font-size:13px;color:#6b7280;margin-bottom:10px;line-height:1.5;">
@@ -1411,8 +1414,9 @@ function processBulkSerialsText(rawText, { preferRow = null } = {}) {
   if (!rawText || !rawText.trim()) return;
 
   // Show loading
-  Swal.fire({ title: "Processing serials…", allowOutsideClick: false,
-    didOpen: () => Swal.showLoading() });
+  // Swal.fire({ title: "Processing serials…", allowOutsideClick: false,
+  //   didOpen: () => Swal.showLoading() });
+  Alerts.loading("Processing serials…");
 
   fetch("/sale/bulk-lookup/", {
     method: "POST",
@@ -1422,8 +1426,9 @@ function processBulkSerialsText(rawText, { preferRow = null } = {}) {
     Swal.close();
 
     if (!data || !data.success) {
-      Swal.fire({ icon: "error", title: "Bulk Lookup Failed",
-        text: (data && data.message) || "Unable to process pasted serials." });
+      // Swal.fire({ icon: "error", title: "Bulk Lookup Failed",
+      //   text: (data && data.message) || "Unable to process pasted serials." });
+      Alerts.error((data && data.message) || "Unable to process pasted serials.", { title: "Bulk Lookup Failed" });
       return;
     }
 
@@ -1506,7 +1511,7 @@ function processBulkSerialsText(rawText, { preferRow = null } = {}) {
         </ul>
       </details>` : "";
 
-    Swal.fire({
+    Alerts.dialog({  /* was Swal.fire — centered rich-content result summary */
       icon: accepted.length ? (invalid.length?"warning":"success") : "error",
       title: "Bulk Serial Result",
       html: `
@@ -1521,7 +1526,8 @@ function processBulkSerialsText(rawText, { preferRow = null } = {}) {
     });
   }).catch(() => {
     Swal.close();
-    Swal.fire({ icon: "error", title: "Network Error", text: "Could not contact server." });
+    // Swal.fire({ icon: "error", title: "Network Error", text: "Could not contact server." });
+    Alerts.error("Could not contact server.", { title: "Network Error" });
   });
 }
 
@@ -1537,8 +1543,9 @@ function buildAndSubmit(event) {
   if (!saleDate) saleDate = new Date().toISOString().slice(0, 10);
 
   if (!partyName) {
-    Swal.fire({ icon: "warning", title: "Missing Customer",
-      text: "Please select a customer / party name before saving." });
+    // Swal.fire({ icon: "warning", title: "Missing Customer",
+    //   text: "Please select a customer / party name before saving." });
+    Alerts.warning("Please select a customer / party name before saving.", { title: "Missing Customer" });
     document.getElementById("search_name").focus();
     return;
   }
@@ -1556,8 +1563,9 @@ function buildAndSubmit(event) {
   });
 
   if (items.length === 0) {
-    Swal.fire({ icon: "warning", title: "No Valid Items",
-      text: "Add at least one item row with a serial number and a price > 0." });
+    // Swal.fire({ icon: "warning", title: "No Valid Items",
+    //   text: "Add at least one item row with a serial number and a price > 0." });
+    Alerts.warning("Add at least one item row with a serial number and a price > 0.", { title: "No Valid Items" });
     return;
   }
 
@@ -1586,26 +1594,32 @@ function _submitSale(payload) {
   })
   .then(data => {
     if (data.confirm) {
-      Swal.fire({ icon: "warning", title: "Confirm Sale",
+      // Swal.fire({ icon: "warning", title: "Confirm Sale",
+      //   text: data.message || "Selling price ≤ buying price. Continue?",
+      //   showCancelButton: true, confirmButtonText: "Yes, proceed",
+      //   cancelButtonText: "Cancel", confirmButtonColor: "#2563eb" })
+      Alerts.confirm({ title: "Confirm Sale",
         text: data.message || "Selling price ≤ buying price. Continue?",
-        showCancelButton: true, confirmButtonText: "Yes, proceed",
-        cancelButtonText: "Cancel", confirmButtonColor: "#2563eb" })
-      .then(r => {
-        if (r.isConfirmed) { payload.force = true; _submitSale(payload); }
+        confirmText: "Yes, proceed" })
+      .then(confirmed => {
+        if (confirmed) { payload.force = true; _submitSale(payload); }
       });
     } else if (data.success) {
-      Swal.fire({ icon: "success", title: "Success",
-        text: data.message || "Sale saved successfully.",
-        timer: 1600, showConfirmButton: false })
+      // Swal.fire({ icon: "success", title: "Success",
+      //   text: data.message || "Sale saved successfully.",
+      //   timer: 1600, showConfirmButton: false })
+      Alerts.success(data.message || "Sale saved successfully.")
       .then(() => window.location.reload());
     } else {
-      Swal.fire({ icon: "error", title: "Error",
-        text: data.message || "Something went wrong." });
+      // Swal.fire({ icon: "error", title: "Error",
+      //   text: data.message || "Something went wrong." });
+      Alerts.error(data.message || "Something went wrong.");
     }
   })
   .catch(err => {
-    Swal.fire({ icon: "error", title: "Submission Failed",
-      text: err.message || "An unexpected error occurred." });
+    // Swal.fire({ icon: "error", title: "Submission Failed",
+    //   text: err.message || "An unexpected error occurred." });
+    Alerts.error(err.message || "An unexpected error occurred.", { title: "Submission Failed" });
   });
 }
 
@@ -1615,17 +1629,23 @@ const deleteButton = document.querySelector(".delete-btn");
 
 function confirmDelete(event) {
   event.preventDefault();
-  Swal.fire({
+  // Swal.fire({
+  //   title: "Delete this Sale?",
+  //   text: "This action cannot be undone.",
+  //   icon: "warning",
+  //   showCancelButton: true,
+  //   confirmButtonColor: "#dc2626",
+  //   cancelButtonColor: "#6b7280",
+  //   confirmButtonText: "Yes, delete",
+  //   cancelButtonText: "Cancel",
+  // }).then(result => {
+  //   if (result.isConfirmed) {
+  Alerts.confirm({
     title: "Delete this Sale?",
     text: "This action cannot be undone.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#dc2626",
-    cancelButtonColor: "#6b7280",
-    confirmButtonText: "Yes, delete",
-    cancelButtonText: "Cancel",
-  }).then(result => {
-    if (result.isConfirmed) {
+    confirmText: "Yes, delete", danger: true,
+  }).then(confirmed => {
+    if (confirmed) {
       deleteButton.removeEventListener("click", confirmDelete);
       deleteButton.click();
       setTimeout(() => deleteButton.addEventListener("click", confirmDelete), 120);
@@ -1719,7 +1739,8 @@ async function navigateSale(action) {
     );
     let data = await response.json();
     if (data.success === false) {
-      Swal.fire({ icon: "info", title: "Navigation", text: data.message || "No sale found." });
+      // Swal.fire({ icon: "info", title: "Navigation", text: data.message || "No sale found." });
+      Alerts.notify(data.message || "No sale found.", { title: "Navigation" });
       return;
     }
     if (typeof data === "string") data = JSON.parse(data);
@@ -1728,7 +1749,8 @@ async function navigateSale(action) {
     }
     renderSaleData(data);
   } catch (err) {
-    Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch sale data." });
+    // Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch sale data." });
+    Alerts.error("Failed to fetch sale data.");
   }
 }
 
@@ -1841,7 +1863,8 @@ function downloadInvoicePDF() {
   const totalQty   = document.getElementById("totalQtyCount").textContent;
 
   if (!partyName) {
-    Swal.fire({ icon: "warning", title: "No Customer", text: "Please fill in the customer name before downloading." });
+    // Swal.fire({ icon: "warning", title: "No Customer", text: "Please fill in the customer name before downloading." });
+    Alerts.warning("Please fill in the customer name before downloading.", { title: "No Customer" });
     return;
   }
 
@@ -1857,7 +1880,8 @@ function downloadInvoicePDF() {
   });
 
   if (items.length === 0) {
-    Swal.fire({ icon: "warning", title: "Nothing to Export", text: "Add at least one item with serials and price." });
+    // Swal.fire({ icon: "warning", title: "Nothing to Export", text: "Add at least one item with serials and price." });
+    Alerts.warning("Add at least one item with serials and price.", { title: "Nothing to Export" });
     return;
   }
 
@@ -1987,7 +2011,8 @@ async function fetchSaleSummary(from = null, to = null) {
     const data     = await response.json();
 
     if (!data.success && !Array.isArray(data)) {
-      Swal.fire({ icon: "error", title: "Error", text: data.message || "Failed to fetch." });
+      // Swal.fire({ icon: "error", title: "Error", text: data.message || "Failed to fetch." });
+      Alerts.error(data.message || "Failed to fetch.");
       return;
     }
 
@@ -2046,7 +2071,7 @@ async function fetchSaleSummary(from = null, to = null) {
     }
 
     disableBg();
-    Swal.fire({
+    Alerts.dialog({  /* was Swal.fire — centered detail view, standardized animation */
       title: "📜 Sale History",
       html, width: "720px",
       confirmButtonText: "Close",
@@ -2066,7 +2091,8 @@ async function fetchSaleSummary(from = null, to = null) {
       willClose: enableBg,
     });
   } catch (err) {
-    Swal.fire({ icon: "error", title: "Network Error", text: err.message || "Cannot fetch history." });
+    // Swal.fire({ icon: "error", title: "Network Error", text: err.message || "Cannot fetch history." });
+    Alerts.error(err.message || "Cannot fetch history.", { title: "Network Error" });
   }
 }
 
@@ -2080,7 +2106,7 @@ function filterSaleTable(query) {
 function saleHistory()   { fetchSaleSummary(); }
 function saleDateWise()  {
   const today = new Date().toISOString().split("T")[0];
-  Swal.fire({
+  Alerts.dialog({  /* was Swal.fire — centered input dialog, standardized animation */
     title: "📅 Select Date Range",
     html: `
       <div style="text-align:left;margin:8px 0;">

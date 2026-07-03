@@ -72,14 +72,16 @@ async function saveOpeningCash() {
       const cur = document.getElementById("opening-cash-current");
       if (cur) cur.textContent = fmtMoney(newAmount);
       if (status) { status.textContent = "Saved \u2713"; status.className = "opening-status ok"; }
-      if (window.Swal) {
-        Swal.fire({ icon: "success", title: "Opening cash saved",
-                    text: "Saved as " + fmtMoney(newAmount), timer: 1600, showConfirmButton: false });
+      if (window.Alerts) {
+        // Swal.fire({ icon: "success", title: "Opening cash saved",
+        //             text: "Saved as " + fmtMoney(newAmount), timer: 1600, showConfirmButton: false });
+        Alerts.success("Saved as " + fmtMoney(newAmount), { title: "Opening cash saved" });
       }
     } else {
       const msg = d.message || "Could not save opening cash.";
       if (status) { status.textContent = msg; status.className = "opening-status err"; }
-      if (window.Swal) Swal.fire({ icon: "error", title: "Error", text: msg });
+      // if (window.Swal) Swal.fire({ icon: "error", title: "Error", text: msg });
+      if (window.Alerts) Alerts.error(msg);
     }
   } catch (e) {
     if (status) { status.textContent = "Network error"; status.className = "opening-status err"; }

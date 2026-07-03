@@ -3205,12 +3205,13 @@ function removeSerial(row) {
 function openBulkForRow(row, prefill = "") {
   const itemName = _norm(row.querySelector(".item_name")?.value);
   if (!itemName) {
-    Swal.fire({ icon: "warning", title: "Select Item First",
-      text: "Please choose an item name before pasting bulk serials." });
+    // Swal.fire({ icon: "warning", title: "Select Item First",
+    //   text: "Please choose an item name before pasting bulk serials." });
+    Alerts.warning("Please choose an item name before pasting bulk serials.", { title: "Select Item First" });
     return;
   }
 
-  Swal.fire({
+  Alerts.dialog({  /* was Swal.fire — centered input dialog, standardized animation */
     title: `📋 Bulk Paste — ${escapeHtml(itemName)}`,
     html: `
       <div style="text-align:left;font-size:13px;color:#6b7280;margin-bottom:10px;line-height:1.5;">
@@ -3282,7 +3283,7 @@ function openBulkForRow(row, prefill = "") {
       ...(crossDups.length ? [`${crossDups.length} already in another row`] : []),
     ].join(", ");
 
-    Swal.fire({
+    Alerts.dialog({  /* was Swal.fire — centered rich-content result summary */
       icon: accepted.length ? "success" : "warning",
       title: "Bulk Serial Result",
       html: `
@@ -3354,8 +3355,9 @@ function buildAndSubmit(event) {
   if (!purchaseDate) purchaseDate = new Date().toISOString().slice(0,10);
 
   if (!partyName) {
-    Swal.fire({ icon:"warning", title:"Missing Vendor",
-      text:"Please enter a vendor / party name." });
+    // Swal.fire({ icon:"warning", title:"Missing Vendor",
+    //   text:"Please enter a vendor / party name." });
+    Alerts.warning("Please enter a vendor / party name.", { title: "Missing Vendor" });
     document.getElementById("search_name").focus();
     return;
   }
@@ -3377,8 +3379,9 @@ function buildAndSubmit(event) {
   });
 
   if (items.length === 0) {
-    Swal.fire({ icon:"warning", title:"No Valid Items",
-      text:"Add at least one item with a serial number and price > 0." });
+    // Swal.fire({ icon:"warning", title:"No Valid Items",
+    //   text:"Add at least one item with a serial number and price > 0." });
+    Alerts.warning("Add at least one item with a serial number and price > 0.", { title: "No Valid Items" });
     return;
   }
 
@@ -3397,16 +3400,19 @@ function buildAndSubmit(event) {
   .then(r => r.json())
   .then(data => {
     if (data.success) {
-      Swal.fire({ icon:"success", title:"Success",
-        text: data.message || "Purchase saved!", timer:1600, showConfirmButton:false })
+      // Swal.fire({ icon:"success", title:"Success",
+      //   text: data.message || "Purchase saved!", timer:1600, showConfirmButton:false })
+      Alerts.success(data.message || "Purchase saved!")
       .then(() => window.location.reload());
     } else {
-      Swal.fire({ icon:"error", title:"Error",
-        text: data.message || "Something went wrong." });
+      // Swal.fire({ icon:"error", title:"Error",
+      //   text: data.message || "Something went wrong." });
+      Alerts.error(data.message || "Something went wrong.");
     }
   })
-  .catch(() => Swal.fire({ icon:"error", title:"Network Error",
-    text:"Could not reach server." }));
+  // .catch(() => Swal.fire({ icon:"error", title:"Network Error",
+  //   text:"Could not reach server." }));
+  .catch(() => Alerts.error("Could not reach server.", { title: "Network Error" }));
 }
 
 
@@ -3414,12 +3420,17 @@ function buildAndSubmit(event) {
 const deleteButton = document.querySelector(".delete-btn");
 function confirmDelete(event) {
   event.preventDefault();
-  Swal.fire({
-    title:"Delete this Purchase?", text:"This cannot be undone.", icon:"warning",
-    showCancelButton:true, confirmButtonColor:"#dc2626", cancelButtonColor:"#6b7280",
-    confirmButtonText:"Yes, delete", cancelButtonText:"Cancel",
-  }).then(r => {
-    if (r.isConfirmed) {
+  // Swal.fire({
+  //   title:"Delete this Purchase?", text:"This cannot be undone.", icon:"warning",
+  //   showCancelButton:true, confirmButtonColor:"#dc2626", cancelButtonColor:"#6b7280",
+  //   confirmButtonText:"Yes, delete", cancelButtonText:"Cancel",
+  // }).then(r => {
+  //   if (r.isConfirmed) {
+  Alerts.confirm({
+    title:"Delete this Purchase?", text:"This cannot be undone.",
+    confirmText:"Yes, delete", danger: true,
+  }).then(confirmed => {
+    if (confirmed) {
       deleteButton.removeEventListener("click", confirmDelete);
       deleteButton.click();
       setTimeout(() => deleteButton.addEventListener("click", confirmDelete), 120);
@@ -3580,7 +3591,8 @@ async function navigatePurchase(action) {
     );
     let data = await res.json();
     if (data.success === false) {
-      Swal.fire({ icon:"info", title:"Navigation", text: data.message || "Not found." });
+      // Swal.fire({ icon:"info", title:"Navigation", text: data.message || "Not found." });
+      Alerts.notify(data.message || "Not found.", { title: "Navigation" });
       return;
     }
     if (typeof data === "string") data = JSON.parse(data);
@@ -3589,7 +3601,8 @@ async function navigatePurchase(action) {
     }
     renderPurchaseData(data);
   } catch {
-    Swal.fire({ icon:"error", title:"Error", text:"Failed to load purchase data." });
+    // Swal.fire({ icon:"error", title:"Error", text:"Failed to load purchase data." });
+    Alerts.error("Failed to load purchase data.");
   }
 }
 
@@ -3689,8 +3702,9 @@ function downloadInvoicePDF() {
   const totalQty    = document.getElementById("totalQtyCount").textContent;
 
   if (!partyName) {
-    Swal.fire({ icon:"warning", title:"No Vendor",
-      text:"Fill in the vendor name before downloading." });
+    // Swal.fire({ icon:"warning", title:"No Vendor",
+    //   text:"Fill in the vendor name before downloading." });
+    Alerts.warning("Fill in the vendor name before downloading.", { title: "No Vendor" });
     return;
   }
 
@@ -3709,8 +3723,9 @@ function downloadInvoicePDF() {
   });
 
   if (!items.length) {
-    Swal.fire({ icon:"warning", title:"Nothing to Export",
-      text:"Add items with serials and price first." });
+    // Swal.fire({ icon:"warning", title:"Nothing to Export",
+    //   text:"Add items with serials and price first." });
+    Alerts.warning("Add items with serials and price first.", { title: "Nothing to Export" });
     return;
   }
 
@@ -3840,7 +3855,8 @@ async function fetchPurchaseSummary(from = null, to = null) {
     const data = await res.json();
 
     if (!data.success && !Array.isArray(data)) {
-      Swal.fire({ icon:"error", title:"Error", text: data.message||"Failed to fetch." });
+      // Swal.fire({ icon:"error", title:"Error", text: data.message||"Failed to fetch." });
+      Alerts.error(data.message||"Failed to fetch.");
       return;
     }
 
@@ -3902,7 +3918,7 @@ async function fetchPurchaseSummary(from = null, to = null) {
     }
 
     disableBg();
-    Swal.fire({
+    Alerts.dialog({  /* was Swal.fire — centered detail view, standardized animation */
       title:"📜 Purchase History", html, width:"720px",
       confirmButtonText:"Close", confirmButtonColor:"#2563eb",
       focusConfirm:false, allowOutsideClick:false, allowEscapeKey:true,
@@ -3918,7 +3934,8 @@ async function fetchPurchaseSummary(from = null, to = null) {
       willClose: enableBg,
     });
   } catch (err) {
-    Swal.fire({ icon:"error", title:"Network Error", text: err.message||"Cannot fetch." });
+    // Swal.fire({ icon:"error", title:"Network Error", text: err.message||"Cannot fetch." });
+    Alerts.error(err.message||"Cannot fetch.", { title: "Network Error" });
   }
 }
 
@@ -3932,7 +3949,7 @@ function filterPurchaseTable(query) {
 function purchaseHistory()  { fetchPurchaseSummary(); }
 function purchaseDateWise() {
   const today = new Date().toISOString().split("T")[0];
-  Swal.fire({
+  Alerts.dialog({  /* was Swal.fire — centered input dialog, standardized animation */
     title:"📅 Select Date Range",
     html:`
       <div style="text-align:left;margin:8px 0;">

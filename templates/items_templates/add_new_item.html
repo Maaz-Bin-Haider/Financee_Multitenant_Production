@@ -60,32 +60,35 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === "success") {
-                Swal.fire({
-                    icon: "success",
-                    title: "Success",
-                    text: data.message,
-                    showConfirmButton: false,   // 🔹 No confirm button
-                    timer: 2500,                // 🔹 Auto close after 1.5s
-                    timerProgressBar: true
-                }).then(() => {
+                // Swal.fire({
+                //     icon: "success",
+                //     title: "Success",
+                //     text: data.message,
+                //     showConfirmButton: false,   // 🔹 No confirm button
+                //     timer: 2500,                // 🔹 Auto close after 1.5s
+                //     timerProgressBar: true
+                // }).then(() => {
+                Alerts.success(data.message).then(() => {
                     location.reload();          // 🔹 Reload page
                 });
             } else {
-                Swal.fire({
-                    icon: "error",
-                    title: "Error",
-                    text: data.message,
-                    confirmButtonColor: '#3085d6'  // 🔹 Has confirm button
-                });
+                // Swal.fire({
+                //     icon: "error",
+                //     title: "Error",
+                //     text: data.message,
+                //     confirmButtonColor: '#3085d6'  // 🔹 Has confirm button
+                // });
+                Alerts.error(data.message);
             }
         })
         .catch(() => {
-            Swal.fire({
-                icon: "error",
-                title: "Error",
-                text: "Something went wrong while submitting the form.",
-                confirmButtonColor: '#d33'
-            });
+            // Swal.fire({
+            //     icon: "error",
+            //     title: "Error",
+            //     text: "Something went wrong while submitting the form.",
+            //     confirmButtonColor: '#d33'
+            // });
+            Alerts.error("Something went wrong while submitting the form.");
         });
     });
 </script>

@@ -103,14 +103,22 @@ async function mcLoadOverview() {
 
 async function mcClose(year, month) {
   const label = mcMonthName(year, month);
-  const ok = await Swal.fire({
+  // const ok = await Swal.fire({
+  //   title: `Close ${label}?`,
+  //   html: `This posts a closing entry moving that month's earned profit into <b>Retained Earnings</b>. ` +
+  //         `No cash is moved and your Net Position is unchanged. You can reverse it later.`,
+  //   icon: "question", showCancelButton: true, confirmButtonText: "Close month",
+  //   confirmButtonColor: "#2563eb",
+  // });
+  // if (!ok.isConfirmed) return;
+  const ok = await Alerts.confirm({
     title: `Close ${label}?`,
+    icon: "question",
     html: `This posts a closing entry moving that month's earned profit into <b>Retained Earnings</b>. ` +
           `No cash is moved and your Net Position is unchanged. You can reverse it later.`,
-    icon: "question", showCancelButton: true, confirmButtonText: "Close month",
-    confirmButtonColor: "#2563eb",
+    confirmText: "Close month",
   });
-  if (!ok.isConfirmed) return;
+  if (!ok) return;
   try {
     const r = await fetch(MC_API.close, {
       method: "POST",
@@ -119,31 +127,40 @@ async function mcClose(year, month) {
     });
     const d = await r.json();
     if (!r.ok || d.status !== "success") {
-      Swal.fire("Error", d.message || "Could not close the month.", "error");
+      // Swal.fire("Error", d.message || "Could not close the month.", "error");
+      Alerts.error(d.message || "Could not close the month.");
     } else {
       const p = d.result || {};
       await mcLoadOverview();
-      Swal.fire({
-        icon: "success",
-        title: `${label} closed`,
-        text: `Profit recognised: ${mcFmt(p.profit)}`,
-        timer: 1600, showConfirmButton: false,
-      });
+      // Swal.fire({
+      //   icon: "success",
+      //   title: `${label} closed`,
+      //   text: `Profit recognised: ${mcFmt(p.profit)}`,
+      //   timer: 1600, showConfirmButton: false,
+      // });
+      Alerts.success(`Profit recognised: ${mcFmt(p.profit)}`, { title: `${label} closed` });
     }
   } catch (e) {
-    Swal.fire("Error", "Request failed. " + e.message, "error");
+    // Swal.fire("Error", "Request failed. " + e.message, "error");
+    Alerts.error("Request failed. " + e.message);
   }
 }
 
 async function mcReverse(year, month) {
   const label = mcMonthName(year, month);
-  const ok = await Swal.fire({
+  // const ok = await Swal.fire({
+  //   title: `Reverse close for ${label}?`,
+  //   text: "The closing entry will be removed and the month re-opened. Retained Earnings is restored.",
+  //   icon: "warning", showCancelButton: true, confirmButtonText: "Reverse",
+  //   confirmButtonColor: "#dc2626",
+  // });
+  // if (!ok.isConfirmed) return;
+  const ok = await Alerts.confirm({
     title: `Reverse close for ${label}?`,
     text: "The closing entry will be removed and the month re-opened. Retained Earnings is restored.",
-    icon: "warning", showCancelButton: true, confirmButtonText: "Reverse",
-    confirmButtonColor: "#dc2626",
+    confirmText: "Reverse", danger: true,
   });
-  if (!ok.isConfirmed) return;
+  if (!ok) return;
   try {
     const r = await fetch(MC_API.reverse, {
       method: "POST",
@@ -152,19 +169,23 @@ async function mcReverse(year, month) {
     });
     const d = await r.json();
     if (!r.ok || d.status !== "success") {
-      Swal.fire("Error", d.message || "Could not reverse the close.", "error");
+      // Swal.fire("Error", d.message || "Could not reverse the close.", "error");
+      Alerts.error(d.message || "Could not reverse the close.");
     } else {
       await mcLoadOverview();
-      Swal.fire({ icon: "success", title: "Re-opened", timer: 1100, showConfirmButton: false });
+      // Swal.fire({ icon: "success", title: "Re-opened", timer: 1100, showConfirmButton: false });
+      Alerts.success("", { title: "Re-opened" });
     }
   } catch (e) {
-    Swal.fire("Error", "Request failed. " + e.message, "error");
+    // Swal.fire("Error", "Request failed. " + e.message, "error");
+    Alerts.error("Request failed. " + e.message);
   }
 }
 
 /* ─────────────────────────── Export: PDF / CSV ─────────────────────────── */
 function mcExportPDF() {
-  if (!_mcClosed.length) { Swal.fire("Nothing to export", "No months have been closed yet.", "info"); return; }
+  // if (!_mcClosed.length) { Swal.fire("Nothing to export", "No months have been closed yet.", "info"); return; }
+  if (!_mcClosed.length) { Alerts.notify("No months have been closed yet.", { title: "Nothing to export" }); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   doc.setFontSize(15); doc.text("Month-End Close — Profit Log", 14, 18);
@@ -201,7 +222,8 @@ function mcExportPDF() {
 }
 
 function mcExportCSV() {
-  if (!_mcClosed.length) { Swal.fire("Nothing to export", "No months have been closed yet.", "info"); return; }
+  // if (!_mcClosed.length) { Swal.fire("Nothing to export", "No months have been closed yet.", "info"); return; }
+  if (!_mcClosed.length) { Alerts.notify("No months have been closed yet.", { title: "Nothing to export" }); return; }
   const esc = (v) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
   const rows = [["Month", "Sales", "COGS", "Expenses", "Profit", "Closed on"].map(esc)];
   _mcClosed.forEach((m) => {

@@ -12,6 +12,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Unified alert layer (this page does not extend base.html) -->
+  <link rel="stylesheet" href="{% static 'css/alerts.css' %}">
+  <script src="{% static 'js/alerts.js' %}"></script>
   <!-- Login CSS -->
   <link rel="stylesheet" href="{% static 'css/login_styling.css' %}">
 </head>
@@ -99,34 +102,37 @@
         const data = await response.json();
 
         if (data.status === 'success') {
-          Swal.fire({
-            icon: 'success',
-            title: 'Welcome back!',
-            text: data.message,
-            showConfirmButton: false,
-            timer: 1400,
-            timerProgressBar: true
-          }).then(() => {
+          // Swal.fire({
+          //   icon: 'success',
+          //   title: 'Welcome back!',
+          //   text: data.message,
+          //   showConfirmButton: false,
+          //   timer: 1400,
+          //   timerProgressBar: true
+          // }).then(() => {
+          Alerts.success(data.message, { title: 'Welcome back!' }).then(() => {
             window.location.href = data.redirect_url || "{% url 'home:home' %}";
           });
         } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Login Failed',
-            text: data.message,
-            confirmButtonColor: '#dc2626',
-            confirmButtonText: 'Try again'
-          });
+          // Swal.fire({
+          //   icon: 'error',
+          //   title: 'Login Failed',
+          //   text: data.message,
+          //   confirmButtonColor: '#dc2626',
+          //   confirmButtonText: 'Try again'
+          // });
+          Alerts.error(data.message, { title: 'Login Failed' });
           btn.classList.remove('loading');
           btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Sign In';
         }
       } catch (err) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Connection Error',
-          text: 'Could not reach the server. Please try again.',
-          confirmButtonColor: '#dc2626'
-        });
+        // Swal.fire({
+        //   icon: 'error',
+        //   title: 'Connection Error',
+        //   text: 'Could not reach the server. Please try again.',
+        //   confirmButtonColor: '#dc2626'
+        // });
+        Alerts.error('Could not reach the server. Please try again.', { title: 'Connection Error' });
         btn.classList.remove('loading');
         btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Sign In';
       }

@@ -99,6 +99,28 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
 - The admin dashboard must remain single-column/responsive: recent actions stack below the main dashboard, and changelist/filter panels must fit small laptops and iPad widths without horizontal scrolling.
 - Avoid inline styles in admin templates; put layout, spacing, and color in `financee_admin.css` so small laptop and iPad behavior stays consistent.
 
+## Frontend Alert Layer (SweetAlert2)
+
+All user-facing alerts go through a single helper, **`static/js/alerts.js`** (global `Alerts`), which wraps SweetAlert2 v11. Animations and per-type theming live in **`static/css/alerts.css`**. Both are loaded in `templates/base/base.html` immediately after the SweetAlert2 CDN, and also directly in `templates/authentication_templates/login_template.html` (the only page that does not extend `base.html`). **Do not call `Swal.fire` directly in new code — use the `Alerts` helper** so behavior stays consistent system-wide.
+
+The five standardized types and their fixed placement/behavior:
+
+| Helper | Use | Position | Dismissal | Buttons |
+| --- | --- | --- | --- | --- |
+| `Alerts.success(msg, {title})` | an action completed | top-right toast | auto ~2.5s | none |
+| `Alerts.error(msg, {title})` | an action failed | top-right toast | **manual close only (no timer)** | none (close ×) |
+| `Alerts.notify(msg, {title})` | neutral status / navigation boundary | top-right toast | auto ~3s | none |
+| `Alerts.warning(msg, {title})` | validation / can't-proceed | bottom-center toast | auto ~4s | none |
+| `Alerts.confirm({title,text,confirmText,danger})` → `Promise<boolean>` | consequential/irreversible action | centered modal | — | Confirm + Cancel |
+
+Plus `Alerts.loading(msg)` / `Alerts.close()` (centered blocking spinner) and `Alerts.dialog(opts)` (centered modal for detail/history views and date-range/bulk-paste input forms — pass raw SweetAlert2 options like `html`, `preConfirm`, `didOpen`). `Alerts.raw` exposes the underlying `Swal`.
+
+Conventions:
+- **Only consequential actions get a confirmation dialog** (deletes, month close/reverse, opening-balance reclassify, sale-price-override). Everything else is a non-blocking toast.
+- Message text is the first arg; `{ title }` overrides the default heading. `.then()` chains are preserved (success/confirm return the SweetAlert2 promise; `confirm` resolves to a boolean).
+- Animations are defined as keyframe classes in `alerts.css` and referenced via SweetAlert2 `showClass`/`hideClass`; they honor `prefers-reduced-motion`. Put alert styling there, not inline.
+- The migration commented out (did not delete) the previous inline `Swal.fire` calls across `static/js/*.js` and the feature templates, leaving `Alerts.*` calls in their place.
+
 ## Test Strategy
 
 - `tests/test_system.py` exercises tenant stored functions and report functions through direct SQL.
@@ -143,3 +165,4 @@ When changing the project, update this file if any answer changes:
 - Did provisioning or existing-tenant rollout change?
 - Did Docker, environment variables, or static handling change?
 - Did test setup, commands, or expected coverage change?
+- Did the alert conventions change, or was `Swal.fire` used directly instead of the `Alerts` helper?
