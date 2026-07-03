@@ -67,8 +67,9 @@ by the suite:
    `tenant_company_2` correctly blocks both. The return-serial-integrity patch
    was never applied to `tenant_company_1`. (`test_returns` XFAIL)
 2. **Cash-party feature absent on `tenant_company_1`** (`is_cash` column and
-   `get_cash_party_id` missing). The cash-sale path is only exercised where the
-   feature exists. (`test_sales`)
+   `get_cash_party_id` missing). Healed 2026-07-03 by
+   `tenancy/sql/fix_cash_party_port.sql` (tenant schema version 5); the
+   cash-sale path is now asserted on every tenant. (`test_sales`)
 3. **`item_history_view` missing on `tenant_company_2`** (present on
    `tenant_company_1`). (`test_reports` XFAIL)
 4. **`item_transaction_history(text)` 1-arg overload is ambiguous on

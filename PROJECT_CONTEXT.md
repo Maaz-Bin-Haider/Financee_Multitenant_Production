@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-06-30
+Last updated: 2026-07-03
 
 This file is the persistent engineering context for Financee. Update it on every meaningful project change, especially changes to architecture, routes, permissions, tenant SQL, deployment behavior, environment variables, tests, or data model assumptions.
 
@@ -109,13 +109,13 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
 - `tests/suite/` is the comprehensive full-system suite (own harness `_harness.py`, one module per domain plus `test_reports.py` for every report and `test_http.py` for endpoints; run with `python tests/suite/run_all.py`). It runs against every active tenant and asserts real accounting invariants (double-entry balance, party balances, COGS, stock/serial coherence), not just "did not error". It reuses the `XFAIL`/`known_bug` convention. See `tests/suite/README.md` and `tests/suite/RESULTS.md`.
 - `tests/run_tests.sh` runs both harnesses in Docker and can reset tenant schemas with `--reset`.
 
-## Tenant Schema Drift (healed)
+## Tenant Schema Drift (fully healed)
 
-The `tests/suite/` run surfaced idempotent `tenancy/sql/` patches applied to one tenant but not the other. Most were healed by `tenancy/sql/fix_tenant_drift.sql` (applied to all tenants; folded into template/hardening/bootstrap; tenant schema version 4). See `FIXED_ISSUES.md` and `tests/suite/RESULTS.md`.
+The `tests/suite/` run surfaced idempotent `tenancy/sql/` patches applied to one tenant but not the other. Most were healed by `tenancy/sql/fix_tenant_drift.sql` (tenant schema version 4); the final deferred item — the cash-party feature — was ported by `tenancy/sql/fix_cash_party_port.sql` (tenant schema version 5, 2026-07-03). See `FIXED_ISSUES.md` and `tests/suite/RESULTS.md`.
 
-- Fixed: `create_purchase_return` in-stock guard added on all tenants; redundant ambiguous `item_transaction_history(text)` 1-arg overload dropped; `get_item_names_like` ambiguous column qualified.
+- Fixed (v4): `create_purchase_return` in-stock guard added on all tenants; redundant ambiguous `item_transaction_history(text)` 1-arg overload dropped; `get_item_names_like` ambiguous column qualified.
+- Fixed (v5): cash-party feature (`parties.is_cash`, `get_cash_party_id`, cash-aware `rebuild_*` journal builders, cash-aware `detailed_ledger`/`detailed_ledger2`) and its invoice-description prerequisite (`description` columns + `get_current_*` fetchers) are now on **every** tenant; the "Cash Sale"/"Cash Purchase" sentinel parties are seeded eagerly. The suite asserts the cash-sale path unconditionally.
 - Not a report: `item_history_view` (present only on `tenant_company_1`) is a hardcoded debug artifact, excluded from the suite.
-- Deferred: the cash-party feature (`is_cash`, `get_cash_party_id`) is still absent on `tenant_company_1`; porting it risks regressing the integrity fixes, so it is left for a dedicated migration. The suite feature-detects and only exercises the cash path where present.
 
 Always roll out tenant SQL to **all** tenants via `apply_sql_all_tenants` to prevent widening drift.
 
@@ -125,6 +125,7 @@ Always roll out tenant SQL to **all** tenants via `apply_sql_all_tenants` to pre
 - `tenancy/sql/fix_sale_return_lifecycle_guards.sql` contains the standalone idempotent patch for active-sale return lookup and sale invoice mutation blocking after return history.
 - `tenancy/sql/fix_transaction_integrity_guards.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; tenant schema version 3) fixes three data-integrity defects: `delete_purchase` now blocks when serials have sale/purchase-return history; `create_sale`/`update_sale_invoice` reject a `qty` that does not match the serial count; `update_purchase_invoice` rebuilds the journals of sales that consumed the edited units so COGS stays in sync. See `FIXED_ISSUES.md`.
 - `tenancy/sql/fix_tenant_drift.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; tenant schema version 4) heals tenant drift found by `tests/suite/`: adds the `create_purchase_return` in-stock guard, drops the redundant ambiguous `item_transaction_history(text)` overload, and qualifies the ambiguous column in `get_item_names_like`.
+- `tenancy/sql/fix_cash_party_port.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; tenant schema version 5) ports the cash-party feature and its invoice-description prerequisite to every tenant: `parties.is_cash`, `get_cash_party_id`, the four cash-aware `rebuild_*` journal builders, cash-aware `detailed_ledger`/`detailed_ledger2`, the four invoice `description` columns, the description-aware `get_current_*` fetchers, and eager seeding of the "Cash Sale"/"Cash Purchase" parties. The journal-builder bodies are the ones proven live on `tenant_company_2` alongside the integrity guards (no integrity patch redefines them, so no regression risk).
 - Keep `tenancy/sql/tenant_template.sql`, `build_multitenant_db.sql`, and `production_hardening.sql` aligned when tenant SQL behavior changes.
 
 ## Known Documentation Caveats

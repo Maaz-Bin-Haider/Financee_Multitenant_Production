@@ -2,9 +2,9 @@
 """Sale cycle: credit + cash sales, AR/Revenue/COGS accounting, stock,
 invoice fetch/navigation/summary, updates, and post-return mutation guards.
 
-Cash-sale assertions are feature-detected: tenant_company_1 does not have the
-cash-party feature (no `is_cash` column), so the cash path is exercised only
-where present."""
+The cash-party feature is required on every tenant (ported everywhere by
+tenancy/sql/fix_cash_party_port.sql, tenant schema version 5), so the
+cash-sale path is asserted unconditionally."""
 import json
 import os
 import sys
@@ -77,25 +77,29 @@ def run(t: Tester):
           [sid, json.dumps(upd), cust, "2025-07-02", t.user_id], contains="return history")
     t.err(g, "delete sale blocked after a return exists", "SELECT delete_sale(%s)", [sid], contains="return")
 
-    # --- cash sale (feature-detected) ------------------------------------
-    if t.has_column("parties", "is_cash"):
-        cash_name = t.name("P-CASH")
-        t.exec("SELECT add_party_from_json(%s::jsonb)",
-                [json.dumps({"party_name": cash_name, "party_type": "Customer", "created_by_id": str(t.user_id)})])
-        t.exec("UPDATE parties SET is_cash=true WHERE party_name=%s", [cash_name])
-        cash_sid = t.sale(cash_name, [serials[2]], unit_price=300, item_name=item)
-        t.check(g, "cash sale created", cash_sid is not None)
-        t.assert_tb(g, "cash sale")
-        # Cash sale debits Cash, not the party AR: party balance stays 0.
-        cbal = t.party_balance(cash_name)
-        t.check(g, "cash party accrues no AR balance", abs((cbal or 0)) < 0.005, f"balance={cbal}")
-        cash_dr = float(t.one(
-            "SELECT COALESCE(SUM(jl.debit),0) FROM salesinvoices s JOIN journallines jl ON jl.journal_id=s.journal_id "
-            "JOIN chartofaccounts c ON c.account_id=jl.account_id WHERE s.sales_invoice_id=%s AND c.account_name='Cash'", [cash_sid]))
-        t.check(g, "cash sale debits Cash 300", abs(cash_dr - 300) < 0.005, f"cash_dr={cash_dr}")
-    else:
-        t.check(g, "cash-party feature present (skipped: not on this tenant)", True,
-                "tenant has no is_cash column; cash-sale path not applicable")
+    # --- cash sale (required on every tenant since schema v5) -------------
+    t.check(g, "cash-party feature present", t.has_column("parties", "is_cash"),
+            "parties.is_cash missing; apply tenancy/sql/fix_cash_party_port.sql")
+    cash_name = t.name("P-CASH")
+    t.exec("SELECT add_party_from_json(%s::jsonb)",
+            [json.dumps({"party_name": cash_name, "party_type": "Customer", "created_by_id": str(t.user_id)})])
+    t.exec("UPDATE parties SET is_cash=true WHERE party_name=%s", [cash_name])
+    cash_sid = t.sale(cash_name, [serials[2]], unit_price=300, item_name=item)
+    t.check(g, "cash sale created", cash_sid is not None)
+    t.assert_tb(g, "cash sale")
+    # Cash sale debits Cash, not the party AR: party balance stays 0.
+    cbal = t.party_balance(cash_name)
+    t.check(g, "cash party accrues no AR balance", abs((cbal or 0)) < 0.005, f"balance={cbal}")
+    cash_dr = float(t.one(
+        "SELECT COALESCE(SUM(jl.debit),0) FROM salesinvoices s JOIN journallines jl ON jl.journal_id=s.journal_id "
+        "JOIN chartofaccounts c ON c.account_id=jl.account_id WHERE s.sales_invoice_id=%s AND c.account_name='Cash'", [cash_sid]))
+    t.check(g, "cash sale debits Cash 300", abs(cash_dr - 300) < 0.005, f"cash_dr={cash_dr}")
+    # Seeded sentinel parties from the port migration.
+    t.check(g, "sentinel cash parties seeded",
+            int(t.one("SELECT COUNT(*) FROM parties WHERE COALESCE(is_cash,false) "
+                      "AND party_name IN ('Cash Sale','Cash Purchase')")) == 2)
+    t.ok(g, "get_cash_party_id('sale') resolves", "SELECT get_cash_party_id('sale')")
+    t.ok(g, "get_cash_party_id('purchase') resolves", "SELECT get_cash_party_id('purchase')")
 
     t.assert_tb(g, "end of sales")
     t.no_empty_journals(g, "end of sales")

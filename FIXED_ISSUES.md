@@ -2,6 +2,71 @@
 
 This file records production/setup issues that were diagnosed and fixed, including the root cause, code or SQL changes, and verification steps.
 
+## 2026-07-03: Cash-Party Feature Ported to All Tenants (last drift item healed)
+
+### Symptoms
+
+The cash-party feature (`parties.is_cash`, `get_cash_party_id`, cash-aware
+journal builders) existed only on `tenant_company_2` (deferred item #5 of the
+2026-07-01 drift heal; tracked in `todo.md`). On `tenant_company_1`:
+
+- The cash sale/purchase path in `sale/views.py` / `purchase/views.py` calls
+  `get_cash_party_id(...)` and reads `COALESCE(is_cash,false)` unconditionally,
+  so submitting a cash sale/purchase **errored** (the function and column did
+  not exist) — worse than the silent AR/AP misclassification originally feared.
+- The invoice-description feature was also missing (no `description` columns on
+  `salesinvoices`/`purchaseinvoices`/`salesreturns`/`purchasereturns`; older
+  `get_current_*` fetchers read `je.description`), and the views' description
+  `UPDATE` would fail.
+
+### Root cause
+
+`add_cash_transactions.sql`, `add_cash_party_ledger.sql`, and
+`add_invoice_description.sql` were applied to `tenant_company_2` but never to
+`tenant_company_1` — classic tenant drift. The port had been deferred over fear
+that replaying `add_cash_transactions.sql` would overwrite integrity-fixed
+functions. Live-DB inspection (pg_get_functiondef diffs on both tenants) showed
+the fear was moot: **no integrity patch redefines the four `rebuild_*` journal
+builders or `detailed_ledger`/`detailed_ledger2`** — the COGS-reflow fix only
+*calls* `rebuild_sales_journal`. The cash-aware bodies live on
+`tenant_company_2` were byte-identical to the patch files and already pass the
+full suite + deep lifecycle together with the integrity guards.
+
+### Fix
+
+Added `tenancy/sql/fix_cash_party_port.sql` (idempotent; folded into
+`tenant_template.sql`, `production_hardening.sql`, and
+`build_multitenant_db.sql`; tenant schema version bumped to **5**):
+
+1. Invoice-description prerequisite: the four `description` columns and the
+   four read-only `get_current_*` fetchers (from `add_invoice_description.sql`).
+2. `parties.is_cash` + `get_cash_party_id(kind)`.
+3. The four cash-aware `rebuild_*` journal builders (bodies proven on
+   `tenant_company_2`).
+4. Cash-aware `detailed_ledger` / `detailed_ledger2` (also carry the
+   description enrichment).
+5. Eager seeding of the "Cash Sale" / "Cash Purchase" sentinel parties.
+
+`tests/suite/test_sales.py` now asserts the cash path unconditionally on every
+tenant (feature-detection branch removed) and checks the sentinel parties and
+`get_cash_party_id` resolution.
+
+### Verification
+
+```bash
+docker compose -f deploy/docker-compose.yml exec -T web \
+  python manage.py apply_sql_all_tenants tenancy/sql/fix_cash_party_port.sql
+docker compose -f deploy/docker-compose.yml exec web python tests/suite/run_all.py
+docker compose -f deploy/docker-compose.yml exec web python tests/test_transaction_lifecycle_deep.py
+```
+
+Result: suite `ALL MODULES PASSED` (both tenants at 60/60 reports, 30/30 sales
+including the cash path on each; 70/70 HTTP); deep lifecycle fully passed on
+both tenants; the updated `tenant_template.sql` builds cleanly in a throwaway
+schema; the updated `production_hardening.sql` reruns cleanly on both tenants
+(it self-heals this feature on container start). Both tenants report
+`tenant_schema_version = 5` and 2 seeded cash parties.
+
 ## 2026-07-01: Full-System Test Suite Added; Tenant Schema Drift Diagnosed
 
 ### Summary

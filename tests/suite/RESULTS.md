@@ -1,7 +1,8 @@
 # Full-System Test Suite — Results
 
-Latest run: 2026-07-01, inside the Docker `web` container against both active
-tenants (`tenant_company_1`, `tenant_company_2`).
+Latest run: 2026-07-03 (after the cash-party port, tenant schema version 5),
+inside the Docker `web` container against both active tenants
+(`tenant_company_1`, `tenant_company_2`).
 
 Command:
 
@@ -26,7 +27,7 @@ tenant schema drift the suite originally surfaced has been healed (see
 | `test_parties.py` | 21/21 | 21/21 | — |
 | `test_items.py` | 10/10 | 10/10 | — |
 | `test_purchases.py` | 29/29 | 29/29 | — |
-| `test_sales.py` | 23/23 | 26/26 | cash-sale path only on tenant_company_2 (feature deferred, see below) |
+| `test_sales.py` | 30/30 | 30/30 | cash-sale path asserted on every tenant (feature ported, see below) |
 | `test_returns.py` | 31/31 | 31/31 | purchase-return guard now on both tenants |
 | `test_cash_movement.py` | 31/31 | 31/31 | — |
 | `test_opening.py` | 20/20 | 20/20 | — |
@@ -35,8 +36,8 @@ tenant schema drift the suite originally surfaced has been healed (see
 | `test_reports.py` | 60/60 | 60/60 | — |
 | `test_http.py` | 70/70 (single process) | — | Django test client |
 
-Totals: **251** real checks on tenant_company_1, **254** on tenant_company_2,
-**70** HTTP checks — **575** real checks, all passing, **0 XFAIL**.
+Totals: **258** real checks per tenant, **70** HTTP checks — **586** real
+checks, all passing, **0 XFAIL**.
 
 ## What each module verifies
 
@@ -65,8 +66,9 @@ is sold, allowed for an untouched invoice).
 ### `test_sales.py`
 Credit sale → AR +total, Revenue credited, COGS posted at cost; re-selling a sold
 serial blocked; **qty ≠ serial-count rejected**; fetch/navigation/summary;
-invoice update; update/delete blocked once a return exists; cash sale (where the
-`is_cash` feature exists) debits Cash and leaves the party AR at 0.
+invoice update; update/delete blocked once a return exists; cash sale debits
+Cash and leaves the party AR at 0 (asserted on every tenant); the "Cash Sale" /
+"Cash Purchase" sentinel parties are seeded and `get_cash_party_id` resolves.
 
 ### `test_returns.py`
 Sale return (partial), reversing revenue and restoring stock, lowering customer
@@ -130,7 +132,7 @@ passing assertions.
 | 2 | `item_transaction_history(text)` 1-arg overload ambiguous on `tenant_company_1` | **Fixed** — redundant 1-arg overload dropped (3-arg defaulted form remains) |
 | 3 | `get_item_names_like` broken on PostgreSQL 16 (ambiguous `item_name`) on both tenants | **Fixed** — column qualified |
 | 4 | `item_history_view` present only on `tenant_company_1`, and hardcoded to a specific item (`%iPhone 15 Pro%`) — a debug artifact, not a real report | Excluded from the suite; left in place, not treated as a report |
-| 5 | Cash-party feature absent on `tenant_company_1` (`is_cash` column, `get_cash_party_id`) | **Deferred** — porting the feature risks regressing the integrity fixes; the suite feature-detects and exercises the cash path only where present |
+| 5 | Cash-party feature absent on `tenant_company_1` (`is_cash` column, `get_cash_party_id`) | **Fixed (2026-07-03)** — `tenancy/sql/fix_cash_party_port.sql` (tenant schema version 5) ported the feature and its invoice-description prerequisite to every tenant; the suite now asserts the cash path unconditionally |
 
 Verified after the heal: full suite `ALL MODULES PASSED` (0 XFAIL) and the deep
 lifecycle test still passes 2702/2702 on both tenants.

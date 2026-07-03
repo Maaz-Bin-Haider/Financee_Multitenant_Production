@@ -13006,3 +13006,23 @@ UPDATE tenant_schema_version
 SET version = GREATEST(version, 4),
     applied_at = CURRENT_TIMESTAMP
 WHERE id = true;
+
+
+-- ============================================================================
+-- Cash-party port completion (fix_cash_party_port.sql): the cash feature SQL
+-- above (is_cash, get_cash_party_id, cash-aware journal builders and ledgers)
+-- is now required on every tenant. Seed the sentinel parties eagerly and bump
+-- the schema version.
+-- ============================================================================
+DO $$
+BEGIN
+    PERFORM get_cash_party_id('sale');
+    PERFORM get_cash_party_id('purchase');
+END;
+$$;
+
+-- Bump tenant schema version.
+UPDATE tenant_schema_version
+SET version = GREATEST(version, 5),
+    applied_at = CURRENT_TIMESTAMP
+WHERE id = true;
