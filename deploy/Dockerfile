@@ -50,6 +50,7 @@ RUN SECRET_KEY="build-time-dummy-not-used-at-runtime" \
 # ---- runtime ----
 # Run as a non-root user.
 RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p /app/media/private/document_attachments \
     && chown -R appuser:appuser /app
 USER appuser
 

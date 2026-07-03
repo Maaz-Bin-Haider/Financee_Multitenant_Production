@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'contra',
     'opening_stock',
     'tenancy',
+    'attachments',
 ]
 
 MIDDLEWARE = [
@@ -150,6 +151,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+PRIVATE_MEDIA_ROOT = MEDIA_ROOT / 'private'
 
 STORAGES = {
     "staticfiles": {
@@ -233,4 +237,4 @@ else:
 # Cross-tenant admin activity is useful for small installations but expensive
 # at scale. Keep it opt-in in the hardened copy.
 TENANCY_CROSS_TENANT_ACTIVITY = env.bool("TENANCY_CROSS_TENANT_ACTIVITY", default=False)
-TENANT_SCHEMA_VERSION = env.int("TENANT_SCHEMA_VERSION", default=1)
+TENANT_SCHEMA_VERSION = env.int("TENANT_SCHEMA_VERSION", default=6)

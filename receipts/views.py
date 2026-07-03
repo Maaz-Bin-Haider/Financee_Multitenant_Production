@@ -653,6 +653,8 @@ from django.http import JsonResponse
 import json
 from psycopg2.extras import Json
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from attachments.utils import delete_document_attachments, save_document_attachments, validate_request_attachments
 
 # Create your views here.
 
@@ -680,6 +682,12 @@ def make_receipt(request):
                 "description": description if description else '',
                 "receipt_date": receipt_date_str
             }
+
+            try:
+                validate_request_attachments(request)
+            except ValidationError as e:
+                messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
+                return render(request,"receipts_templates/receipt.html",data)
 
             # If party name is Empty
             if not party_name:
@@ -743,8 +751,13 @@ def make_receipt(request):
                                 return redirect("receipts:receipt")
                             
                             cursor.execute("SELECT make_receipt(%s)",[json_data])
+                            result = cursor.fetchone()[0]
+                            new_receipt_id = result.get("receipt_id") if isinstance(result, dict) else json.loads(result).get("receipt_id")
+                            save_document_attachments(request, "receipt", new_receipt_id)
                             messages.success(request, f"Transaction completed: {amount} received from {party_name}.")
                             return redirect("receipts:receipt")
+                        except ValidationError as e:
+                            messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
                         except Exception as e:
                             messages.error(request,f"An Unexpected Error occured Please Try Again! {e}")
                     else:   # Means we have to update receipt 
@@ -760,8 +773,11 @@ def make_receipt(request):
                                 return redirect("receipts:receipt")
                             
                             cursor.execute("SELECT update_receipt(%s,%s)",[receipt_id,json_data])
+                            save_document_attachments(request, "receipt", receipt_id)
                             messages.success(request, f"Transaction Updated: {amount} received from {party_name}.")
                             return redirect("receipts:receipt")
+                        except ValidationError as e:
+                            messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
                         except Exception as e:
                             messages.error(request,f"An Unexpected Error occured Please Try Again! {e}")
                 else:
@@ -792,6 +808,7 @@ def make_receipt(request):
                 
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT delete_receipt(%s)",[receipt_id])
+                    delete_document_attachments("receipt", receipt_id)
                     messages.success(request,"Receipt delete Sucessfully.")
                     return redirect("receipts:receipt")
             except Exception:

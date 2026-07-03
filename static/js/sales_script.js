@@ -1575,15 +1575,24 @@ function buildAndSubmit(event) {
   const payload   = { sale_id: currentId, party_name: partyName,
                       sale_date: saleDate, items, action, description, sale_type: saleType };
 
-  _submitSale(payload);
+  if (action !== "delete" && window.DocumentAttachments) {
+    DocumentAttachments.confirmReplacementIfNeeded().then(confirmed => {
+      if (confirmed) _submitSale(payload);
+    });
+  } else {
+    _submitSale(payload);
+  }
 }
 
 function _submitSale(payload) {
-  fetch("/sale/sales/", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
-    body: JSON.stringify(payload),
-  })
+  const options = window.DocumentAttachments
+    ? DocumentAttachments.requestOptions(payload, getCSRFToken())
+    : {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+        body: JSON.stringify(payload),
+      };
+  fetch("/sale/sales/", options)
   .then(async res => {
     if (!res.ok) {
       let msg = "Server error.";
@@ -1758,6 +1767,7 @@ function renderSaleData(data) {
   document.getElementById("search_name").value       = data.Party || "";
   document.getElementById("sale_date").value         = data.invoice_date || "";
   document.getElementById("current_sale_id").value   = data.sales_invoice_id || "";
+  if (window.DocumentAttachments) DocumentAttachments.load(data.sales_invoice_id || "");
   const _descEl = document.getElementById("sale_description");
   if (_descEl) _descEl.value = data.description || "";
   if (typeof reflectSaleType === "function") reflectSaleType(data.Party || "");
@@ -1851,6 +1861,9 @@ window.addEventListener("DOMContentLoaded", () => {
   for (let i = 0; i < 3; i++) addItemRow(false);
   calculateTotal();
   document.getElementById("sale_date").value = new Date().toISOString().slice(0, 10);
+  if (window.DocumentAttachments) {
+    DocumentAttachments.init("sale", () => document.getElementById("current_sale_id")?.value || "");
+  }
 });
 
 

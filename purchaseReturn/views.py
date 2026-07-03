@@ -699,8 +699,39 @@ import json
 from django.contrib import messages
 from datetime import datetime, date
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from attachments.utils import (
+    delete_document_attachments,
+    parse_json_or_multipart_payload,
+    save_document_attachments,
+    validate_request_attachments,
+)
 
 # Create your views here.
+
+
+def _return_serials(serials):
+    return sorted(str(serial or "").strip().upper() for serial in serials or [])
+
+
+def _purchase_return_payload_matches_current(return_id, data, return_date):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT get_current_purchase_return(%s)", [return_id])
+        current = cursor.fetchone()[0]
+
+    if isinstance(current, str):
+        current = json.loads(current)
+    if not current:
+        return False
+
+    current_serials = [item.get("serial_number") for item in current.get("items") or []]
+    return (
+        (current.get("Vendor") or "").strip().upper() == (data.get("party_name") or "").strip().upper()
+        and str(current.get("return_date") or "") == str(return_date)
+        and (current.get("description") or "").strip() == (data.get("description") or "").strip()
+        and _return_serials(current_serials) == _return_serials(data.get("serials"))
+    )
+
 
 @login_required
 def createPurchaseReturn(request):
@@ -710,7 +741,7 @@ def createPurchaseReturn(request):
      
     if request.method == "POST":
         try:
-            data = json.loads(request.body)
+            data = parse_json_or_multipart_payload(request)
             action = data.get("action")
             purchase_return_ID = data.get("return_id")
             if purchase_return_ID:
@@ -720,6 +751,10 @@ def createPurchaseReturn(request):
         
         # New or Update Purchase Return
         if action == "submit":
+            try:
+                validate_request_attachments(request)
+            except ValidationError as e:
+                return JsonResponse({"success": False, "message": e.messages[0] if hasattr(e, "messages") else str(e)})
             
             # Validating provided data
             try:
@@ -808,7 +843,10 @@ def createPurchaseReturn(request):
                                 "UPDATE purchasereturns SET description=%s WHERE purchase_return_id=%s",
                                 [(data.get("description") or "").strip() or None, new_return_id],
                             )
+                            save_document_attachments(request, "purchase_return", new_return_id)
                         return JsonResponse({"success": True, "message": "Purchase Return Sucessfull"}) 
+                    except ValidationError as e:
+                        return JsonResponse({"success": False, "message": e.messages[0] if hasattr(e, "messages") else str(e)})
                     except Exception as e:
                         return JsonResponse({"success": False, "message": f"Unable to Purchase Return, Try Again!"}) 
                 else:
@@ -826,6 +864,10 @@ def createPurchaseReturn(request):
                                 "status": "error",
                                 "message": "You do not have permission to Update Purchase Return"
                             })
+
+                        if request.FILES and _purchase_return_payload_matches_current(purchase_return_ID, data, purchase_return_date):
+                            save_document_attachments(request, "purchase_return", purchase_return_ID)
+                            return JsonResponse({"success": True, "message": "Purchase return attachments saved successfully."})
                         
                         json_data = json.dumps(data.get("serials"))
                         with connection.cursor() as cursor:
@@ -834,7 +876,10 @@ def createPurchaseReturn(request):
                                 "UPDATE purchasereturns SET description=%s WHERE purchase_return_id=%s",
                                 [(data.get("description") or "").strip() or None, purchase_return_ID],
                             )
+                            save_document_attachments(request, "purchase_return", purchase_return_ID)
                         return JsonResponse({"success": True, "message": "Purchase-Return Updated Sucessfully"}) 
+                    except ValidationError as e:
+                        return JsonResponse({"success": False, "message": e.messages[0] if hasattr(e, "messages") else str(e)})
                     except Exception as e:
                         _m = None
                         for _o in (e, getattr(e, "__cause__", None)):
@@ -867,6 +912,7 @@ def createPurchaseReturn(request):
 
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT delete_purchase_return(%s)",[purchase_return_ID])
+                    delete_document_attachments("purchase_return", purchase_return_ID)
                     return JsonResponse({"success": True, "message": "Deleted Successfully"})
             except Exception as e:
                 _m = None

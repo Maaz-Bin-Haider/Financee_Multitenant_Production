@@ -653,6 +653,8 @@ from django.http import JsonResponse
 import json
 from psycopg2.extras import Json
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from attachments.utils import delete_document_attachments, save_document_attachments, validate_request_attachments
 
 # Create your views here.
 
@@ -678,6 +680,12 @@ def make_payment(request):
                 "description": description if description else '',
                 "payment_date": payment_date_str
             }
+
+            try:
+                validate_request_attachments(request)
+            except ValidationError as e:
+                messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
+                return render(request,"payments_templates/payment.html",data)
 
             # If party name is Empty
             if not party_name:
@@ -741,8 +749,13 @@ def make_payment(request):
                                 return redirect("payments:payment")
 
                             cursor.execute("SELECT make_payment(%s)",[json_data])
+                            result = cursor.fetchone()[0]
+                            new_payment_id = result.get("payment_id") if isinstance(result, dict) else json.loads(result).get("payment_id")
+                            save_document_attachments(request, "payment", new_payment_id)
                             messages.success(request, f"Transaction completed: {amount} paid to {party_name}.")
                             return redirect("payments:payment")
+                        except ValidationError as e:
+                            messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
                         except Exception as e:
                             messages.error(request,f"An Unexpected Error occured Please Try Again! {e}")
                     else:   # Means we have to update payment 
@@ -758,8 +771,11 @@ def make_payment(request):
                                 return redirect("payments:payment")
 
                             cursor.execute("SELECT update_payment(%s,%s)",[payment_id,json_data])
+                            save_document_attachments(request, "payment", payment_id)
                             messages.success(request, f"Transaction Updated: {amount} paid to {party_name}.")
                             return redirect("payments:payment")
+                        except ValidationError as e:
+                            messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
                         except Exception as e:
                             messages.error(request,f"An Unexpected Error occured Please Try Again! {e}")
                 else:
@@ -791,6 +807,7 @@ def make_payment(request):
 
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT delete_payment(%s)",[payment_id])
+                    delete_document_attachments("payment", payment_id)
                     messages.success(request,"Payment delete Sucessfully.")
                     return redirect("payments:payment")
             except Exception:

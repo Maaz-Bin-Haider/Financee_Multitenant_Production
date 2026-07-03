@@ -666,11 +666,15 @@ function submitSaleReturn(event) {
     description: (document.getElementById("sale_return_description")?.value || "").trim()
   };
 
-  fetch("/saleReturn/create-sale-return/", {
-    method:  "POST",
-    headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
-    body:    JSON.stringify(payload)
-  })
+  const options = window.DocumentAttachments
+    ? DocumentAttachments.requestOptions(payload, getCSRFToken())
+    : {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+        body:    JSON.stringify(payload)
+      };
+
+  fetch("/saleReturn/create-sale-return/", options)
   .then(r => r.json())
   .then(data => {
     if (data.success)
@@ -690,6 +694,7 @@ function renderSaleReturnData(data) {
   document.getElementById("search_name").value    = data.Customer || "";
   document.getElementById("return_date").value    = data.return_date || "";
   document.getElementById("current_return_id").value = data.sales_return_id || "";
+  if (window.DocumentAttachments) DocumentAttachments.load(data.sales_return_id || "");
   const _srDescEl = document.getElementById("sale_return_description");
   if (_srDescEl) _srDescEl.value = data.description || "";
 
@@ -1058,4 +1063,8 @@ function onSaleReturnTypeChange() {
     nameEl.readOnly = false; nameEl.style.opacity = "1";
     if (badge) badge.style.display = "none";
   }
+}
+
+if (window.DocumentAttachments) {
+  DocumentAttachments.init("sale_return", () => document.getElementById("current_return_id")?.value || "");
 }

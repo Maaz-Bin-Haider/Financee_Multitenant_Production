@@ -467,6 +467,7 @@ function populateForm(data) {
 
   updateRecordChip(data.payment_id);
   setFormMode(data.payment_id ? "edit" : "new");
+  if (window.DocumentAttachments) DocumentAttachments.load(data.payment_id || "");
 }
 
 
@@ -482,6 +483,9 @@ $(document).ready(function () {
   // Set initial form mode based on whether we have an ID
   const existingId = document.getElementById("current_payment_id")?.value;
   setFormMode(existingId ? "edit" : "new");
+  if (window.DocumentAttachments) {
+    DocumentAttachments.bindForm("paymentForm", "payment", () => document.getElementById("current_payment_id")?.value || "");
+  }
 
   const autocompleteUrl = $("#search_name").data("autocomplete-url");
   let selectedIndex = -1;

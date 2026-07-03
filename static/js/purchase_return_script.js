@@ -795,11 +795,15 @@ function submitReturn(event) {
     description: (document.getElementById("purchase_return_description")?.value || "").trim()
   };
 
-  fetch("/purchaseReturn/create-purchase-return/", {
-    method:  "POST",
-    headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
-    body:    JSON.stringify(payload)
-  })
+  const options = window.DocumentAttachments
+    ? DocumentAttachments.requestOptions(payload, getCSRFToken())
+    : {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+        body:    JSON.stringify(payload)
+      };
+
+  fetch("/purchaseReturn/create-purchase-return/", options)
   .then(r => r.json())
   .then(data => {
     if (data.success)
@@ -819,6 +823,7 @@ function renderPurchaseReturnData(data) {
   document.getElementById("search_name").value         = data.Vendor || "";
   document.getElementById("return_date").value         = data.return_date || "";
   document.getElementById("current_return_id").value   = data.purchase_return_id || "";
+  if (window.DocumentAttachments) DocumentAttachments.load(data.purchase_return_id || "");
   const _prDescEl = document.getElementById("purchase_return_description");
   if (_prDescEl) _prDescEl.value = data.description || "";
 
@@ -1190,4 +1195,8 @@ function onPurchaseReturnTypeChange() {
     nameEl.readOnly = false; nameEl.style.opacity = "1";
     if (badge) badge.style.display = "none";
   }
+}
+
+if (window.DocumentAttachments) {
+  DocumentAttachments.init("purchase_return", () => document.getElementById("current_return_id")?.value || "");
 }

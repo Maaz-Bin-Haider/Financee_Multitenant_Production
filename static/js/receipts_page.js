@@ -464,6 +464,7 @@ function populateForm(data) {
 
   updateRecordChip(data.receipt_id);
   setFormMode(data.receipt_id ? "edit" : "new");
+  if (window.DocumentAttachments) DocumentAttachments.load(data.receipt_id || "");
 }
 
 
@@ -479,6 +480,9 @@ $(document).ready(function () {
   // Set initial form mode based on whether we have an ID
   const existingId = document.getElementById("current_receipt_id")?.value;
   setFormMode(existingId ? "edit" : "new");
+  if (window.DocumentAttachments) {
+    DocumentAttachments.bindForm("receiptForm", "receipt", () => document.getElementById("current_receipt_id")?.value || "");
+  }
 
   const autocompleteUrl = $("#search_name").data("autocomplete-url");
   let selectedIndex = -1;

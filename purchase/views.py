@@ -616,10 +616,67 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.db import connection
 from datetime import datetime, date
+from decimal import Decimal, InvalidOperation
 import json
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from attachments.utils import (
+    delete_document_attachments,
+    parse_json_or_multipart_payload,
+    save_document_attachments,
+    validate_request_attachments,
+)
 
 # Create your views here.
+
+
+def _decimal_value(value):
+    try:
+        return Decimal(str(value)).quantize(Decimal("0.0001"))
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal("0")
+
+
+def _normalized_purchase_serial(serial):
+    if isinstance(serial, dict):
+        return (
+            str(serial.get("serial") or "").strip().upper(),
+            str(serial.get("comment") or "").strip(),
+        )
+    return (str(serial or "").strip().upper(), "")
+
+
+def _normalized_purchase_items(items):
+    normalized = []
+    for item in items or []:
+        normalized.append(
+            (
+                (item.get("item_name") or "").strip().upper(),
+                int(item.get("qty") or 0),
+                _decimal_value(item.get("unit_price")),
+                tuple(sorted(_normalized_purchase_serial(serial) for serial in item.get("serials") or [])),
+            )
+        )
+    return sorted(normalized)
+
+
+def _purchase_payload_matches_current(purchase_id, data, purchase_date):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT get_current_purchase(%s)", [purchase_id])
+        current = cursor.fetchone()[0]
+
+    if isinstance(current, str):
+        current = json.loads(current)
+    if not current:
+        return False
+
+    return (
+        (current.get("Party") or "").strip().upper() == (data.get("party_name") or "").strip().upper()
+        and str(current.get("invoice_date") or "") == str(purchase_date)
+        and (current.get("description") or "").strip() == (data.get("description") or "").strip()
+        and _normalized_purchase_items(current.get("items")) == _normalized_purchase_items(data.get("items"))
+    )
+
 
 @login_required
 def purchasing(request):
@@ -629,7 +686,7 @@ def purchasing(request):
     
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
+            data = parse_json_or_multipart_payload(request)
             action = data.get("action")  
             purchase_id = data.get("purchase_id")
             if purchase_id:
@@ -638,9 +695,13 @@ def purchasing(request):
             return JsonResponse({"success": False, "message": "Invalid JSON"})
         
         if action == "submit":
+            try:
+                validate_request_attachments(request)
+            except ValidationError as e:
+                return JsonResponse({"success": False, "message": e.messages[0] if hasattr(e, "messages") else str(e)})
             
             try:
-                data = json.loads(request.body)
+                data = parse_json_or_multipart_payload(request)
                 _is_cash_purchase = (data.get("purchase_type") or "credit").lower() == "cash"
                 # validation example
                 if not _is_cash_purchase and not data.get("party_name"):
@@ -831,7 +892,10 @@ def purchasing(request):
                                 "UPDATE purchaseinvoices SET description=%s WHERE purchase_invoice_id=%s",
                                 [(data.get("description") or "").strip() or None, invoice_id],
                             )
+                            save_document_attachments(request, "purchase", invoice_id)
                             return JsonResponse({"success": True, "message": "Purchase Successfull"})
+                    except ValidationError as e:
+                        return JsonResponse({"success": False, "message": e.messages[0] if hasattr(e, "messages") else str(e)})
                     except Exception as e:
                         return JsonResponse({"success": False, "message": f"Failed to make Purchase, try again! {e}"})  
                 else: # if purchase ID Exists Means we have to update
@@ -894,6 +958,10 @@ def purchasing(request):
                                 "status": "error",
                                 "message": "You do not have permission to Update Purchase"
                             })
+
+                        if request.FILES and _purchase_payload_matches_current(purchase_id, data, purchase_date):
+                            save_document_attachments(request, "purchase", purchase_id)
+                            return JsonResponse({"success": True, "message": "Purchase attachments saved successfully."})
                         
                         with connection.cursor() as cursor:
                             cursor.execute("""
@@ -931,8 +999,11 @@ def purchasing(request):
                                 "UPDATE purchaseinvoices SET description=%s WHERE purchase_invoice_id=%s",
                                 [(data.get("description") or "").strip() or None, purchase_id],
                             )
+                            save_document_attachments(request, "purchase", purchase_id)
                             return JsonResponse({"success": True, "message": "Update Successfull"})
 
+                    except ValidationError as e:
+                        return JsonResponse({"success": False, "message": e.messages[0] if hasattr(e, "messages") else str(e)})
                     except Exception as e:
                         logger.exception('swallowed exception in %s', __name__)
                         return JsonResponse({"success": False, "message": "Failed to Update Purchase, try again!"})  
@@ -996,6 +1067,7 @@ def purchasing(request):
                 
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT delete_purchase(%s)",[purchase_id])
+                    delete_document_attachments("purchase", purchase_id)
                     return JsonResponse({"success": True, "message": "Deleted Successfully"})
             except Exception:
                 return JsonResponse({"success": False, "message": "Unable to delete this Purchase! Try Again.."})

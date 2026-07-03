@@ -5,6 +5,7 @@
 
 {% block SeperateCssFile %}
   <link rel="stylesheet" href="{% static 'css/payment.css' %}">
+  <link rel="stylesheet" href="{% static 'css/document_attachments.css' %}">
 {% endblock SeperateCssFile %}
 
 
@@ -62,7 +63,7 @@
     </div>
 
     <div class="form-card-body">
-      <form method="post" id="receiptForm" autocomplete="off" novalidate>
+      <form method="post" id="receiptForm" autocomplete="off" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
 
         <!-- Row 1: Date + Party -->
@@ -123,6 +124,8 @@
                     placeholder="Add a note or reference for this receipt…">{{ description }}</textarea>
         </div>
 
+        {% include "components/document_attachments.html" %}
+
         <!-- Action Buttons -->
         <div class="btn-row">
           <button type="submit" name="action" value="submit"
@@ -173,6 +176,7 @@
 <!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <!-- Receipts JS -->
+<script src="{% static 'js/document_attachments.js' %}"></script>
 <script src="{% static 'js/receipts_page.js' %}"></script>
 
 
@@ -191,6 +195,7 @@
     document.getElementById("current_receipt_id").value = "";
     document.getElementById("entryByName").textContent = "—";
     document.getElementById("entryByBadge").style.display = "none";
+    if (window.DocumentAttachments) DocumentAttachments.reset();
     setFormMode("new");
     document.getElementById("search_name").focus();
   }

@@ -5,6 +5,7 @@
 
 {% block SeperateCssFile %}
 <link rel="stylesheet" href="{% static 'css/purchasing_styling.css' %}">
+<link rel="stylesheet" href="{% static 'css/document_attachments.css' %}">
 <style>
   /* Purchase-specific serial wrapper overrides */
   .serial-pair {
@@ -169,6 +170,8 @@
                     rows="2" maxlength="1000" placeholder="Add a note for this invoice…"></textarea>
         </div>
 
+        {% include "components/document_attachments.html" %}
+
         <div class="sale-divider"></div>
 
         <!-- Items section -->
@@ -242,5 +245,6 @@
 </script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="{% static 'js/document_attachments.js' %}"></script>
 <script src="{% static 'js/purchasing_script.js' %}"></script>
 {% endblock body %}

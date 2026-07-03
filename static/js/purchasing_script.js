@@ -3392,27 +3392,40 @@ function buildAndSubmit(event) {
                        items, action, description, purchase_type: purchaseType };
   if (purchaseId) payload.purchase_id = purchaseId;
 
-  fetch("/purchase/purchasing/", {
-    method: "POST",
-    headers: { "Content-Type":"application/json", "X-CSRFToken": getCSRFToken() },
-    body: JSON.stringify(payload),
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      // Swal.fire({ icon:"success", title:"Success",
-      //   text: data.message || "Purchase saved!", timer:1600, showConfirmButton:false })
-      Alerts.success(data.message || "Purchase saved!")
-      .then(() => window.location.reload());
-    } else {
-      // Swal.fire({ icon:"error", title:"Error",
-      //   text: data.message || "Something went wrong." });
-      Alerts.error(data.message || "Something went wrong.");
-    }
-  })
-  // .catch(() => Swal.fire({ icon:"error", title:"Network Error",
-  //   text:"Could not reach server." }));
-  .catch(() => Alerts.error("Could not reach server.", { title: "Network Error" }));
+  const submitPurchase = () => {
+    const options = window.DocumentAttachments
+      ? DocumentAttachments.requestOptions(payload, getCSRFToken())
+      : {
+          method: "POST",
+          headers: { "Content-Type":"application/json", "X-CSRFToken": getCSRFToken() },
+          body: JSON.stringify(payload),
+        };
+    fetch("/purchase/purchasing/", options)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        // Swal.fire({ icon:"success", title:"Success",
+        //   text: data.message || "Purchase saved!", timer:1600, showConfirmButton:false })
+        Alerts.success(data.message || "Purchase saved!")
+        .then(() => window.location.reload());
+      } else {
+        // Swal.fire({ icon:"error", title:"Error",
+        //   text: data.message || "Something went wrong." });
+        Alerts.error(data.message || "Something went wrong.");
+      }
+    })
+    // .catch(() => Swal.fire({ icon:"error", title:"Network Error",
+    //   text:"Could not reach server." }));
+    .catch(() => Alerts.error("Could not reach server.", { title: "Network Error" }));
+  };
+
+  if (action !== "delete" && window.DocumentAttachments) {
+    DocumentAttachments.confirmReplacementIfNeeded().then(confirmed => {
+      if (confirmed) submitPurchase();
+    });
+  } else {
+    submitPurchase();
+  }
 }
 
 
@@ -3452,6 +3465,9 @@ window.addEventListener("DOMContentLoaded", () => {
   for (let i = 0; i < 3; i++) addItemRow(false);
   calculateTotal();
   document.getElementById("purchase_date").value = new Date().toISOString().slice(0,10);
+  if (window.DocumentAttachments) {
+    DocumentAttachments.init("purchase", () => document.getElementById("current_purchase_id")?.value || "");
+  }
 });
 
 
@@ -3610,6 +3626,7 @@ function renderPurchaseData(data) {
   document.getElementById("search_name").value         = data.Party || "";
   document.getElementById("purchase_date").value       = data.invoice_date || "";
   document.getElementById("current_purchase_id").value = data.purchase_invoice_id || "";
+  if (window.DocumentAttachments) DocumentAttachments.load(data.purchase_invoice_id || "");
   const _pDescEl = document.getElementById("purchase_description");
   if (_pDescEl) _pDescEl.value = data.description || "";
   if (typeof reflectPurchaseType === "function") reflectPurchaseType(data.Party || "");

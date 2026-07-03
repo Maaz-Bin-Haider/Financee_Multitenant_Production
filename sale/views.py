@@ -3,13 +3,64 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.db import connection
 from datetime import datetime, date
+from decimal import Decimal, InvalidOperation
 import json
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from attachments.utils import (
+    delete_document_attachments,
+    parse_json_or_multipart_payload,
+    save_document_attachments,
+    validate_request_attachments,
+)
 
 import logging
 logger = logging.getLogger(__name__)
 
 # Create your views here.
+
+
+def _decimal_value(value):
+    try:
+        return Decimal(str(value)).quantize(Decimal("0.0001"))
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal("0")
+
+
+def _normalized_sale_items(items):
+    normalized = []
+    for item in items or []:
+        serials = item.get("serials") or []
+        normalized.append(
+            (
+                (item.get("item_name") or "").strip().upper(),
+                int(item.get("qty") or 0),
+                _decimal_value(item.get("unit_price")),
+                tuple(sorted(str(serial).strip().upper() for serial in serials)),
+            )
+        )
+    return sorted(normalized)
+
+
+def _sale_payload_matches_current(sale_id, data, sale_date):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT get_current_sale(%s)", [sale_id])
+        current = cursor.fetchone()[0]
+
+    if isinstance(current, str):
+        current = json.loads(current)
+    if not current:
+        return False
+
+    current_desc = (current.get("description") or "").strip()
+    payload_desc = (data.get("description") or "").strip()
+    return (
+        (current.get("Party") or "").strip().upper() == (data.get("party_name") or "").strip().upper()
+        and str(current.get("invoice_date") or "") == str(sale_date)
+        and current_desc == payload_desc
+        and _normalized_sale_items(current.get("items")) == _normalized_sale_items(data.get("items"))
+    )
+
 
 @login_required
 def sales(request):
@@ -19,7 +70,7 @@ def sales(request):
     
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
+            data = parse_json_or_multipart_payload(request)
             action = data.get("action")  
             sale_id = data.get("sale_id")
             if sale_id:
@@ -28,9 +79,13 @@ def sales(request):
             return JsonResponse({"success": False, "message": "Invalid JSON"})
         
         if action == "submit":
+            try:
+                validate_request_attachments(request)
+            except ValidationError as e:
+                return JsonResponse({"success": False, "message": e.messages[0] if hasattr(e, "messages") else str(e)})
             
             try:
-                data = json.loads(request.body)
+                data = parse_json_or_multipart_payload(request)
                 _is_cash_sale = (data.get("sale_type") or "credit").lower() == "cash"
                 # validation example
                 if not _is_cash_sale and not data.get("party_name"):
@@ -232,7 +287,10 @@ def sales(request):
                                 "UPDATE salesinvoices SET description=%s WHERE sales_invoice_id=%s",
                                 [(data.get("description") or "").strip() or None, invoice_id],
                             )
-                            return JsonResponse({"success": True, "message": "Sale Successfull"})
+                            save_document_attachments(request, "sale", invoice_id)
+                            return JsonResponse({"success": True, "message": "Sale Successfull", "sale_id": invoice_id})
+                    except ValidationError as e:
+                        return JsonResponse({"success": False, "message": e.messages[0] if hasattr(e, "messages") else str(e)})
                     except Exception as e:
                         logger.exception('swallowed exception in %s', __name__)
                         return JsonResponse({"success": False, "message": "Failed to make Sale, try again!"})  
@@ -289,6 +347,10 @@ def sales(request):
                                 "message": "You do not have permission to Update Sale"
                             })
 
+                        if request.FILES and _sale_payload_matches_current(sale_id, data, sale_date):
+                            save_document_attachments(request, "sale", sale_id)
+                            return JsonResponse({"success": True, "message": "Sale attachments saved successfully."})
+
                         with connection.cursor() as cursor:
                             cursor.execute("""
                                 SELECT party_id 
@@ -325,8 +387,11 @@ def sales(request):
                                 "UPDATE salesinvoices SET description=%s WHERE sales_invoice_id=%s",
                                 [(data.get("description") or "").strip() or None, sale_id],
                             )
+                            save_document_attachments(request, "sale", sale_id)
                             return JsonResponse({"success": True, "message": "Update Successfull"})
 
+                    except ValidationError as e:
+                        return JsonResponse({"success": False, "message": e.messages[0] if hasattr(e, "messages") else str(e)})
                     except Exception as e:
                         logger.exception('swallowed exception in %s', __name__)
                         return JsonResponse({"success": False, "message": "Failed to Update Sale, try again!"})  
@@ -386,6 +451,7 @@ def sales(request):
 
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT delete_sale(%s)",[sale_id])
+                    delete_document_attachments("sale", sale_id)
                     return JsonResponse({"success": True, "message": "Deleted Successfully"})
             except Exception:
                 return JsonResponse({"success": False, "message": "Unable to delete this Sale! Try Again.."})

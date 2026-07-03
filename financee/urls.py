@@ -37,6 +37,7 @@ from month_close import urls as month_close_urls
 from sales_reports import urls as sales_reports_urls
 from contra import urls as contra_urls
 from opening_stock import urls as opening_stock_urls
+from attachments import urls as attachments_urls
 
 
 def redirect_to_home(request):
@@ -65,4 +66,5 @@ urlpatterns = [
     path('sales-reports/', include(sales_reports_urls, namespace='sales_reports')),
     path('contra/', include(contra_urls, namespace='contra')),
     path('opening-stock/', include(opening_stock_urls, namespace='opening_stock')),
+    path('attachments/', include(attachments_urls, namespace='attachments')),
 ]

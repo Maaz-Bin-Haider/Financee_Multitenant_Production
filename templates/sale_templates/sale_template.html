@@ -5,6 +5,7 @@
 
 {% block SeperateCssFile %}
 <link rel="stylesheet" href="{% static 'css/purchasing_styling.css' %}">
+<link rel="stylesheet" href="{% static 'css/document_attachments.css' %}">
 {% endblock SeperateCssFile %}
 
 {% block body %}
@@ -104,6 +105,8 @@
                     rows="2" maxlength="1000" placeholder="Add a note for this invoice…"></textarea>
         </div>
 
+        {% include "components/document_attachments.html" %}
+
         <div class="sale-divider"></div>
 
         <!-- Items section -->
@@ -179,5 +182,6 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <!-- jsPDF for PDF export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="{% static 'js/document_attachments.js' %}"></script>
 <script src="{% static 'js/sales_script.js' %}"></script>
 {% endblock body %}

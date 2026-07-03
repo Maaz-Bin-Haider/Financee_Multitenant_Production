@@ -52,6 +52,7 @@ function populateForm(data) {
 
   updateRecordChip(data.contra_id);
   setFormMode(data.contra_id ? "edit" : "new");
+  if (window.DocumentAttachments) DocumentAttachments.load(data.contra_id || "");
 }
 
 
@@ -150,6 +151,9 @@ $(document).ready(function () {
 
   const existingId = document.getElementById("current_contra_id")?.value;
   setFormMode(existingId ? "edit" : "new");
+  if (window.DocumentAttachments) {
+    DocumentAttachments.bindForm("contraForm", "contra", () => document.getElementById("current_contra_id")?.value || "");
+  }
 
   setupPartyField("from_search_name", "from_suggestions", "fromBalanceDisplay");
   setupPartyField("to_search_name",   "to_suggestions",   "toBalanceDisplay");

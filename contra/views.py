@@ -6,6 +6,8 @@ from django.http import JsonResponse
 import json
 from psycopg2.extras import Json
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from attachments.utils import delete_document_attachments, save_document_attachments, validate_request_attachments
 
 
 @login_required
@@ -32,6 +34,12 @@ def make_contra(request):
                 "description": description or "",
                 "contra_date": contra_date_str,
             }
+
+            try:
+                validate_request_attachments(request)
+            except ValidationError as e:
+                messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
+                return render(request, "contra_templates/contra.html", ctx)
 
             if not from_name or not to_name:
                 messages.error(request, "Please choose both a From and a To party.")
@@ -93,8 +101,13 @@ def make_contra(request):
                         return redirect("contra:contra")
                     try:
                         cursor.execute("SELECT make_contra(%s)", [payload])
+                        result = cursor.fetchone()[0]
+                        new_contra_id = result.get("contra_id") if isinstance(result, dict) else json.loads(result).get("contra_id")
+                        save_document_attachments(request, "contra", new_contra_id)
                         messages.success(request, f"Transfer recorded: {amount} from {from_name} to {to_name}.")
                         return redirect("contra:contra")
+                    except ValidationError as e:
+                        messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
                     except Exception as e:
                         messages.error(request, f"An unexpected error occurred. {e}")
                 else:  # update
@@ -103,8 +116,11 @@ def make_contra(request):
                         return redirect("contra:contra")
                     try:
                         cursor.execute("SELECT update_contra(%s, %s)", [contra_id, payload])
+                        save_document_attachments(request, "contra", contra_id)
                         messages.success(request, f"Transfer updated: {amount} from {from_name} to {to_name}.")
                         return redirect("contra:contra")
+                    except ValidationError as e:
+                        messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
                     except Exception as e:
                         messages.error(request, f"An unexpected error occurred. {e}")
 
@@ -127,6 +143,7 @@ def make_contra(request):
             try:
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT delete_contra(%s)", [contra_id])
+                delete_document_attachments("contra", contra_id)
                 messages.success(request, "Contra entry deleted successfully.")
                 return redirect("contra:contra")
             except Exception:
