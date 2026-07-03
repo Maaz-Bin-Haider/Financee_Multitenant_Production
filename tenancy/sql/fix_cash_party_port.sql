@@ -967,6 +967,68 @@ BEGIN
 END;
 $$;
 
+-- ----------------------------------------------------------------------------
+-- Backfill: rebuild the journals of cash-party documents that were posted
+-- BEFORE the party was cash-flagged. Those journals carry party AR/AP lines
+-- instead of Cash lines, so they are invisible to the cash-party ledger and
+-- leave a residual (never-collectable) party balance. Only documents whose
+-- journal still has a party-tagged line are rebuilt, so this is a no-op on
+-- every subsequent run. The swap (party AR/AP line -> Cash line) is
+-- balance-sheet neutral: the trial balance and P&L are unchanged.
+-- ----------------------------------------------------------------------------
+DO $$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN
+        SELECT si.sales_invoice_id AS id
+        FROM SalesInvoices si
+        JOIN Parties p ON p.party_id = si.customer_id
+        WHERE COALESCE(p.is_cash, false)
+          AND EXISTS (SELECT 1 FROM JournalLines jl
+                      WHERE jl.journal_id = si.journal_id
+                        AND jl.party_id = si.customer_id)
+    LOOP
+        PERFORM rebuild_sales_journal(r.id);
+    END LOOP;
+
+    FOR r IN
+        SELECT sr.sales_return_id AS id
+        FROM SalesReturns sr
+        JOIN Parties p ON p.party_id = sr.customer_id
+        WHERE COALESCE(p.is_cash, false)
+          AND EXISTS (SELECT 1 FROM JournalLines jl
+                      WHERE jl.journal_id = sr.journal_id
+                        AND jl.party_id = sr.customer_id)
+    LOOP
+        PERFORM rebuild_sales_return_journal(r.id);
+    END LOOP;
+
+    FOR r IN
+        SELECT pi.purchase_invoice_id AS id
+        FROM PurchaseInvoices pi
+        JOIN Parties p ON p.party_id = pi.vendor_id
+        WHERE COALESCE(p.is_cash, false)
+          AND EXISTS (SELECT 1 FROM JournalLines jl
+                      WHERE jl.journal_id = pi.journal_id
+                        AND jl.party_id = pi.vendor_id)
+    LOOP
+        PERFORM rebuild_purchase_journal(r.id);
+    END LOOP;
+
+    FOR r IN
+        SELECT pr.purchase_return_id AS id
+        FROM PurchaseReturns pr
+        JOIN Parties p ON p.party_id = pr.vendor_id
+        WHERE COALESCE(p.is_cash, false)
+          AND EXISTS (SELECT 1 FROM JournalLines jl
+                      WHERE jl.journal_id = pr.journal_id
+                        AND jl.party_id = pr.vendor_id)
+    LOOP
+        PERFORM rebuild_purchase_return_journal(r.id);
+    END LOOP;
+END;
+$$;
+
 -- Bump tenant schema version.
 UPDATE tenant_schema_version
 SET version = GREATEST(version, 5),

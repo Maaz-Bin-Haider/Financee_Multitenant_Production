@@ -46,6 +46,18 @@ Added `tenancy/sql/fix_cash_party_port.sql` (idempotent; folded into
 4. Cash-aware `detailed_ledger` / `detailed_ledger2` (also carry the
    description enrichment).
 5. Eager seeding of the "Cash Sale" / "Cash Purchase" sentinel parties.
+6. **Pre-flag journal backfill** (added after the port, same day): documents of
+   a cash party posted *before* the party carried `is_cash = true` had journals
+   with party AR/AP lines instead of Cash lines. They were invisible to the
+   cash-party ledger (which reads Cash-account lines of the party's documents)
+   and left a residual, never-collectable party balance (`Cash Sale` on
+   `tenant_company_1` sat at +500 AR). The patch rebuilds the journal of every
+   cash-party document whose journal still carries a party-tagged line — a
+   balance-sheet-neutral swap (AR/AP → Cash) that is a no-op on later runs.
+   Symptom that surfaced it: the Detailed Ledger for "Cash Sale"/"Cash
+   Purchase" appeared to show only returns. (Also note: seeded test invoices
+   carry fixture dates in 2025 while returns default to `CURRENT_DATE`, so a
+   date range starting in 2026 legitimately excludes those invoices.)
 
 `tests/suite/test_sales.py` now asserts the cash path unconditionally on every
 tenant (feature-detection branch removed) and checks the sentinel parties and
