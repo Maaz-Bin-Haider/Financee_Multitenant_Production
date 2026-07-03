@@ -1,7 +1,15 @@
 # TODO
 
-> No outstanding work. The cash-party port (the last deferred item) landed on
-> 2026-07-03.
+## [ ] Write detailed document-attachment tests
+
+Add dedicated automated coverage for the new attachment feature across sale,
+purchase, sale return, purchase return, payment, receipt, and contra flows.
+Cover create/update upload of one image and one PDF, one-file-per-kind
+replacement, preserving the unselected file kind during update, authenticated
+metadata/preview/download endpoints, invalid file type/size validation, cleanup
+after successful document delete, no cleanup after failed business delete,
+attachment-only update bypass for sale/purchase/returns, and no bypass for
+payments/receipts/contra.
 
 ---
 

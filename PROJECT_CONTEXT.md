@@ -131,6 +131,19 @@ Conventions:
 - `tests/suite/` is the comprehensive full-system suite (own harness `_harness.py`, one module per domain plus `test_reports.py` for every report and `test_http.py` for endpoints; run with `python tests/suite/run_all.py`). It runs against every active tenant and asserts real accounting invariants (double-entry balance, party balances, COGS, stock/serial coherence), not just "did not error". It reuses the `XFAIL`/`known_bug` convention. See `tests/suite/README.md` and `tests/suite/RESULTS.md`.
 - `tests/run_tests.sh` runs both harnesses in Docker and can reset tenant schemas with `--reset`.
 
+## Document Attachment Feature
+
+The `attachments` app adds optional image/PDF support for sale, purchase, sale return, purchase return, payment, receipt, and contra documents.
+
+- Tenant SQL: `tenancy/sql/add_document_attachments.sql` creates `document_attachments` with `(document_type, document_id, file_kind)` uniqueness. It is folded into `tenancy/sql/tenant_template.sql`, `tenancy/sql/production_hardening.sql`, and `build_multitenant_db.sql`; tenant schema version is 6.
+- Storage: metadata lives in the active tenant schema; file bytes live below `PRIVATE_MEDIA_ROOT/document_attachments/<tenant>/<document_type>/<document_id>/`. `financee/settings.py` defines `MEDIA_ROOT` and `PRIVATE_MEDIA_ROOT`.
+- Security: `/attachments/<document_type>/<document_id>/` returns metadata only. Preview/download endpoints stream the file through Django after authentication, tenant activation, and the relevant view permission check. Nginx blocks direct `/media/private/` access.
+- Limits: one image and one PDF per document. Images are JPG/JPEG, PNG, WEBP, or GIF up to 10 MB. PDFs are `application/pdf` up to 20 MB.
+- Replacement semantics: uploading a new image replaces only the image; uploading a new PDF replaces only the PDF. Missing file kinds on update are preserved.
+- Delete semantics: document delete flows call attachment cleanup only after the business delete succeeds, so a failed accounting/inventory delete does not remove files.
+- Frontend: `templates/components/document_attachments.html`, `static/css/document_attachments.css`, and `static/js/document_attachments.js` provide the shared widget. Metadata loads asynchronously after the business document renders; file bytes load only on explicit preview/download.
+- Update locking: sale, purchase, sale-return, and purchase-return views detect attachment-only updates and save files without calling the stored update function when the submitted business payload matches the current document. Payments, receipts, and contra intentionally do not use this bypass.
+
 ## Tenant Schema Drift (fully healed)
 
 The `tests/suite/` run surfaced idempotent `tenancy/sql/` patches applied to one tenant but not the other. Most were healed by `tenancy/sql/fix_tenant_drift.sql` (tenant schema version 4); the final deferred item — the cash-party feature — was ported by `tenancy/sql/fix_cash_party_port.sql` (tenant schema version 5, 2026-07-03). See `FIXED_ISSUES.md` and `tests/suite/RESULTS.md`.

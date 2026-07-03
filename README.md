@@ -126,6 +126,7 @@ Use `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, and `ALTER TABLE
 | `payments` | Outgoing payments, navigation, history, party balance |
 | `receipts` | Incoming receipts, navigation, history, party balance |
 | `contra` | Party-to-party contra entries, navigation, history, party balance |
+| `attachments` | Authenticated image/PDF metadata, preview, download, and file cleanup for business documents |
 | `accountsReports` | Ledgers, trial balance, cash ledger, receivable/payable, stock, serial, and monthly reports |
 | `sales_reports` | Sales analytics APIs and report screen |
 | `set_opening` | Opening cash singleton |
@@ -149,6 +150,7 @@ Use `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, and `ALTER TABLE
 | `/payments/` | Payments |
 | `/receipts/` | Receipts |
 | `/contra/` | Contra entries |
+| `/attachments/` | Authenticated attachment metadata, preview, and download endpoints |
 | `/accountsReports/` | Accounting and inventory reports |
 | `/sales-reports/` | Sales analytics |
 | `/set-opening/` | Opening cash |
@@ -157,6 +159,52 @@ Use `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, and `ALTER TABLE
 | `/month-close/` | Period close |
 
 The legacy `/accountsReports/company-valuation/` and `/accountsReports/sale-wise-report/` Profit Reports page has been retired from the UI/routes. Its replacement coverage lives in Monthly Reports, Sales Reports, and dashboard sales/profit widgets. Database objects and historical permissions were left in place for compatibility.
+
+## Document Attachments
+
+Sale, purchase, sale return, purchase return, payment, receipt, and contra screens support optional document attachments. Each document can have at most one image and one PDF. A user may upload either file type or both file types on create/update.
+
+Attachment metadata is stored in each tenant schema in `document_attachments`; file bytes are stored under `PRIVATE_MEDIA_ROOT/document_attachments/<tenant>/<document_type>/<document_id>/`. Private media is never served directly by Nginx: `deploy/nginx/financee.conf` returns 404 for `/media/private/`, and files are streamed only through authenticated Django endpoints.
+
+Supported files:
+
+- Images: JPG/JPEG, PNG, WEBP, GIF; maximum 10 MB.
+- PDFs: `application/pdf`; maximum 20 MB.
+- One file per kind per document: one `image` row and one `pdf` row.
+
+Update behavior:
+
+- Uploading a new image replaces only the existing image.
+- Uploading a new PDF replaces only the existing PDF.
+- If a document already has an image and the user later uploads only a PDF, the image is preserved. The reverse is also true.
+- The frontend warns when a selected file will replace an existing file of the same kind.
+- Deleting a document removes its attachment metadata and physical files after the business delete succeeds.
+
+Performance behavior:
+
+- Navigation endpoints such as previous/next invoice fetches do not return file blobs.
+- The page renders the business document first, then loads attachment metadata asynchronously from `/attachments/<document_type>/<document_id>/`.
+- Image/PDF bytes are fetched only when the user chooses Preview or Download, so old-document navigation remains lightweight.
+
+Business update behavior:
+
+- Sale, purchase, sale-return, and purchase-return updates support an attachment-only path. If the submitted business payload matches the current document and only files are being added/replaced, the view saves attachments without calling the stored update function. This allows files to be added to locked documents, such as sale invoices with return history, without mutating accounting or inventory data.
+- Payments, receipts, and contra entries do not use that attachment-only bypass. Their update flow still calls the normal stored update function, then saves attachments after a successful update.
+
+Existing tenant rollout:
+
+```bash
+python manage.py apply_sql_all_tenants tenancy/sql/add_document_attachments.sql
+```
+
+With Docker:
+
+```bash
+docker compose -f deploy/docker-compose.yml exec -T web python manage.py apply_sql_all_tenants tenancy/sql/add_document_attachments.sql
+docker compose -f deploy/docker-compose.yml exec -u root web chown -R 10001:10001 /app/media
+```
+
+`tenancy/sql/add_document_attachments.sql` is idempotent and folded into `tenant_template.sql`, `production_hardening.sql`, and `build_multitenant_db.sql`. New tenants receive the table automatically; existing tenants need the rollout patch before uploads are tested.
 
 ## Permissions and Guards
 
