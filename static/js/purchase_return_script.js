@@ -826,6 +826,7 @@ function renderPurchaseReturnData(data) {
   if (window.DocumentAttachments) DocumentAttachments.load(data.purchase_return_id || "");
   const _prDescEl = document.getElementById("purchase_return_description");
   if (_prDescEl) _prDescEl.value = data.description || "";
+  if (window.SmartDescriptions) SmartDescriptions.refreshAll();
 
   // ID badge
   const badge = document.getElementById("invoiceIdBadge");

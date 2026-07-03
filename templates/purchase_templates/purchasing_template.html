@@ -5,6 +5,7 @@
 
 {% block SeperateCssFile %}
 <link rel="stylesheet" href="{% static 'css/purchasing_styling.css' %}">
+<link rel="stylesheet" href="{% static 'css/smart_description.css' %}">
 <link rel="stylesheet" href="{% static 'css/document_attachments.css' %}">
 <style>
   /* Purchase-specific serial wrapper overrides */
@@ -166,7 +167,7 @@
           <label class="sale-field-label" for="purchase_description">
             <i class="fa-solid fa-note-sticky"></i> Description <span style="opacity:.6;font-weight:400;">(optional)</span>
           </label>
-          <textarea id="purchase_description" name="description" class="sale-input"
+          <textarea id="purchase_description" name="description" class="sale-input" data-smart-description
                     rows="2" maxlength="1000" placeholder="Add a note for this invoice…"></textarea>
         </div>
 
@@ -245,6 +246,7 @@
 </script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="{% static 'js/smart_description.js' %}"></script>
 <script src="{% static 'js/document_attachments.js' %}"></script>
 <script src="{% static 'js/purchasing_script.js' %}"></script>
 {% endblock body %}

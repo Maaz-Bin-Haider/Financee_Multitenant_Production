@@ -5,6 +5,7 @@
 
 {% block SeperateCssFile %}
 <link rel="stylesheet" href="{% static 'css/purchasing_styling.css' %}">
+<link rel="stylesheet" href="{% static 'css/smart_description.css' %}">
 <link rel="stylesheet" href="{% static 'css/document_attachments.css' %}">
 <style>
   /* ── Return-page accent: amber/orange header to visually distinguish from Sale ── */
@@ -209,7 +210,7 @@
           <label class="sale-field-label" for="sale_return_description">
             <i class="fa-solid fa-note-sticky"></i> Description <span style="opacity:.6;font-weight:400;">(optional)</span>
           </label>
-          <textarea id="sale_return_description" name="description" class="sale-input"
+          <textarea id="sale_return_description" name="description" class="sale-input" data-smart-description
                     rows="2" maxlength="1000" placeholder="Add a note for this return…"></textarea>
         </div>
 
@@ -279,6 +280,7 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="{% static 'js/smart_description.js' %}"></script>
 <script src="{% static 'js/document_attachments.js' %}"></script>
 <script src="{% static 'js/sale_return_script.js' %}"></script>
 {% endblock body %}

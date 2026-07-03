@@ -5,6 +5,7 @@
 
 {% block SeperateCssFile %}
   <link rel="stylesheet" href="{% static 'css/payment.css' %}">
+  <link rel="stylesheet" href="{% static 'css/smart_description.css' %}">
   <link rel="stylesheet" href="{% static 'css/document_attachments.css' %}">
 {% endblock SeperateCssFile %}
 
@@ -120,7 +121,7 @@
             <i class="fa-regular fa-note-sticky" style="margin-right:4px;"></i>
             Description <span style="font-weight:400;color:var(--text-tertiary);">(optional)</span>
           </label>
-          <textarea id="description" name="description"
+          <textarea id="description" name="description" data-smart-description maxlength="1000"
                     placeholder="Add a note or reference for this receipt…">{{ description }}</textarea>
         </div>
 
@@ -176,6 +177,7 @@
 <!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <!-- Receipts JS -->
+<script src="{% static 'js/smart_description.js' %}"></script>
 <script src="{% static 'js/document_attachments.js' %}"></script>
 <script src="{% static 'js/receipts_page.js' %}"></script>
 
@@ -192,6 +194,7 @@
     document.getElementById("amount").value = "";
     document.getElementById("method").value = "Cash";
     document.getElementById("description").value = "";
+    if (window.SmartDescriptions) SmartDescriptions.refreshAll();
     document.getElementById("current_receipt_id").value = "";
     document.getElementById("entryByName").textContent = "—";
     document.getElementById("entryByBadge").style.display = "none";

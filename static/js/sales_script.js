@@ -1770,6 +1770,7 @@ function renderSaleData(data) {
   if (window.DocumentAttachments) DocumentAttachments.load(data.sales_invoice_id || "");
   const _descEl = document.getElementById("sale_description");
   if (_descEl) _descEl.value = data.description || "";
+  if (window.SmartDescriptions) SmartDescriptions.refreshAll();
   if (typeof reflectSaleType === "function") reflectSaleType(data.Party || "");
 
   // Update badge

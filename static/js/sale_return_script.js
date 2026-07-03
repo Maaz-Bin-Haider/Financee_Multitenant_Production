@@ -697,6 +697,7 @@ function renderSaleReturnData(data) {
   if (window.DocumentAttachments) DocumentAttachments.load(data.sales_return_id || "");
   const _srDescEl = document.getElementById("sale_return_description");
   if (_srDescEl) _srDescEl.value = data.description || "";
+  if (window.SmartDescriptions) SmartDescriptions.refreshAll();
 
   // ID badge
   const badge = document.getElementById("invoiceIdBadge");

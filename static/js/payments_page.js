@@ -458,6 +458,7 @@ function populateForm(data) {
   document.getElementById("amount").value        = data.amount       || "";
   document.getElementById("method").value        = data.method       || "Cash";
   document.getElementById("description").value   = data.description  || "";
+  if (window.SmartDescriptions) SmartDescriptions.refreshAll();
 
   const entryByName = document.getElementById("entryByName");
   if (entryByName) entryByName.textContent = data.created_by || "—";

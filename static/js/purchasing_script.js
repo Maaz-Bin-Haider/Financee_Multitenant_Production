@@ -3629,6 +3629,7 @@ function renderPurchaseData(data) {
   if (window.DocumentAttachments) DocumentAttachments.load(data.purchase_invoice_id || "");
   const _pDescEl = document.getElementById("purchase_description");
   if (_pDescEl) _pDescEl.value = data.description || "";
+  if (window.SmartDescriptions) SmartDescriptions.refreshAll();
   if (typeof reflectPurchaseType === "function") reflectPurchaseType(data.Party || "");
 
   const badge = document.getElementById("invoiceIdBadge");

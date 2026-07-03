@@ -40,6 +40,7 @@ function populateForm(data) {
   document.getElementById("to_search_name").value   = data.to_party_name   || "";
   document.getElementById("amount").value           = data.amount          || "";
   document.getElementById("description").value      = data.description     || "";
+  if (window.SmartDescriptions) SmartDescriptions.refreshAll();
 
   fetchPartyBalance(data.from_party_name || "", "fromBalanceDisplay");
   fetchPartyBalance(data.to_party_name   || "", "toBalanceDisplay");
