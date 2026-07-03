@@ -30,18 +30,67 @@
     return Promise.resolve(window.confirm(message));
   }
 
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function cardFor(kind) {
+    return document.querySelector(`[data-attachment-kind="${kind}"]`);
+  }
+
+  function selectedLabel(kind) {
+    return byId(kind === "image" ? "attachment_image_selected" : "attachment_pdf_selected");
+  }
+
+  function renderSelected(kind) {
+    const file = selectedFile(kind);
+    const label = selectedLabel(kind);
+    const card = cardFor(kind);
+    if (!label) return;
+
+    if (!file) {
+      label.textContent = "No new file selected";
+      label.classList.remove("has-selection");
+      if (card) card.classList.remove("is-selected");
+      return;
+    }
+
+    label.textContent = file.name;
+    label.title = file.name;
+    label.classList.add("has-selection");
+    if (card) {
+      card.classList.remove("is-selected");
+      void card.offsetWidth;
+      card.classList.add("is-selected");
+    }
+  }
+
   function renderStatus(kind, attachment) {
     const el = byId(`attachment_${kind}_status`);
     if (!el) return;
     if (!attachment) {
-      el.innerHTML = `<span class="attachment-name">No ${kind === "image" ? "image" : "PDF"} attached</span>`;
+      el.classList.remove("has-file");
+      el.innerHTML = `<span class="attachment-name attachment-empty">No ${kind === "image" ? "image" : "PDF"} attached</span>`;
       return;
     }
+    const fileName = escapeHtml(attachment.file_name || "Attached file");
+    const previewUrl = escapeHtml(attachment.preview_url || "#");
+    const downloadUrl = escapeHtml(attachment.download_url || "#");
+    el.classList.add("has-file");
     el.innerHTML = `
-      <span class="attachment-name" title="${attachment.file_name || ""}">${attachment.file_name || "Attached file"}</span>
+      <span class="attachment-name" title="${fileName}">${fileName}</span>
       <span class="attachment-actions">
-        <a href="${attachment.preview_url}" target="_blank" rel="noopener">Preview</a>
-        <a href="${attachment.download_url}">Download</a>
+        <a href="${previewUrl}" target="_blank" rel="noopener" title="Preview attachment" aria-label="Preview attachment">
+          <i class="fa-solid fa-eye"></i><span>Preview</span>
+        </a>
+        <a href="${downloadUrl}" title="Download attachment" aria-label="Download attachment">
+          <i class="fa-solid fa-arrow-down"></i><span>Download</span>
+        </a>
       </span>
     `;
   }
@@ -56,9 +105,10 @@
   }
 
   function clearInputs() {
-    ["attachment_image", "attachment_pdf"].forEach((id) => {
+    ["attachment_image", "attachment_pdf"].forEach((id, index) => {
       const input = byId(id);
       if (input) input.value = "";
+      renderSelected(index === 0 ? "image" : "pdf");
     });
   }
 
@@ -120,12 +170,23 @@
   function warnIfReplacingOnChange(kind) {
     const input = byId(kind === "image" ? "attachment_image" : "attachment_pdf");
     if (!input) return;
+    if (input.dataset.attachmentBound === "1") return;
+    input.dataset.attachmentBound = "1";
     input.addEventListener("change", function () {
+      renderSelected(kind);
       if (selectedFile(kind) && state.current[kind]) {
         notify(`Uploading a new ${kind === "image" ? "image" : "PDF"} will replace the existing ${kind === "image" ? "image" : "PDF"}.`);
       }
     });
   }
+
+  document.addEventListener("click", function (event) {
+    const action = event.target.closest(".attachment-actions a");
+    if (!action) return;
+    action.classList.remove("attachment-action-pop");
+    void action.offsetWidth;
+    action.classList.add("attachment-action-pop");
+  });
 
   function confirmReplacementIfNeeded() {
     const kinds = replacementKinds();
