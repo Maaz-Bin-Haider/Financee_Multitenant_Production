@@ -145,6 +145,44 @@ state machine boundaries, payment-extension math, and HTTP enforcement
 banner rendering, payment-restores-access). It mutates only public-schema
 registry fields and restores them in `finally`.
 
+### Subscription notification emails
+
+Automatic emails to the **company's billing address** (`Company.contact_email`
+— never to individual users), fully configured from the admin panel. Migration
+`tenancy/0003_subscription_emails`; engine in `tenancy/subscription_emails.py`.
+
+- Two date-driven emails per billing cycle: **expired** (sent the day
+  `paid_until` lapses: "you have N grace days, access restricted after X") and
+  **suspended** (sent the day the grace window ends: "access is suspended,
+  resumes after payment"). Companies with `is_suspended=True` are skipped by
+  the scanner — the operator-triggered email covers them.
+- `BillingSettings` (singleton, `tenancy_billing_settings`): sender account
+  (SMTP host/port/TLS + sender email + **app password**, defaults to Gmail
+  smtp.gmail.com:587 TLS), `emails_enabled` master switch, and the contact
+  details embedded in every email (WhatsApp number, phone, free-text note).
+  Its admin changelist redirects to the single change form, which has a
+  **Send a test email** button (custom admin URL
+  `tenancy_billingsettings_test_email`).
+- `SubscriptionEmailLog` (`tenancy_subscription_email_log`): audit trail and
+  dedup guard. Date-driven sends INSERT the row first under the unique
+  `(company, kind, paid_until)` constraint (condition: date-driven kinds only),
+  so a cycle can never email twice across gunicorn workers; a `failed` row is
+  reclaimed and retried on the next scan. Read-only in the admin (no
+  add/change/delete — deleting a sent row would allow a duplicate email).
+- Delivery loop: `start_email_scheduler()` is invoked from **`financee/wsgi.py`**
+  (only serving processes, never management commands) and runs an hourly
+  daemon-thread scan; workers coordinate via a shared-cache tick lock
+  (`subscription_email_tick`, Redis in production). Manual run:
+  `python manage.py send_subscription_emails [--dry-run]`.
+- Manual suspension from the admin (Suspend action or ticking Suspended on the
+  form) sends the suspension email immediately (`manual_suspension` kind, no
+  dedup) and reports the outcome via admin messages.
+- `SUBSCRIPTION_EMAIL_BACKEND` (optional Django setting) overrides the mail
+  backend — the test suite points it at locmem.
+- Tests: `tests/suite/test_subscription_emails.py` (singleton behavior,
+  scanner states/dedup/retry, content incl. WhatsApp/contact details, manual +
+  test emails, admin screens and suspend-action email). Nothing real is sent.
+
 ## Security and Permission Notes
 
 - Route-level guards live in `financee/security.py` and are enforced by `TenantSchemaMiddleware`.
@@ -197,6 +235,7 @@ Conventions:
 - `tests/TRANSACTION_LIFECYCLE_FLOW_RESULTS.md` records the latest deep lifecycle flow matrix and current pass/fail status.
 - `tests/suite/` is the comprehensive full-system suite (own harness `_harness.py`, one module per domain plus `test_reports.py` for every report and `test_http.py` for endpoints; run with `python tests/suite/run_all.py`). It runs against every active tenant and asserts real accounting invariants (double-entry balance, party balances, COGS, stock/serial coherence), not just "did not error". It reuses the `XFAIL`/`known_bug` convention. See `tests/suite/README.md` and `tests/suite/RESULTS.md`.
 - `tests/suite/test_subscription.py` covers the subscription-control layer: the paid-until/grace/suspension state machine, calendar-aware payment extension, and HTTP enforcement (suspension page, JSON denial, exemptions, warning banner).
+- `tests/suite/test_subscription_emails.py` covers the subscription email layer: BillingSettings singleton, expiry/suspension emails with per-cycle dedup and failure retry, contact-detail embedding, manual-suspension/test emails, and the admin email screens (locmem backend, nothing real sent).
 - `tests/suite/test_attachments.py` adds dedicated document-attachment coverage for sale, purchase, sale return, purchase return, payment, receipt, and contra documents: upload/update/replacement, preservation of the unselected file kind, metadata/preview/download endpoints, invalid file validation, cleanup, failed-delete preservation, attachment-only bypass for sale/purchase/returns, and no bypass for payments/receipts/contra.
 - `tests/run_tests.sh` runs both harnesses in Docker and can reset tenant schemas with `--reset`.
 

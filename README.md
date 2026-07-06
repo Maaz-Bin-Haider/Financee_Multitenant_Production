@@ -244,6 +244,39 @@ KPI cards, and the company list shows a live subscription badge
 (Active / Expires soon / Grace / Blocked / Suspended / Not enforced) with bulk
 suspend / lift-suspension actions.
 
+### Subscription emails
+
+The system emails the **company's billing address** (set per company as
+**Contact email** — not individual users) automatically:
+
+- On the day the subscription expires: "your subscription expired on X, you
+  have N days to pay, access will be restricted after Y".
+- On the day the grace window ends (access suspended): "your access is now
+  suspended and resumes as soon as the payment is received".
+- When you manually suspend a company from the admin, it is emailed
+  immediately.
+
+Setup, all inside the admin under **Billing & email settings**:
+
+1. Enter the sender account: sender name, email, and an SMTP **app password**
+   (for Gmail: Google Account → Security → 2-Step Verification → App
+   passwords). Host/port default to Gmail (`smtp.gmail.com:587`, TLS).
+2. Enter the contact details embedded in every email: WhatsApp number, phone,
+   and an optional note (e.g. bank account details or office hours). All
+   editable at any time.
+3. Save, then click **Send a test email to the sender address** to verify.
+4. Set each company's **Contact email** on its admin page.
+
+Every email (sent, failed, test) is listed under **Sent Emails** in the admin.
+Each billing cycle sends each notice at most once (failed deliveries are
+retried automatically on the next hourly scan), and recording a payment starts
+a fresh cycle. The scan runs hourly inside the web container; it can also be
+run manually:
+
+```bash
+docker compose -f deploy/docker-compose.yml exec -T web python manage.py send_subscription_emails --dry-run
+```
+
 All subscription data lives in the shared `public` schema
 (`tenancy/migrations/0002_subscription_control.py`); tenant business schemas
 are untouched. Applying the migration blocks nobody: existing companies start
@@ -423,6 +456,7 @@ The suite has three major harnesses:
 - `tests/test_http.py`: Django client coverage for real views, permissions, JSON, templates, and write flows
 - `tests/suite/test_attachments.py`: dedicated document-attachment coverage for sale, purchase, sale return, purchase return, payment, receipt, and contra files, including upload/update/replacement, endpoint access, validation, cleanup, and bypass rules.
 - `tests/suite/test_subscription.py`: subscription-control coverage — paid-until/grace/suspension state machine, payment-extension math, suspension page and JSON denial, exemptions (logout, superuser), and the renewal warning banner.
+- `tests/suite/test_subscription_emails.py`: subscription email coverage — settings singleton, expiry/suspension emails with per-cycle dedup and failure retry, contact-detail embedding, manual-suspension and test emails, and the admin email screens (locmem backend; nothing real is sent).
 - `tests/test_transaction_lifecycle_deep.py`: direct SQL stress coverage for real serial lifecycles, mixed purchase invoice corrections, partial returns, sale-return update/delete after resale, sale invoice update/delete after returns, cash-sale vs credit-sale returns, multi-item mixed serial invoices, duplicate/wrong-party return guards, and report execution after every entry. It also asserts financial invariants at every checkpoint (trial balance balances, no orphaned journal lines, stock/sold coherence) and covers the transaction-integrity guards from `tenancy/sql/fix_transaction_integrity_guards.sql` (delete_purchase sold-serial guard, qty-vs-serial validation, COGS reflow on purchase price edits). Confirmed-but-unfixed defects can be marked `known_bug=True` and are reported as `XFAIL` without failing the suite. See `tests/TRANSACTION_LIFECYCLE_FLOW_RESULTS.md`.
 
 ## Project Rules for Future Changes

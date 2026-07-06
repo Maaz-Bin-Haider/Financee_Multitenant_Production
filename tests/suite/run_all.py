@@ -27,6 +27,7 @@ MODULES = [
     "test_reports.py",
     "test_attachments.py",
     "test_subscription.py",
+    "test_subscription_emails.py",
     "test_http.py",
 ]
 

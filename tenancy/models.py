@@ -67,6 +67,14 @@ class Company(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     # ── Subscription control (payments are collected outside the system) ──
+    contact_email = models.EmailField(
+        blank=True,
+        help_text=(
+            "The company's billing email. Subscription expiry/suspension "
+            "notifications are sent here (not to individual users). Leave "
+            "empty to skip email notifications for this company."
+        ),
+    )
     is_suspended = models.BooleanField(
         default=False,
         help_text=(
@@ -239,3 +247,134 @@ class SubscriptionPayment(models.Model):
             company.save(update_fields=["paid_until", "is_suspended"])
             self.paid_until_after = company.paid_until
             super().save(*args, **kwargs)
+
+
+class BillingSettings(models.Model):
+    """
+    Singleton: the operator's outgoing-mail account (SMTP with an app
+    password, e.g. Gmail) and the contact details embedded in every
+    subscription email. Fully editable from the admin panel.
+    """
+
+    sender_name = models.CharField(
+        max_length=100,
+        default="Financee",
+        help_text="Display name on outgoing emails.",
+    )
+    sender_email = models.EmailField(
+        blank=True,
+        help_text="The email account subscription notifications are sent from.",
+    )
+    app_password = models.CharField(
+        max_length=128,
+        blank=True,
+        help_text="SMTP app password for the sender account (e.g. a Gmail app password).",
+    )
+    smtp_host = models.CharField(max_length=120, default="smtp.gmail.com")
+    smtp_port = models.PositiveIntegerField(default=587)
+    use_tls = models.BooleanField(default=True)
+    emails_enabled = models.BooleanField(
+        default=True,
+        help_text="Master switch: untick to stop all subscription emails.",
+    )
+
+    # Contact details shown inside every subscription email.
+    whatsapp_number = models.CharField(
+        max_length=32,
+        blank=True,
+        help_text="WhatsApp number clients should message about payments (e.g. +92 300 1234567).",
+    )
+    contact_phone = models.CharField(max_length=32, blank=True)
+    contact_note = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Optional extra line shown in emails (e.g. office hours, bank account).",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "tenancy_billing_settings"
+        verbose_name = "Billing & email settings"
+        verbose_name_plural = "Billing & email settings"
+
+    def __str__(self):
+        return f"Billing & email settings ({self.sender_email or 'sender not set'})"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  # enforce the singleton
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    @property
+    def smtp_ready(self):
+        return bool(self.sender_email and self.app_password)
+
+
+class SubscriptionEmailLog(models.Model):
+    """
+    One row per subscription email (attempted or sent). Doubles as the
+    dedup guard: for date-driven emails the row is inserted *before* sending
+    under a unique (company, kind, paid_until) constraint, so a billing cycle
+    can never email twice even across gunicorn workers.
+    """
+
+    KIND_EXPIRED = "expired"
+    KIND_SUSPENDED = "suspended"
+    KIND_MANUAL_SUSPENSION = "manual_suspension"
+    KIND_TEST = "test"
+    KIND_CHOICES = [
+        (KIND_EXPIRED, "Subscription expired (grace notice)"),
+        (KIND_SUSPENDED, "Access suspended"),
+        (KIND_MANUAL_SUSPENSION, "Access suspended (manual)"),
+        (KIND_TEST, "Test email"),
+    ]
+
+    STATUS_PENDING = "pending"
+    STATUS_SENT = "sent"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_SENT, "Sent"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    company = models.ForeignKey(
+        Company,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="subscription_emails",
+    )
+    kind = models.CharField(max_length=24, choices=KIND_CHOICES)
+    to_email = models.EmailField()
+    paid_until = models.DateField(
+        null=True,
+        blank=True,
+        help_text="The billing cycle this email belongs to (dedup key).",
+    )
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "tenancy_subscription_email_log"
+        verbose_name = "Subscription email"
+        verbose_name_plural = "Subscription emails"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "kind", "paid_until"],
+                condition=models.Q(
+                    paid_until__isnull=False,
+                    kind__in=["expired", "suspended"],
+                ),
+                name="uniq_subscription_email_per_cycle",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} -> {self.to_email} ({self.status})"
