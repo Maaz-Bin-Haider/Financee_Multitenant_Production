@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-07-03
+Last updated: 2026-07-06
 
 This file is the persistent engineering context for Financee. Update it on every meaningful project change, especially changes to architecture, routes, permissions, tenant SQL, deployment behavior, environment variables, tests, or data model assumptions.
 
@@ -78,6 +78,73 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
 - Keep `FIXED_ISSUES.md` updated when a production/setup issue is diagnosed and fixed, especially if the fix affects tenant provisioning, login routing, deployment startup, or recovery commands.
 - Legacy Profit Reports routes `/accountsReports/company-valuation/` and `/accountsReports/sale-wise-report/` are retired from the UI/routes. Replacement coverage is in Monthly Reports, Sales Reports, and dashboard sales/profit widgets. Do not remove related DB objects or historical permissions unless a separate compatibility audit is completed.
 
+## Subscription Control (manual billing, admin-driven)
+
+Clients pay monthly outside the system (direct bank transfer, no payment
+gateway). The operator controls access entirely from the custom admin panel.
+Everything lives in the **public** schema (Django ORM) — no tenant SQL involved.
+
+Data model (`tenancy/models.py`, migration `tenancy/0002_subscription_control`):
+
+- `Company.paid_until` (date, nullable): subscription paid through this date
+  (inclusive). **NULL disables enforcement** for that company (default for
+  pre-existing companies, so the migration blocks nobody).
+- `Company.grace_days` (default 3): extra access days after `paid_until`
+  before the automatic block.
+- `Company.warn_days_before` (default 7): renewal banner window before expiry.
+- `Company.is_suspended`: manual kill switch, blocks immediately regardless of
+  dates.
+- `SubscriptionPayment`: immutable audit log (company, amount, date_received,
+  months_covered, note, paid_until_after, created_by). Saving a **new** payment
+  atomically extends `paid_until` by `months_covered` — from the current
+  `paid_until` if still in the future, else from `date_received` (calendar-aware
+  month math via `add_months`, clamping e.g. Jan 31 + 1 → Feb 28) — and clears
+  `is_suspended`. Edits/deletes never re-shrink `paid_until`.
+- `Company.subscription_state()` returns one of `unrestricted / active /
+  expiring / grace / blocked / suspended`; `BLOCKED_STATES = {suspended,
+  blocked}` deny access.
+
+Enforcement (`tenancy/middleware.py` + `financee/security.py`):
+
+- `TenantSchemaMiddleware._resolve_schema` now also returns the `Company`
+  (stored as `request.tenant_company`; zero extra queries). `process_view`
+  checks `subscription_state()` after the tenant guard and before permissions.
+- Blocked users get `subscription_blocked_response()`: a branded 403
+  suspension page (`templates/tenancy_templates/subscription_suspended.html`)
+  that mentions the overdue payment; AJAX/API paths get scrubbed 403 JSON.
+- Exemptions: **superusers are never blocked** (the operator), and
+  `TENANT_GUARD_EXEMPT_PREFIXES` (`/admin/`, `/authentication/`, `/static/`,
+  `/media/`) stay reachable — login/logout always work; users log in and land
+  on the suspension page. `Company.is_active` remains the separate,
+  pre-existing hard registry switch (generic 403, middleware `tenant_ok=False`).
+- Warning banner: middleware stamps `request.subscription_state`; the
+  `tenancy.context_processors.subscription_notice` context processor
+  (registered in settings) feeds a dismissible banner in
+  `templates/base/base.html` for the `expiring`/`grace` states (dismissal is
+  per-session via sessionStorage). Styles in `static/css/subscription.css`
+  (banner + suspension page, incl. dark mode).
+
+Admin (`tenancy/admin.py`, superuser-only custom site):
+
+- Company changelist shows a muted subscription badge (Not enforced / Active /
+  Expires {date} / Grace until {date} / Blocked — unpaid / Suspended; pill
+  styles `.pill-warn`, `.pill-grace` added to `financee_admin.css`), plus
+  `paid_until` and an `is_suspended` filter. Bulk actions: suspend / lift
+  suspension.
+- Company change form has a Subscription fieldset and a Subscription payments
+  inline (add-only; existing rows immutable). Recording a payment there or in
+  the standalone Subscription payments admin extends access and lifts
+  suspension in one step; `created_by` is stamped automatically.
+- Admin index gained two KPI cards — Client Companies (soft slate) and Blocked
+  Subscriptions (soft red, `.fin-kpi.red`) — and quick links to Companies &
+  Subscriptions and Subscription Payments.
+
+Tests: `tests/suite/test_subscription.py` (wired into `run_all.py`) covers the
+state machine boundaries, payment-extension math, and HTTP enforcement
+(suspension page, JSON denial, logout exemption, superuser exemption,
+banner rendering, payment-restores-access). It mutates only public-schema
+registry fields and restores them in `finally`.
+
 ## Security and Permission Notes
 
 - Route-level guards live in `financee/security.py` and are enforced by `TenantSchemaMiddleware`.
@@ -92,7 +159,7 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
 - The admin theme is owned by `static/css/financee_admin.css`.
 - The admin UI is not stock Django only; it includes a custom dashboard, KPI strip, quick links, user activity overview/detail pages, PDF export links, tenant/company management, and custom user delete behavior.
 - The current admin visual direction is a responsive professional theme with an off-white background, rounded cards, grey admin text/links, and restrained muted accents.
-- Admin home KPI cards use subtle per-card accent colors: soft blue for total users, soft violet for superusers, soft green for active users, soft slate for groups, and soft amber for recorded actions. These accents should stay muted, not vibrant.
+- Admin home KPI cards use subtle per-card accent colors: soft blue for total users, soft violet for superusers, soft green for active users, soft slate for groups and client companies, soft amber for recorded actions, and soft red for blocked subscriptions. These accents should stay muted, not vibrant.
 - Admin action buttons follow a semantic color system: default/primary buttons are dark grey with off-white text, add buttons are light green with dark green text, change/reset-password buttons are light yellow with dark muted-yellow text, and delete buttons are light red with maroon text.
 - Avoid light-blue page/panel backgrounds throughout the admin. Panels, selector widgets, changelist headers, filter areas, and recent-action bodies should remain off-white or neutral.
 - Admin links should generally be grey and non-underlined. The Financee brand mark can remain blue; filled primary controls may use dark grey rather than blue.
@@ -129,6 +196,7 @@ Conventions:
 - `tests/test_transaction_lifecycle_deep.py` also asserts financial invariants at every checkpoint (trial balance balances, no orphaned journal lines, no negative amounts, in_stock vs active-Sold coherence) and supports a `known_bug`/`XFAIL` channel for documenting confirmed-but-unfixed defects without failing the suite.
 - `tests/TRANSACTION_LIFECYCLE_FLOW_RESULTS.md` records the latest deep lifecycle flow matrix and current pass/fail status.
 - `tests/suite/` is the comprehensive full-system suite (own harness `_harness.py`, one module per domain plus `test_reports.py` for every report and `test_http.py` for endpoints; run with `python tests/suite/run_all.py`). It runs against every active tenant and asserts real accounting invariants (double-entry balance, party balances, COGS, stock/serial coherence), not just "did not error". It reuses the `XFAIL`/`known_bug` convention. See `tests/suite/README.md` and `tests/suite/RESULTS.md`.
+- `tests/suite/test_subscription.py` covers the subscription-control layer: the paid-until/grace/suspension state machine, calendar-aware payment extension, and HTTP enforcement (suspension page, JSON denial, exemptions, warning banner).
 - `tests/suite/test_attachments.py` adds dedicated document-attachment coverage for sale, purchase, sale return, purchase return, payment, receipt, and contra documents: upload/update/replacement, preservation of the unselected file kind, metadata/preview/download endpoints, invalid file validation, cleanup, failed-delete preservation, attachment-only bypass for sale/purchase/returns, and no bypass for payments/receipts/contra.
 - `tests/run_tests.sh` runs both harnesses in Docker and can reset tenant schemas with `--reset`.
 

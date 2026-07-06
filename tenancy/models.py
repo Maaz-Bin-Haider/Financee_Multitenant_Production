@@ -15,9 +15,37 @@ Membership
     company* — via a ``OneToOneField`` on the user. The database-level UNIQUE
     constraint that backs the one-to-one is the real guarantee; the admin simply
     surfaces it.
+
+SubscriptionPayment
+    Manual subscription-payment log (payments are received outside the system,
+    e.g. bank transfer). Recording a payment extends the company's
+    ``paid_until`` date and lifts a manual suspension, so the admin workflow is
+    simply: client pays -> record payment -> access restored.
 """
+import calendar
+from datetime import date, timedelta
+
 from django.conf import settings
 from django.db import models, transaction
+
+
+def add_months(day: date, months: int) -> date:
+    """Calendar-aware month addition (Jan 31 + 1 month -> Feb 28/29)."""
+    month_index = day.month - 1 + months
+    year = day.year + month_index // 12
+    month = month_index % 12 + 1
+    return date(year, month, min(day.day, calendar.monthrange(year, month)[1]))
+
+
+# Company.subscription_state() values, from most to least restricted.
+SUBSCRIPTION_SUSPENDED = "suspended"      # manual override: blocked
+SUBSCRIPTION_BLOCKED = "blocked"          # paid_until + grace passed: blocked
+SUBSCRIPTION_GRACE = "grace"              # past paid_until, inside grace days
+SUBSCRIPTION_EXPIRING = "expiring"        # inside the warn window before expiry
+SUBSCRIPTION_ACTIVE = "active"            # paid and outside the warn window
+SUBSCRIPTION_UNRESTRICTED = "unrestricted"  # no paid_until set: not enforced
+
+BLOCKED_STATES = frozenset({SUBSCRIPTION_SUSPENDED, SUBSCRIPTION_BLOCKED})
 
 
 class Company(models.Model):
@@ -37,6 +65,37 @@ class Company(models.Model):
         help_text="Inactive companies cannot have their schema activated for requests.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # ── Subscription control (payments are collected outside the system) ──
+    is_suspended = models.BooleanField(
+        default=False,
+        help_text=(
+            "Manual override: immediately block every user of this company, "
+            "regardless of the paid-until date. Recording a payment lifts it."
+        ),
+    )
+    paid_until = models.DateField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Subscription is paid up to this date (inclusive). Leave empty to "
+            "disable subscription enforcement for this company."
+        ),
+    )
+    grace_days = models.PositiveSmallIntegerField(
+        default=3,
+        help_text=(
+            "Days of continued access after the paid-until date before the "
+            "company is blocked automatically."
+        ),
+    )
+    warn_days_before = models.PositiveSmallIntegerField(
+        default=7,
+        help_text=(
+            "Show the company's users a renewal warning banner this many days "
+            "before the paid-until date."
+        ),
+    )
 
     class Meta:
         db_table = "tenancy_company"
@@ -62,6 +121,36 @@ class Company(models.Model):
             self.schema_name = f"tenant_company_{self.pk}"
             super().save(update_fields=["schema_name"])
 
+    # ── Subscription state ──────────────────────────────────────────────
+    @property
+    def grace_until(self):
+        """Last day of access (inclusive), or None when not enforced."""
+        if self.paid_until is None:
+            return None
+        return self.paid_until + timedelta(days=self.grace_days)
+
+    def subscription_state(self, today=None):
+        """
+        One of: suspended, blocked, grace, expiring, active, unrestricted.
+        ``suspended`` and ``blocked`` (see BLOCKED_STATES) deny tenant access.
+        """
+        today = today or date.today()
+        if self.is_suspended:
+            return SUBSCRIPTION_SUSPENDED
+        if self.paid_until is None:
+            return SUBSCRIPTION_UNRESTRICTED
+        if today > self.grace_until:
+            return SUBSCRIPTION_BLOCKED
+        if today > self.paid_until:
+            return SUBSCRIPTION_GRACE
+        if today >= self.paid_until - timedelta(days=self.warn_days_before):
+            return SUBSCRIPTION_EXPIRING
+        return SUBSCRIPTION_ACTIVE
+
+    @property
+    def subscription_blocked(self):
+        return self.subscription_state() in BLOCKED_STATES
+
 
 class Membership(models.Model):
     """Links a user to exactly one company (business rule #1)."""
@@ -85,3 +174,68 @@ class Membership(models.Model):
 
     def __str__(self):
         return f"{self.user} -> {self.company}"
+
+
+class SubscriptionPayment(models.Model):
+    """
+    A manually recorded subscription payment (received outside the system).
+
+    Saving a NEW payment atomically extends the company's ``paid_until`` by
+    ``months_covered`` — from the current ``paid_until`` when it is still in
+    the future, otherwise from ``date_received`` — and clears a manual
+    suspension. Editing or deleting a payment later never re-shrinks
+    ``paid_until``; adjust the company's date directly for corrections.
+    """
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="subscription_payments",
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    date_received = models.DateField(
+        default=date.today,
+        help_text="The day the money actually arrived.",
+    )
+    months_covered = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="How many months of service this payment buys.",
+    )
+    note = models.CharField(max_length=255, blank=True)
+    paid_until_after = models.DateField(
+        null=True,
+        editable=False,
+        help_text="The company's paid-until date right after this payment was applied.",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        editable=False,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "tenancy_subscription_payment"
+        verbose_name = "Subscription payment"
+        verbose_name_plural = "Subscription payments"
+        ordering = ["-date_received", "-id"]
+
+    def __str__(self):
+        return f"{self.company} — {self.amount} on {self.date_received}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            return super().save(*args, **kwargs)
+        with transaction.atomic():
+            company = Company.objects.select_for_update().get(pk=self.company_id)
+            base = self.date_received or date.today()
+            if company.paid_until and company.paid_until > base:
+                base = company.paid_until
+            company.paid_until = add_months(base, self.months_covered)
+            company.is_suspended = False
+            company.save(update_fields=["paid_until", "is_suspended"])
+            self.paid_until_after = company.paid_until
+            super().save(*args, **kwargs)

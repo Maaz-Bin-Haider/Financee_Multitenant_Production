@@ -4,7 +4,7 @@ import time
 
 from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 
 
 logger = logging.getLogger(__name__)
@@ -67,6 +67,28 @@ def tenant_required_response(request):
     if getattr(request.user, "is_authenticated", False):
         return HttpResponse(message, status=403, content_type="text/plain; charset=utf-8")
     return redirect("authentication:login")
+
+
+SUBSCRIPTION_BLOCKED_MESSAGE = (
+    "Your company's subscription payment is overdue and access has been "
+    "temporarily suspended. Access will resume as soon as the payment is "
+    "received. Please contact your service provider."
+)
+
+
+def subscription_blocked_response(request, company=None):
+    """Branded pay-wall for users of a company whose subscription is blocked."""
+    if is_ajax_or_api(request):
+        return JsonResponse(
+            {"status": "denied", "message": SUBSCRIPTION_BLOCKED_MESSAGE},
+            status=403,
+        )
+    return render(
+        request,
+        "tenancy_templates/subscription_suspended.html",
+        {"company": company, "message": SUBSCRIPTION_BLOCKED_MESSAGE},
+        status=403,
+    )
 
 
 def required_permissions_for_path(path):

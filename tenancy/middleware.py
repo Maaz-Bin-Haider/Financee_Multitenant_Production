@@ -43,8 +43,10 @@ from financee.security import (
     has_required_permissions,
     rate_limit_response,
     required_permissions_for_path,
+    subscription_blocked_response,
     tenant_required_response,
 )
+from .models import BLOCKED_STATES
 from .utils import (
     PUBLIC_SCHEMA,
     reset_search_path,
@@ -57,9 +59,10 @@ class TenantSchemaMiddleware(MiddlewareMixin):
     """Activate the current user's schema for the duration of the request."""
 
     def process_request(self, request):
-        schema, tenant_ok = self._resolve_schema(request)
+        schema, tenant_ok, company = self._resolve_schema(request)
         request.tenant_schema = schema
         request.tenant_is_active = tenant_ok
+        request.tenant_company = company
         set_search_path(schema)
         if tenant_ok and schema != PUBLIC_SCHEMA:
             request.tenant_is_active = tenant_schema_version_ok(schema)
@@ -73,6 +76,16 @@ class TenantSchemaMiddleware(MiddlewareMixin):
             if request.path.startswith(TENANT_GUARD_EXEMPT_PREFIXES):
                 return None
             return tenant_required_response(request)
+
+        # Subscription guard: paid-until / manual suspension on the company.
+        # Superusers (the operator) are never locked out; exempt prefixes keep
+        # login/logout, the admin, and static assets reachable.
+        company = getattr(request, "tenant_company", None)
+        if company is not None and not request.path.startswith(TENANT_GUARD_EXEMPT_PREFIXES):
+            state = company.subscription_state()
+            if state in BLOCKED_STATES and not user.is_superuser:
+                return subscription_blocked_response(request, company)
+            request.subscription_state = state
 
         perms, mode = required_permissions_for_path(request.path)
         if perms and not has_required_permissions(user, perms, mode):
@@ -129,10 +142,11 @@ class TenantSchemaMiddleware(MiddlewareMixin):
 
     # ------------------------------------------------------------------ #
     @staticmethod
-    def _resolve_schema(request) -> tuple[str, bool]:
+    def _resolve_schema(request) -> tuple[str, bool, "object"]:
+        """Return (schema, tenant_ok, company). company is None off-tenant."""
         user = getattr(request, "user", None)
         if user is None or not user.is_authenticated:
-            return PUBLIC_SCHEMA, True
+            return PUBLIC_SCHEMA, True, None
 
         # Membership is a reverse OneToOne: when the user has none, accessing
         # ``user.membership`` raises Membership.DoesNotExist (NOT None), so the
@@ -142,10 +156,10 @@ class TenantSchemaMiddleware(MiddlewareMixin):
         try:
             membership = user.membership
         except Membership.DoesNotExist:
-            return PUBLIC_SCHEMA, False
+            return PUBLIC_SCHEMA, False, None
 
         company = membership.company
         if company is None or not company.is_active or not company.schema_name:
-            return PUBLIC_SCHEMA, False
+            return PUBLIC_SCHEMA, False, None
 
-        return company.schema_name, True
+        return company.schema_name, True, company

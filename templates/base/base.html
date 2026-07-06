@@ -43,6 +43,9 @@
   <!-- Unified alert layer (animations + theming for alerts.js) -->
   <link rel="stylesheet" href="{% static 'css/alerts.css' %}">
 
+  <!-- Subscription renewal banner + suspended page -->
+  <link rel="stylesheet" href="{% static 'css/subscription.css' %}">
+
   {% block SeperateCssFile %}{% endblock SeperateCssFile %}
 
   <style>
@@ -155,6 +158,37 @@
     <!-- Main Content -->
     <main class="main-content">
       <i class="fa-solid fa-bars menu-toggle" id="menuToggle"></i>
+
+      {% if subscription_notice %}
+      <div id="subscriptionBanner" class="subscription-banner {{ subscription_notice.state }}"
+           data-banner-key="subscription-banner-{{ subscription_notice.state }}-{{ subscription_notice.paid_until|date:'Y-m-d' }}"
+           hidden>
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>
+          {% if subscription_notice.state == 'grace' %}
+            Your subscription expired on {{ subscription_notice.paid_until|date:"d M Y" }}.
+            Access will be suspended on {{ subscription_notice.blocked_on|date:"d M Y" }} — please arrange the renewal payment.
+          {% else %}
+            Your subscription expires on {{ subscription_notice.paid_until|date:"d M Y" }}
+            ({{ subscription_notice.days_left }} day{{ subscription_notice.days_left|pluralize }} left).
+            Please arrange the renewal payment to avoid interruption.
+          {% endif %}
+        </span>
+        <button type="button" class="subscription-banner-close" aria-label="Dismiss">&times;</button>
+      </div>
+      <script>
+        (function () {
+          const banner = document.getElementById("subscriptionBanner");
+          if (!banner) return;
+          const key = banner.dataset.bannerKey;
+          if (!sessionStorage.getItem(key)) banner.hidden = false;
+          banner.querySelector(".subscription-banner-close").addEventListener("click", () => {
+            sessionStorage.setItem(key, "1");
+            banner.hidden = true;
+          });
+        })();
+      </script>
+      {% endif %}
 
       {% block body %}
       {% endblock body %}

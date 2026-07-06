@@ -1195,6 +1195,17 @@ body.login {
   color: var(--fin-violet);
 }
 
+/* Soft red accent: companies blocked/suspended for non-payment. Stays muted. */
+.fin-kpi.red .kpi-icon {
+  background: #fff4f3;
+  color: var(--fin-red);
+}
+body.dashboard .fin-kpi.red .kpi-icon {
+  background: #fdeeec !important;
+  border-color: #f0beb9 !important;
+  color: #b3453c !important;
+}
+
 .fin-kpi .kpi-val {
   max-width: 100%;
   overflow-wrap: anywhere;
@@ -1418,6 +1429,19 @@ body.login {
   border-color: #f0beb9;
   background: #fff4f3;
   color: var(--fin-red);
+}
+
+/* Subscription-state pills (Company changelist / form). Muted amber tones. */
+.pill-warn {
+  border-color: #ead8ae;
+  background: #fff8e8;
+  color: #8a5d13;
+}
+
+.pill-grace {
+  border-color: #ecc9a8;
+  background: #fdf1e6;
+  color: #9a541c;
 }
 
 .fin-filter-bar {

@@ -598,12 +598,23 @@ class FinanceeAdminSite(admin.AdminSite):
     def index(self, request, extra_context=None):
         extra_context = extra_context or {}
         rows, schema = build_user_activity()
+
+        # Subscription overview: how many client companies are currently
+        # blocked (paid-until + grace passed, or manually suspended).
+        from tenancy.models import BLOCKED_STATES, Company
+        companies = list(Company.objects.filter(is_active=True))
+        blocked_companies = sum(
+            1 for c in companies if c.subscription_state() in BLOCKED_STATES
+        )
+
         extra_context.update({
             "kpi_total_users": User.objects.count(),
             "kpi_superusers": User.objects.filter(is_superuser=True).count(),
             "kpi_active_users": User.objects.filter(is_active=True).count(),
             "kpi_groups": Group.objects.count(),
             "kpi_total_actions": sum(r["total_actions"] for r in rows),
+            "kpi_companies": len(companies),
+            "kpi_blocked_companies": blocked_companies,
             "kpi_schema": schema,
         })
         return super().index(request, extra_context)

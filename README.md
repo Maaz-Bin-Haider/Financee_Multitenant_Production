@@ -206,6 +206,50 @@ docker compose -f deploy/docker-compose.yml exec -u root web chown -R 10001:1000
 
 `tenancy/sql/add_document_attachments.sql` is idempotent and folded into `tenant_template.sql`, `production_hardening.sql`, and `build_multitenant_db.sql`. New tenants receive the table automatically; existing tenants need the rollout patch before uploads are tested.
 
+## Subscription Control
+
+Financee is sold per company on manual monthly billing: clients pay outside
+the system (e.g. bank transfer) and the operator controls access from the
+admin panel. There is no payment gateway.
+
+How it works:
+
+- Each `Company` has a **Paid until** date, **Grace days** (default 3), and
+  **Warn days before** (default 7). When `paid_until + grace_days` passes,
+  every user of that company is blocked automatically. Leaving **Paid until**
+  empty disables enforcement for that company.
+- **Suspended** is a manual kill switch on the company that blocks access
+  immediately, regardless of dates.
+- Blocked users can still log in, but every page shows a branded
+  "Account Suspended" notice explaining that the subscription payment is
+  overdue and access resumes after payment. API/AJAX calls receive a 403 JSON
+  denial. Login, logout, static files, and the admin remain reachable, and
+  superusers are never blocked.
+- In the warning window (and during grace) tenant users see a dismissible
+  renewal banner with the exact dates.
+
+Admin workflow when a client pays:
+
+1. Open **Companies & Subscriptions** (or the company itself) in the admin.
+2. Add a **Subscription payment** (amount, date received, months covered,
+   optional note) — inline on the company or via the Subscription Payments
+   changelist.
+3. Saving the payment extends **Paid until** by the covered months (from the
+   current paid-until date when still active, otherwise from the payment date)
+   and automatically lifts a manual suspension. Payments are an immutable
+   audit log; editing or deleting them never shrinks the paid-until date.
+
+The admin dashboard shows **Client Companies** and **Blocked Subscriptions**
+KPI cards, and the company list shows a live subscription badge
+(Active / Expires soon / Grace / Blocked / Suspended / Not enforced) with bulk
+suspend / lift-suspension actions.
+
+All subscription data lives in the shared `public` schema
+(`tenancy/migrations/0002_subscription_control.py`); tenant business schemas
+are untouched. Applying the migration blocks nobody: existing companies start
+with enforcement disabled until you set their first paid-until date or record
+a payment.
+
 ## Permissions and Guards
 
 Permissions are seeded through migrations in `authentication/migrations/`. The middleware has a path-level guard in `financee/security.py`.
@@ -378,6 +422,7 @@ The suite has three major harnesses:
 - `tests/test_system.py`: direct SQL business-function coverage per tenant
 - `tests/test_http.py`: Django client coverage for real views, permissions, JSON, templates, and write flows
 - `tests/suite/test_attachments.py`: dedicated document-attachment coverage for sale, purchase, sale return, purchase return, payment, receipt, and contra files, including upload/update/replacement, endpoint access, validation, cleanup, and bypass rules.
+- `tests/suite/test_subscription.py`: subscription-control coverage — paid-until/grace/suspension state machine, payment-extension math, suspension page and JSON denial, exemptions (logout, superuser), and the renewal warning banner.
 - `tests/test_transaction_lifecycle_deep.py`: direct SQL stress coverage for real serial lifecycles, mixed purchase invoice corrections, partial returns, sale-return update/delete after resale, sale invoice update/delete after returns, cash-sale vs credit-sale returns, multi-item mixed serial invoices, duplicate/wrong-party return guards, and report execution after every entry. It also asserts financial invariants at every checkpoint (trial balance balances, no orphaned journal lines, stock/sold coherence) and covers the transaction-integrity guards from `tenancy/sql/fix_transaction_integrity_guards.sql` (delete_purchase sold-serial guard, qty-vs-serial validation, COGS reflow on purchase price edits). Confirmed-but-unfixed defects can be marked `known_bug=True` and are reported as `XFAIL` without failing the suite. See `tests/TRANSACTION_LIFECYCLE_FLOW_RESULTS.md`.
 
 ## Project Rules for Future Changes
