@@ -7,6 +7,7 @@ the HTTP layer, and high-risk real-world serial lifecycles.
 |---|---|---|
 | `test_system.py` | All stored-function entry types (create/update/delete for sale, purchase, sale-return, purchase-return, payment, receipt, contra) + parties, items, opening stock, opening cash, owner equity, month close + **every** report function & view | Direct SQL per tenant schema (mirrors the middleware's `search_path`) |
 | `test_http.py` | The real HTTP endpoints (permissions, view logic, JSON, templates) for reports, lists, dashboard, and the main write flows | Django test `Client` as a logged-in tenant user |
+| `suite/test_attachments.py` | Document attachment coverage for sale, purchase, sale return, purchase return, payment, receipt, and contra flows: uploads, replacement/preservation, authenticated metadata/preview/download, invalid file validation, cleanup, and bypass rules | Django test `Client` plus real tenant SQL setup |
 | `test_transaction_lifecycle_deep.py` | Real-world serial lifecycles: purchase -> sale -> sale return -> resale -> second return -> purchase return, mixed purchase invoice updates with sold and unsold serials, partial returns, sale-return update/delete after resale, sale invoice update/delete after returns, cash-sale vs credit-sale returns, multi-item mixed serial invoices, duplicate/wrong-party return guards, and all accounting/stock/monthly/sales/dashboard reports after each entry | Direct SQL per active tenant schema with unique parties/items/serials |
 
 ## Setup (one time)

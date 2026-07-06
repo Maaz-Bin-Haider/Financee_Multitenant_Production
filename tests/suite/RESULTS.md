@@ -1,6 +1,6 @@
 # Full-System Test Suite — Results
 
-Latest run: 2026-07-03 (after the cash-party port, tenant schema version 5),
+Latest run: 2026-07-06 (after adding document-attachment coverage),
 inside the Docker `web` container against both active tenants
 (`tenant_company_1`, `tenant_company_2`).
 
@@ -34,10 +34,11 @@ tenant schema drift the suite originally surfaced has been healed (see
 | `test_owner_equity.py` | 13/13 | 13/13 | — |
 | `test_month_close.py` | 13/13 | 13/13 | self-restoring (close then reverse) |
 | `test_reports.py` | 60/60 | 60/60 | — |
+| `test_attachments.py` | 104/104 | 104/104 | document attachment behavior across all supported document types |
 | `test_http.py` | 70/70 (single process) | — | Django test client |
 
-Totals: **258** real checks per tenant, **70** HTTP checks — **586** real
-checks, all passing, **0 XFAIL**.
+Totals: **362** real checks per tenant including attachments, **70** HTTP
+checks — **794** real checks, all passing, **0 XFAIL**.
 
 ## What each module verifies
 

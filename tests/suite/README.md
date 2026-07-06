@@ -42,6 +42,7 @@ PASS/FAIL summary. Exit code is non-zero if any real check fails.
 | `test_owner_equity.py` | Capital injections/withdrawals, Cash/Capital effect, listing, deletion, guards. |
 | `test_month_close.py` | Period preview / close / duplicate-close guard / listing / reverse (self-restoring). |
 | `test_reports.py` | **Every** report: accounts, stock, serial, sales analytics, monthly, and all dashboard functions + views. |
+| `test_attachments.py` | Document attachment upload/update/replacement, metadata/preview/download endpoints, validation, cleanup, and attachment-only update behavior for sale, purchase, returns, payment, receipt, and contra documents. |
 | `test_http.py` | Real Django endpoints via the test client: pages render, JSON APIs return no 5xx, auth works, a master-data write flow succeeds. |
 
 ## Invariants asserted throughout

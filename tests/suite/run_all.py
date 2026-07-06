@@ -25,6 +25,7 @@ MODULES = [
     "test_owner_equity.py",
     "test_month_close.py",
     "test_reports.py",
+    "test_attachments.py",
     "test_http.py",
 ]
 

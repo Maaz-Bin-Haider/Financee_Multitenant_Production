@@ -1,15 +1,25 @@
 # TODO
 
-## [ ] Write detailed document-attachment tests
+## [x] DONE (2026-07-06): Write detailed document-attachment tests
 
-Add dedicated automated coverage for the new attachment feature across sale,
-purchase, sale return, purchase return, payment, receipt, and contra flows.
-Cover create/update upload of one image and one PDF, one-file-per-kind
-replacement, preserving the unselected file kind during update, authenticated
+Added `tests/suite/test_attachments.py` and wired it into `tests/suite/run_all.py`.
+The module creates real tenant business documents, uses Django's real test
+client with tenant middleware, isolates private media under a temp directory,
+and covers sale, purchase, sale return, purchase return, payment, receipt, and
+contra attachment flows.
+
+Coverage includes one image + one PDF uploads, one-file-per-kind replacement,
+preserving the unselected file kind during update, authenticated
 metadata/preview/download endpoints, invalid file type/size validation, cleanup
 after successful document delete, no cleanup after failed business delete,
-attachment-only update bypass for sale/purchase/returns, and no bypass for
-payments/receipts/contra.
+attachment-only update bypass for sale/purchase/returns, and validation proving
+payments/receipts/contra do not use that bypass.
+
+Verification: in-memory Python syntax check passed;
+`docker compose -f deploy/docker-compose.yml exec web python tests/suite/test_attachments.py`
+passed 208/208 attachment checks; full
+`docker compose -f deploy/docker-compose.yml exec web python tests/suite/run_all.py`
+passed all modules.
 
 ---
 
