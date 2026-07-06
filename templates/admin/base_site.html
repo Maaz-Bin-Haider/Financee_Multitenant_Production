@@ -3,6 +3,11 @@
 
 {% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ financee_system_name|default:"Financee" }} Admin{% endblock %}
 
+{# Dark mode temporarily retired: blanking this block drops Django's admin
+   dark-theme CSS variables and theme.js, so the admin always renders the
+   light Financee theme and stored theme preferences are ignored. #}
+{% block dark-mode-vars %}{% endblock %}
+
 {% block extrastyle %}{{ block.super }}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 {% endblock %}
@@ -21,9 +26,8 @@
     </span>
   </a>
 </div>
-{% if user.is_anonymous %}
-  {% include "admin/color_theme_toggle.html" %}
-{% endif %}
+{# Dark mode temporarily retired: the anonymous-page toggle include is
+   disabled (the shared color_theme_toggle.html override is blank anyway). #}
 {% endblock %}
 
 {% block nav-global %}{% endblock %}

@@ -4,7 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Add this FIRST, before CSS -->
+  <!-- Dark mode temporarily retired: the early theme-apply scripts are
+       disabled so every user gets light mode until the mode is reworked. -->
+  <!--
     <script>
             // Immediately apply dark mode before any rendering
             (function() {
@@ -19,6 +21,7 @@
                 document.write('<script>document.body?.classList.add("dark-mode");<\/script>');
             }
     </script>
+  -->
   <title>{% block title %}{% endblock title %}</title>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -141,13 +144,19 @@
         <!-- Footer -->
         <div class="sidebar-footer">
             <div class="user_name"><i class="fa-solid fa-user"></i>  <span id="username">-</span></div>
+            {% if request.tenant_company %}
+            <div class="user_name company_name"><i class="fa-solid fa-building"></i>  <span id="companyname">{{ request.tenant_company.name }}</span></div>
+            {% endif %}
             <hr>
-            
-            <!-- Dark Mode Toggle -->
+
+            <!-- Dark Mode temporarily retired: toggle removed so users cannot
+                 switch modes until the mode is reworked. -->
+            <!--
             <button class="theme-toggle" id="themeToggle">
                 <i class="fa-solid fa-moon" id="themeIcon"></i>
                 <span id="themeText">Dark Mode</span>
             </button>
+            -->
             <a href="{% url 'authentication:logout' %}" class="logout-link">
             <i class="fa-solid fa-right-from-bracket"></i> Logout
             </a>
@@ -260,8 +269,10 @@
         // Call every 3 seconds (live update)
         setInterval(fetchCurrentUser, 3000);
     </script>
-    <!-- Dark Mode Script -->
-    <script src="{% static 'js/dark_mode.js' %}"></script>
+    <!-- Dark Mode temporarily retired: dark_mode.js not loaded (it binds the
+         removed #themeToggle button and would throw). Re-enable with the
+         toggle when the mode is reworked. -->
+    <!-- <script src="{% static 'js/dark_mode.js' %}"></script> -->
 
 </body>
 </html>

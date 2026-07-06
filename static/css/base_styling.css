@@ -391,6 +391,21 @@ textarea {
   font-size: 0.8rem;
 }
 
+/* Company row in the sidebar footer: paired with the username above it. */
+.company_name {
+  margin-top: -0.35rem;
+}
+
+.company_name i {
+  color: #34d399;
+}
+
+.company_name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sidebar-footer hr {
   border: none;
   border-top: 1px solid var(--sidebar-border);

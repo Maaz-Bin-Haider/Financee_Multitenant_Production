@@ -204,6 +204,24 @@ Automatic emails to the **company's billing address** (`Company.contact_email`
 - The admin dashboard must remain single-column/responsive: recent actions stack below the main dashboard, and changelist/filter panels must fit small laptops and iPad widths without horizontal scrolling.
 - Avoid inline styles in admin templates; put layout, spacing, and color in `financee_admin.css` so small laptop and iPad behavior stays consistent.
 
+## Dark Mode (temporarily retired) & Sidebar Identity
+
+- Dark mode is **temporarily retired** pending a rework (2026-07-06). The
+  tenant sidebar toggle, the early theme-apply scripts, and the
+  `dark_mode.js` include in `templates/base/base.html` are **commented out**
+  (not deleted, per project convention); `static/js/dark_mode.js` and
+  `static/css/dark_mode.css` remain in the tree for the future rework. Stored
+  `localStorage` theme preferences are ignored — everyone gets light mode.
+- The admin is locked to the light theme: `templates/admin/base_site.html`
+  blanks Django's `{% block dark-mode-vars %}` (drops the admin dark CSS
+  variables and `theme.js`), and `templates/admin/color_theme_toggle.html` is
+  a blank override of the stock toggle. Delete that override and restore the
+  block to bring the stock behavior back.
+- The tenant sidebar footer shows the logged-in username **and the company
+  name** (`request.tenant_company.name`, server-rendered, hidden when the
+  request has no tenant company). Styles: `.company_name` in
+  `static/css/base_styling.css`.
+
 ## Frontend Alert Layer (SweetAlert2)
 
 All user-facing alerts go through a single helper, **`static/js/alerts.js`** (global `Alerts`), which wraps SweetAlert2 v11. Animations and per-type theming live in **`static/css/alerts.css`**. Both are loaded in `templates/base/base.html` immediately after the SweetAlert2 CDN, and also directly in `templates/authentication_templates/login_template.html` (the only page that does not extend `base.html`). **Do not call `Swal.fire` directly in new code — use the `Alerts` helper** so behavior stays consistent system-wide.
