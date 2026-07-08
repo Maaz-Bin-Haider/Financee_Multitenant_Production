@@ -192,8 +192,13 @@ DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)
 
 # --- 4. Production security flags (only enforce when DEBUG is off) -----------
 if not DEBUG:
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # Secure cookies are only sent over HTTPS. Browsers exempt http://localhost,
+    # but on a real domain served over plain HTTP the browser drops them and
+    # every form fails CSRF ("CSRF cookie required"). Until TLS is set up, set
+    # SECURE_COOKIES=False in the server .env; remove it again once HTTPS works.
+    SECURE_COOKIES = env.bool("SECURE_COOKIES", default=True)
+    SESSION_COOKIE_SECURE = SECURE_COOKIES
+    CSRF_COOKIE_SECURE = SECURE_COOKIES
     SESSION_COOKIE_HTTPONLY = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=False)  # True once HTTPS is on

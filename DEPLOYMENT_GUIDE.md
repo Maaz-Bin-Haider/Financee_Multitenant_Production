@@ -115,6 +115,11 @@ ALLOWED_HOSTS=localhost,ec2-13-206-58-237.ap-south-1.compute.amazonaws.com,13.20
 # http:// for now; change to https://your.domain.com once TLS is set up.
 CSRF_TRUSTED_ORIGINS=http://ec2-13-206-58-237.ap-south-1.compute.amazonaws.com
 
+# REQUIRED while serving plain http:// on a real domain: otherwise cookies are
+# marked Secure, the browser drops them over HTTP, and every login fails with
+# "CSRF verification failed". REMOVE this line once HTTPS is live (Part F).
+SECURE_COOKIES=False
+
 DB_NAME=financee
 DB_USER=financee
 DB_PASSWORD=<a-long-random-password>
@@ -278,6 +283,13 @@ docker compose -f docker-compose.yml logs --tail=50 nginx  # proxy logs
 docker compose -f docker-compose.yml logs -f web nginx     # follow live
 ```
 
+- **"CSRF verification failed. Request aborted." on every login/form** → the
+  site is being served over plain `http://` while cookies are marked Secure
+  (the `DEBUG=False` default), so the browser never sends them. Add
+  `SECURE_COOKIES=False` to `deploy/.env`, then
+  `docker compose -f docker-compose.yml up -d --force-recreate --no-deps web`.
+  Remove the line again once HTTPS is live. Also confirm the exact scheme+host
+  you browse with is listed in `CSRF_TRUSTED_ORIGINS`.
 - **502 Bad Gateway** → check nginx logs. `connect() failed ... upstream` on a
   stack *without* the resolver fix means restart nginx:
   `docker compose -f docker-compose.yml restart nginx`. With the current
@@ -299,5 +311,7 @@ docker compose -f docker-compose.yml logs -f web nginx     # follow live
    HTTP→HTTPS redirect in `deploy/nginx/financee.conf` (a commented stub is
    already there), mount the certs into the nginx container, then
    `docker compose -f docker-compose.yml up -d --force-recreate nginx web`.
-4. Once HTTPS works end-to-end, consider `SECURE_SSL_REDIRECT=True` and the
+4. **Remove `SECURE_COOKIES=False` from `deploy/.env`** (cookies must be
+   Secure-only again) and recreate web.
+5. Once HTTPS works end-to-end, consider `SECURE_SSL_REDIRECT=True` and the
    HSTS settings flagged in `financee/settings.py`.
