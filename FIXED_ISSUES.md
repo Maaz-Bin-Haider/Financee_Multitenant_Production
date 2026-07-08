@@ -2,6 +2,77 @@
 
 This file records production/setup issues that were diagnosed and fixed, including the root cause, code or SQL changes, and verification steps.
 
+## 2026-07-08: CSV Export Button Survived the excel_export Feature Switch (JSON double-encoding)
+
+### Symptoms
+
+With the new per-company feature flags, disabling **CSV / Excel export** in the
+admin removed the template-rendered CSV buttons, but the **JS-injected**
+toolbars (Accounts/Stock report pages build their toolbar in
+`accounts_reports.js` / `stock_reports.js` after each report render) still
+showed a fully working CSV button — even in an incognito window, so it was not
+browser cache.
+
+### Root Cause
+
+`tenancy.context_processors.company_features` pre-serialized the feature map
+with `json.dumps()` and passed that **string** to the `json_script` template
+filter in `base.html`. `json_script` JSON-encodes whatever it receives, so the
+map was double-encoded: `JSON.parse` in the browser returned a *string*, not
+an object. `window.FinanceeFeatures["excel_export"]` was therefore
+`undefined`, and `financeeFeatureEnabled()` — which deliberately fails open
+for unknown keys — reported every feature as enabled. Server-side rendering
+(sidebar, template-gated buttons, middleware URL blocking) uses the `features`
+dict directly and was unaffected, which made the page look "half gated".
+
+The test suite missed it because the Django test client never executes JS,
+and the server-side substring assertions matched the escaped string too.
+
+### Fix
+
+- `tenancy/context_processors.py` now exposes only the raw `features` dict;
+  `templates/base/base.html` passes that dict straight to
+  `json_script` (which performs the one and only serialization).
+- `tests/suite/test_feature_flags.py` now asserts the page embeds a JSON
+  **object** (the literal substring `"excel_export": {"enabled": ...` — a
+  double-encoded string would have `\"`-escaped quotes), in both the enabled
+  and disabled states, so this class of bug fails the suite.
+
+### Verification
+
+`tests/suite/test_feature_flags.py` — 76/76 (includes the two new
+double-encoding guards); rendered `/accountsReports/stock-summary/` as a
+Company_2 member and confirmed the embedded `financee-features` script starts
+with `{` and carries `"excel_export": {"enabled": false`.
+
+## 2026-07-08: 502 Bad Gateway After Rebuilding Only the web Container
+
+### Symptoms
+
+After `docker compose up -d --build web`, browsing `http://localhost/`
+returned `502 Bad Gateway (nginx)`, while the web container was healthy and
+answering its own healthcheck.
+
+### Root Cause
+
+Nginx resolves the `web` upstream hostname **once at startup**. Recreating the
+web container gives it a new internal Docker IP; the long-running nginx
+container kept proxying to the old IP (`connect() failed (111: Connection
+refused) ... upstream: "http://172.19.0.3:8000"` in `logs nginx`).
+
+### Fix / Operational Rule
+
+Restart nginx whenever the web container is recreated:
+
+```bash
+docker compose -f deploy/docker-compose.yml restart nginx
+```
+
+Diagnosis recipe: `ps` (is web healthy?), `logs --tail=100 web` (backend
+tracebacks?), `logs --tail=50 nginx` (stale-upstream connection refused =
+this issue). A permanent fix would be a `resolver 127.0.0.11` + variable
+upstream in `deploy/nginx/financee.conf`; not applied yet.
+
 ## 2026-07-03: Cash-Party Feature Ported to All Tenants (last drift item healed)
 
 ### Symptoms
