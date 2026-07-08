@@ -594,4 +594,5 @@ Regression results:
 PASSED: all deep lifecycle checks passed.
 tenant_company_1: 111/111 passed, 0 failed
 tenant_company_2: 111/111 passed, 0 failed
+All CI/CD is applied
 ```
