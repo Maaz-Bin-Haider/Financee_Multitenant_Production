@@ -5,10 +5,10 @@ stack with automated, approval-gated deploys from GitHub Actions.
 
 Written for this concrete setup (adjust if yours differs):
 
-- **EC2 host:** `ec2-34-226-238-157.compute-1.amazonaws.com` (user `ubuntu`)
+- **EC2 host:** `ec2-13-206-58-237.ap-south-1.compute.amazonaws.com` (user `ubuntu`)
 - **SSH from Windows:**
   ```powershell
-  ssh -i "C:\Users\SWISS TECH\Documents\SSH pricemonitor\pricemonitorkey.pem" ubuntu@ec2-34-226-238-157.compute-1.amazonaws.com
+  ssh -i "C:\Users\SWISS TECH\Documents\SSHfianacee_pk\financee_pk_key.pem" ubuntu@ec2-13-206-58-237.ap-south-1.compute.amazonaws.com
   ```
 - **Repo:** `https://github.com/Maaz-Bin-Haider/Financee_Multitenant_Production`
 - **Image:** `ghcr.io/maaz-bin-haider/financee-web`
@@ -38,7 +38,7 @@ Written for this concrete setup (adjust if yours differs):
 Open PowerShell:
 
 ```powershell
-ssh -i "C:\Users\SWISS TECH\Documents\SSH pricemonitor\pricemonitorkey.pem" ubuntu@ec2-34-226-238-157.compute-1.amazonaws.com
+ssh -i "C:\Users\SWISS TECH\Documents\SSHfianacee_pk\financee_pk_key.pem" ubuntu@ec2-13-206-58-237.ap-south-1.compute.amazonaws.com
 ```
 
 All commands below run **on the server** unless marked otherwise.
@@ -110,10 +110,10 @@ DEBUG=False
 
 # IMPORTANT: 'localhost' must stay in this list — the deploy health check and
 # the container healthcheck call the app as http://localhost/.
-ALLOWED_HOSTS=localhost,ec2-34-226-238-157.compute-1.amazonaws.com,34.226.238.157
+ALLOWED_HOSTS=localhost,ec2-13-206-58-237.ap-south-1.compute.amazonaws.com,13.206.58.237
 
 # http:// for now; change to https://your.domain.com once TLS is set up.
-CSRF_TRUSTED_ORIGINS=http://ec2-34-226-238-157.compute-1.amazonaws.com
+CSRF_TRUSTED_ORIGINS=http://ec2-13-206-58-237.ap-south-1.compute.amazonaws.com
 
 DB_NAME=financee
 DB_USER=financee
@@ -145,7 +145,7 @@ docker compose -f docker-compose.yml logs --tail=30 web
 curl -I http://localhost/authentication/login/   # expect HTTP/1.1 200 OK
 ```
 
-Then from your Windows browser: `http://ec2-34-226-238-157.compute-1.amazonaws.com/`
+Then from your Windows browser: `http://ec2-13-206-58-237.ap-south-1.compute.amazonaws.com/`
 → you should see the Financee login page.
 
 ### B4. Create the admin (superuser)
@@ -183,9 +183,9 @@ Settings → **Secrets and variables → Actions** → *Secrets* tab →
 
 | Name | Value |
 |---|---|
-| `EC2_HOST` | `ec2-34-226-238-157.compute-1.amazonaws.com` |
+| `EC2_HOST` | `ec2-13-206-58-237.ap-south-1.compute.amazonaws.com` |
 | `EC2_USER` | `ubuntu` |
-| `EC2_SSH_KEY` | The **full contents** of `C:\Users\SWISS TECH\Documents\SSH pricemonitor\pricemonitorkey.pem` — open it in Notepad, Select All, copy, paste, including the `-----BEGIN RSA PRIVATE KEY-----` / `-----END RSA PRIVATE KEY-----` lines |
+| `EC2_SSH_KEY` | The **full contents** of `C:\Users\SWISS TECH\Documents\SSHfianacee_pk\financee_pk_key.pem` — open it in Notepad, Select All, copy, paste, including the `-----BEGIN RSA PRIVATE KEY-----` / `-----END RSA PRIVATE KEY-----` lines |
 
 (`EC2_APP_DIR` is not needed — you cloned to the default path in B1.)
 
