@@ -30,7 +30,9 @@
 
   <!-- Per-company feature flags (admin-controlled). JS-built toolbars read
        window.FinanceeFeatures to hide disabled controls (e.g. CSV export). -->
-  {{ features_json|json_script:"financee-features" }}
+  {# Must be the raw dict: json_script serializes it once. A pre-dumped
+     string would be double-encoded and the JS checks would fail open. #}
+  {{ features|json_script:"financee-features" }}
   <script>
     window.FinanceeFeatures = JSON.parse(document.getElementById("financee-features").textContent);
     // financeeFeatureEnabled("stock_reports")            -> group switch

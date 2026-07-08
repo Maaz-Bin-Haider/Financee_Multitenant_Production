@@ -225,10 +225,12 @@ page** redirects to the first enabled sibling of the group
 dashboard.
 
 UI hiding: `tenancy.context_processors.company_features` (registered in
-settings) exposes `features` (nested map) and `features_json` to every
-template. `base.html` gates the sidebar links and embeds
-`window.FinanceeFeatures` + `financeeFeatureEnabled()` (via `json_script`) for
-the JS-built toolbars (`accounts_reports.js`, `stock_reports.js`,
+settings) exposes `features` (nested map) to every template. `base.html`
+gates the sidebar links and embeds `window.FinanceeFeatures` +
+`financeeFeatureEnabled()` by passing the **raw dict** through `json_script`
+(pre-serializing with `json.dumps` double-encodes it into a string and every
+JS feature check fails open — the suite asserts the page embeds a JSON
+object) for the JS-built toolbars (`accounts_reports.js`, `stock_reports.js`,
 `detailed_ledger2.js` gate their CSV buttons; report-page init handlers now
 start on the first *visible* report button). The report templates gate each
 sub-report button; the 7 document templates gate the attachment widget

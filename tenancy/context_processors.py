@@ -10,7 +10,6 @@ authenticated tenant users whose company is not blocked. Only the
 states surface a banner; blocked states never reach a normal template
 because the middleware short-circuits them to the suspension page.
 """
-import json
 from datetime import date, timedelta
 
 from .features import features_map
@@ -19,15 +18,16 @@ from .models import SUBSCRIPTION_EXPIRING, SUBSCRIPTION_GRACE
 
 def company_features(request):
     """
-    ``features`` — nested {group: {enabled, subs: {sub: bool}}} for template
-    conditions, and ``features_json`` — the same map serialized for
-    ``window.FinanceeFeatures`` (base.html), which JS-built toolbars use to
-    hide CSV/Excel export buttons. Off-tenant requests get all-enabled maps so
-    shared pages render unchanged.
+    ``features`` — nested {group: {enabled, subs: {sub: bool}}} used both for
+    template conditions and (via the ``json_script`` filter in base.html) as
+    ``window.FinanceeFeatures``, which JS-built toolbars read to hide
+    CSV/Excel export buttons. It must be passed to ``json_script`` as the raw
+    dict — pre-serializing it with ``json.dumps`` double-encodes it into a
+    string and the JS feature checks silently fail open. Off-tenant requests
+    get an all-enabled map so shared pages render unchanged.
     """
     company = getattr(request, "tenant_company", None)
-    feats = features_map(company)
-    return {"features": feats, "features_json": json.dumps(feats)}
+    return {"features": features_map(company)}
 
 
 def subscription_notice(request):

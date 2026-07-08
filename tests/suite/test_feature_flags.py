@@ -218,6 +218,12 @@ def check_http(company):
     html = resp.content.decode("utf-8", "ignore")
     chk("all-on: /home/ is 200", resp.status_code == 200, resp.status_code)
     chk("all-on: feature JSON embedded", 'id="financee-features"' in html)
+    # Guards against double-encoding: window.FinanceeFeatures must be a JSON
+    # OBJECT. If the map were pre-dumped to a string before json_script, the
+    # quotes would be \"-escaped, this substring would vanish, and every JS
+    # feature check would silently fail open (CSV buttons reappear).
+    chk("all-on: feature JSON is an object, not a double-encoded string",
+        '"excel_export": {"enabled": true' in html)
     for label in ("Accounts Reports", "Stock Reports", "Monthly Reports",
                   "Sales Reports", "Opening Stock", "Set Opening"):
         chk(f"all-on: sidebar shows {label}", label in html, label)
@@ -299,6 +305,8 @@ def check_http(company):
     html = resp.content.decode("utf-8", "ignore")
     chk("csv-off: CSV button gone from stock reports", 'id="download_csv"' not in html)
     chk("csv-off: PDF button stays on stock reports", 'id="download_pdf"' in html)
+    chk("csv-off: feature JSON object says export disabled",
+        '"excel_export": {"enabled": false' in html)
     resp = client.get("/sales-reports/")
     html = resp.content.decode("utf-8", "ignore")
     chk("csv-off: CSV button gone from sales reports", 'id="sr-csv"' not in html)
