@@ -224,6 +224,9 @@ def check_http(company):
     # feature check would silently fail open (CSV buttons reappear).
     chk("all-on: feature JSON is an object, not a double-encoded string",
         '"excel_export": {"enabled": true' in html)
+    # Multi-line {# #} comments are invalid in Django templates: the tail of
+    # the comment renders as visible page text (has happened twice now).
+    chk("all-on: no template-comment text leaks into the page", "#}" not in html)
     for label in ("Accounts Reports", "Stock Reports", "Monthly Reports",
                   "Sales Reports", "Opening Stock", "Set Opening"):
         chk(f"all-on: sidebar shows {label}", label in html, label)

@@ -30,8 +30,10 @@
 
   <!-- Per-company feature flags (admin-controlled). JS-built toolbars read
        window.FinanceeFeatures to hide disabled controls (e.g. CSV export). -->
-  {# Must be the raw dict: json_script serializes it once. A pre-dumped
-     string would be double-encoded and the JS checks would fail open. #}
+  {% comment %}
+    Must be the raw dict: json_script serializes it once. A pre-dumped
+    string would be double-encoded and the JS checks would fail open.
+  {% endcomment %}
   {{ features|json_script:"financee-features" }}
   <script>
     window.FinanceeFeatures = JSON.parse(document.getElementById("financee-features").textContent);
