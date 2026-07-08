@@ -56,6 +56,10 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
+    # CI pushes the tested image here; deploys pull it instead of rebuilding
+    # on the server. Local `--build` still works and tags the result with this
+    # name. Override WEB_IMAGE to pin a specific SHA tag (deploy_pull.sh does).
+    image: ${WEB_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:latest}
     restart: unless-stopped
     env_file: .env
     environment:

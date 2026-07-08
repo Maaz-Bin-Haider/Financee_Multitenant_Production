@@ -63,6 +63,33 @@ For any tenant business database change:
 
 Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, and `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
 
+## CI/CD
+
+- `.github/workflows/ci.yml`: on every push/PR — `checks` job (django check +
+  missing-migration guard on a plain runner) and `test` job (builds the
+  production image, boots the real compose stack with a throwaway
+  `deploy/.env`, bootstraps a CI superuser + a second tenant via
+  `provision_tenant`, and runs `tests/suite/run_all.py`, `test_system.py`,
+  `test_http.py`, `test_transaction_lifecycle_deep.py` inside the container).
+  On `main` the tested image is pushed to
+  `ghcr.io/maaz-bin-haider/financee-web` (`<sha>` + `latest`).
+- `deploy` job: gated by repo variable `DEPLOY_ENABLED=true` AND manual
+  approval via the `production` GitHub environment; SSHes to EC2 (secrets
+  `EC2_HOST`/`EC2_USER`/`EC2_SSH_KEY`/optional `EC2_APP_DIR`) and runs
+  `deploy/deploy_pull.sh` with the SHA tag.
+- `deploy/deploy_pull.sh`: pull-based deploy — pulls the pinned image,
+  recreates web+nginx, health-checks through nginx, rolls back web to the
+  previous image on failure, then `apply_sql_all_tenants tenant_indexes.sql`.
+  `deploy/deploy.sh` stays as the manual build-on-server fallback. DB changes
+  are not rolled back — keep migrations/tenant SQL backward-compatible.
+- `deploy/docker-compose.yml` web service now carries
+  `image: ${WEB_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:latest}` so local
+  builds tag the same name CI pushes and the server can `compose pull web`.
+- Nginx stale-upstream fix (2026-07-08): `deploy/nginx/financee.conf` uses
+  `resolver 127.0.0.11` + variable `proxy_pass` instead of a static
+  `upstream` block, so recreating web never needs an nginx restart (upstream
+  `keepalive` was retired with it; negligible on the Docker network).
+
 ## Runtime and Deployment Notes
 
 - Dependencies are pinned in `requirements.txt` and `requirements-lock.txt`.

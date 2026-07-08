@@ -411,6 +411,52 @@ On first database boot, `build_multitenant_db.sql` seeds public objects and an e
 
 Static files are collected at image build time with `ManifestStaticFilesStorage`. The entrypoint copies the baked static tree into the shared static volume so Nginx serves current hashed assets after deploys.
 
+## CI/CD
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull
+request:
+
+1. **checks** — installs `requirements-lock.txt`, runs `manage.py check` and
+   `makemigrations --check --dry-run` (fails if a model change is missing its
+   migration).
+2. **test** — builds the production Docker image, boots the real compose
+   stack (fresh Postgres seeds `build_multitenant_db.sql`; the entrypoint runs
+   public migrations + `production_hardening.sql` exactly like production),
+   creates a CI superuser, provisions a second tenant, then runs **all** test
+   harnesses inside the container: `tests/suite/run_all.py`,
+   `test_system.py`, `test_http.py`, `test_transaction_lifecycle_deep.py`.
+   Stack logs are uploaded as an artifact on failure.
+3. On `main`, the **exact tested image** is pushed to GHCR
+   (`ghcr.io/maaz-bin-haider/financee-web`) tagged with the commit SHA and
+   `latest`.
+4. **deploy** — pauses for manual approval (the `production` GitHub
+   environment), then SSHes to the EC2 host and runs
+   `deploy/deploy_pull.sh`, which pulls the SHA-tagged image (no build on the
+   server), recreates web + nginx, health-checks through nginx, **rolls back
+   to the previous image if the health check fails**, and applies idempotent
+   tenant SQL to every schema. `deploy/deploy.sh` remains as the manual
+   build-on-server fallback.
+
+One-time setup:
+
+- **Approval gate:** Settings → Environments → create `production` → add a
+  required reviewer.
+- **Secrets** (Settings → Secrets and variables → Actions): `EC2_HOST`,
+  `EC2_USER`, `EC2_SSH_KEY` (private key), optional `EC2_APP_DIR` (defaults
+  to `~/Financee_Multitenant_Production`).
+- **Activate deploys:** add repository *variable* `DEPLOY_ENABLED=true`.
+  Until then the deploy job is skipped and CI is test-only.
+- **Image pull on the server:** make the GHCR package public, or run a
+  one-time `docker login ghcr.io` on EC2 with a `read:packages` PAT.
+
+Nginx no longer needs a restart when the web container is recreated: the
+static `upstream` block was replaced with Docker's DNS resolver + a variable
+`proxy_pass` in `deploy/nginx/financee.conf` (see FIXED_ISSUES.md 2026-07-08).
+
+Rollback caveat: rolling back the web image does not revert public migrations
+or tenant SQL already applied by the failed release — keep both
+backward-compatible (the existing idempotent-patch discipline).
+
 ## Tenant Operations
 
 Create a tenant:
