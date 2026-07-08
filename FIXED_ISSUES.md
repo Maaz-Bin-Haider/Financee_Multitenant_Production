@@ -2,6 +2,40 @@
 
 This file records production/setup issues that were diagnosed and fixed, including the root cause, code or SQL changes, and verification steps.
 
+## 2026-07-08: Freshly Provisioned Tenants 403'd Until the Next Container Restart (missing v6 bump in tenant_template.sql)
+
+### Symptoms
+
+The first CI run failed with "No active tenant memberships found." /
+tenant-guard 403s ("No active company is assigned to this user.") against the
+tenant that CI provisioned at runtime — while the same suite passed locally.
+
+### Root Cause
+
+When `add_document_attachments.sql` was folded into `tenant_template.sql`, the
+`document_attachments` table was copied but its **schema version bump to 6 was
+not**: the template's highest bump was `GREATEST(version, 5)`. A tenant
+provisioned from the template therefore sat at version 5 while the middleware
+requires `TENANT_SCHEMA_VERSION` (6) and returned 403 for its users. Locally
+the bug was invisible because `deploy/entrypoint.sh` reruns
+`production_hardening.sql` (which bumps to 6) on every container start — so
+the window only existed for tenants provisioned *between* restarts. In CI the
+second tenant is provisioned after startup, exposing it immediately.
+(`add_document_attachments.sql` and `build_multitenant_db.sql` both had the
+bump; only the template copy was missing it.)
+
+### Fix
+
+Added the `UPDATE tenant_schema_version ... GREATEST(version, 6)` bump to the
+attachments section of `tenancy/sql/tenant_template.sql`. Verified by
+provisioning a throwaway schema from the updated template: it reports
+version 6 immediately. Existing tenants were never affected (hardening had
+already bumped them).
+
+CI itself gained `tests/ci_bootstrap.py`, which creates one tenant user +
+membership per active company, because the suite discovers tenants through
+`tenancy_membership` — a freshly seeded database has companies but no users.
+
 ## 2026-07-08: CSV Export Button Survived the excel_export Feature Switch (JSON double-encoding)
 
 ### Symptoms
@@ -70,8 +104,15 @@ docker compose -f deploy/docker-compose.yml restart nginx
 
 Diagnosis recipe: `ps` (is web healthy?), `logs --tail=100 web` (backend
 tracebacks?), `logs --tail=50 nginx` (stale-upstream connection refused =
-this issue). A permanent fix would be a `resolver 127.0.0.11` + variable
-upstream in `deploy/nginx/financee.conf`; not applied yet.
+this issue).
+
+**Permanent fix applied later the same day** (with the CI/CD work): the static
+`upstream` block in `deploy/nginx/financee.conf` was replaced with
+`resolver 127.0.0.11 valid=10s` + a variable `proxy_pass`, so nginx re-resolves
+the `web` hostname at request time. Verified by force-recreating the web
+container without touching nginx: port 80 answered 200 within 5 seconds
+(previously a permanent 502 until an nginx restart). The `restart nginx` rule
+above is now only needed on stacks without the updated config.
 
 ## 2026-07-03: Cash-Party Feature Ported to All Tenants (last drift item healed)
 

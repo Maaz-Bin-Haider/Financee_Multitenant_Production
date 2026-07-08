@@ -98,7 +98,12 @@ jobs:
           done
           echo "web never became healthy"; exit 1
 
-      - name: Bootstrap superuser + second tenant
+      - name: Copy test harnesses into the container
+        run: docker compose -f deploy/docker-compose.yml cp tests web:/app/
+
+      - name: Bootstrap superuser, second tenant, and tenant users
+        # The suite discovers tenants through tenancy_membership (one tenant
+        # user per company is required), mirroring the local twin-tenant setup.
         run: |
           docker compose -f deploy/docker-compose.yml exec -T \
             -e DJANGO_SUPERUSER_USERNAME=admin \
@@ -107,9 +112,8 @@ jobs:
             web python manage.py createsuperuser --noinput
           docker compose -f deploy/docker-compose.yml exec -T \
             web python manage.py provision_tenant "CI Company Two"
-
-      - name: Copy test harnesses into the container
-        run: docker compose -f deploy/docker-compose.yml cp tests web:/app/
+          docker compose -f deploy/docker-compose.yml exec -T \
+            web python tests/ci_bootstrap.py
 
       - name: Comprehensive suite (every domain, every report, both tenants)
         run: docker compose -f deploy/docker-compose.yml exec -T web python tests/suite/run_all.py

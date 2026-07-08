@@ -10428,6 +10428,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS document_attachments_one_per_kind
 CREATE INDEX IF NOT EXISTS document_attachments_document_idx
     ON document_attachments (document_type, document_id);
 
+-- Bump tenant schema version for the attachments feature. This bump exists in
+-- add_document_attachments.sql / production_hardening.sql /
+-- build_multitenant_db.sql but was omitted when the table was folded into
+-- this template: freshly provisioned tenants sat at version 5 while the
+-- middleware requires TENANT_SCHEMA_VERSION (6) and rejected them with a 403
+-- until production_hardening.sql reran at the next container start.
+UPDATE tenant_schema_version
+SET version = GREATEST(version, 6),
+    applied_at = CURRENT_TIMESTAMP
+WHERE id = true;
+
 -- ------------------------------------------------------------- stock movements
 CREATE INDEX IF NOT EXISTS idx_stockmovements_item        ON stockmovements (item_id);
 CREATE INDEX IF NOT EXISTS idx_stockmovements_serial      ON stockmovements (serial_number);
