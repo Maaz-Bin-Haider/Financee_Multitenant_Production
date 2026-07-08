@@ -326,4 +326,11 @@ function mprPrintPosition() { mprPrintElement('mpr-position-card', 'Company Posi
 function mprPrintIncome()   { mprPrintElement('mpr-income-card', 'Income Statement'); }
 
 /* ─────────────────────────── Init ─────────────────────────── */
-document.addEventListener('DOMContentLoaded', () => mprSelectReport('position'));
+// document.addEventListener('DOMContentLoaded', () => mprSelectReport('position'));
+// Feature flags can hide either report button per company, so start on
+// Company Position when present, otherwise on the first button that is.
+document.addEventListener('DOMContentLoaded', () => {
+  const firstBtn = document.getElementById('mpr-btn-position')
+    || document.querySelector('.report-btn[data-report]');
+  if (firstBtn) mprSelectReport(firstBtn.dataset.report || 'position');
+});

@@ -60,7 +60,9 @@
         <h3 class="mc-list-title">Closed months</h3>
         <div class="table-actions">
           <button type="button" id="mc-download-pdf" class="btn-download"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+          {% if features.excel_export.enabled %}
           <button type="button" id="mc-download-csv" class="btn-download btn-csv"><i class="fa-solid fa-file-csv"></i> CSV</button>
+          {% endif %}
         </div>
       </div>
       <div class="mc-table-wrap">

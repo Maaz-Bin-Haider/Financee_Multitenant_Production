@@ -123,7 +123,10 @@
     reset();
     if (!state.docType || !documentId) return;
     const panel = byId("attachments_panel");
-    if (panel) panel.dataset.loading = "1";
+    // Widget absent: the attachments feature is disabled for this company —
+    // skip the metadata fetch entirely (the endpoint is blocked server-side).
+    if (!panel) return;
+    panel.dataset.loading = "1";
     fetch(`/attachments/${state.docType}/${encodeURIComponent(documentId)}/`)
       .then((res) => res.json())
       .then((data) => {

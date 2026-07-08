@@ -448,7 +448,10 @@ document.addEventListener("DOMContentLoaded", () => {
     chip.addEventListener("click", () => setRange(chip.dataset.range)));
   document.getElementById("sr-generate").addEventListener("click", generate);
   document.getElementById("sr-pdf").addEventListener("click", exportPDF);
-  document.getElementById("sr-csv").addEventListener("click", exportCSV);
+  // document.getElementById("sr-csv").addEventListener("click", exportCSV);
+  // The CSV button is absent when CSV/Excel export is disabled for the company.
+  const srCsv = document.getElementById("sr-csv");
+  if (srCsv) srCsv.addEventListener("click", exportCSV);
   document.querySelectorAll("#sr-report-buttons .report-btn").forEach((b) =>
     b.addEventListener("click", () => selectReport(b.dataset.report)));
 

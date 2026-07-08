@@ -214,7 +214,9 @@
                     rows="2" maxlength="1000" placeholder="Add a note for this return…"></textarea>
         </div>
 
+        {% if features.attachments.enabled %}
         {% include "components/document_attachments.html" %}
+        {% endif %}
 
         <div class="sale-divider"></div>
 

@@ -29,14 +29,19 @@
   <aside class="left-panel">
     <h3>Reports</h3>
     <div class="report-buttons">
-      <button class="report-btn active" id="mpr-btn-position"
+      {# Each sub-report can be switched off per company from the admin. #}
+      {% if features.monthly_reports.subs.monthly_position %}
+      <button class="report-btn active" id="mpr-btn-position" data-report="position"
               onclick="mprSelectReport('position')">
         <i class="fa-solid fa-scale-balanced"></i>Company Position
       </button>
-      <button class="report-btn" id="mpr-btn-income"
+      {% endif %}
+      {% if features.monthly_reports.subs.monthly_income %}
+      <button class="report-btn" id="mpr-btn-income" data-report="income"
               onclick="mprSelectReport('income')">
         <i class="fa-solid fa-chart-line"></i>Income Statement
       </button>
+      {% endif %}
     </div>
   </aside>
 

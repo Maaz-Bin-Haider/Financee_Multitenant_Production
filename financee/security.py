@@ -91,6 +91,33 @@ def subscription_blocked_response(request, company=None):
     )
 
 
+FEATURE_DISABLED_MESSAGE = "This feature is not enabled for your company."
+
+
+def feature_disabled_response(request, company, feature_key):
+    """
+    Deny access to a per-company disabled feature (tenancy.features).
+
+    Data/API calls get a scrubbed 403 JSON. A plain page GET on a disabled
+    sub-report is redirected to the first enabled sibling report of the same
+    group (so sidebar entry points keep working), else to the dashboard.
+    """
+    if request.method != "GET" or is_ajax_or_api(request):
+        return JsonResponse(
+            {"status": "denied", "message": FEATURE_DISABLED_MESSAGE},
+            status=403,
+        )
+    if "." in feature_key:
+        # Imported here: security.py must stay importable before the app
+        # registry is ready, and tenancy imports this module.
+        from tenancy.features import enabled_sibling_path
+
+        sibling = enabled_sibling_path(company, feature_key.split(".", 1)[0])
+        if sibling:
+            return redirect(sibling)
+    return redirect("home:home")
+
+
 def required_permissions_for_path(path):
     if path.startswith("/sales-reports/"):
         return SALES_REPORT_PERMS, "any"

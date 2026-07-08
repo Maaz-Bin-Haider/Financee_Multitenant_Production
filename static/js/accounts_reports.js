@@ -272,9 +272,10 @@ function injectToolbar(total) {
         <button id="download_pdf" class="btn-download">
           <i class="fa-solid fa-file-pdf"></i> PDF
         </button>
+        ${window.financeeFeatureEnabled && !financeeFeatureEnabled("excel_export") ? "" : `
         <button id="download_csv" class="btn-download btn-csv">
           <i class="fa-solid fa-file-csv"></i> CSV
-        </button>
+        </button>`}
       </div>
     </div>
   `);
@@ -397,6 +398,8 @@ $(document).on("click", "#download_pdf", function () {
 // CSV  —  visible rows + metadata header
 // ═══════════════════════════════════════════
 $(document).on("click", "#download_csv", function () {
+  // Per-company feature flag: CSV/Excel export can be disabled from the admin.
+  if (window.financeeFeatureEnabled && !financeeFeatureEnabled("excel_export")) return;
   const tbl = document.getElementById("reportTable");
   // if (!tbl) { Swal.fire("No Data", "No data to export.", "warning"); return; }
   if (!tbl) { Alerts.warning("No data to export.", { title: "No Data" }); return; }
@@ -487,4 +490,12 @@ function initAutocomplete() {
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
-$(document).ready(() => selectReport("cash-ledger"));
+// $(document).ready(() => selectReport("cash-ledger"));
+// Feature flags can hide individual report buttons per company, so start on
+// Cash Ledger when present, otherwise on the first report button that is.
+$(document).ready(() => {
+  const first = document.getElementById("btn-cash-ledger")
+    ? "cash-ledger"
+    : $(".report-btn").first().data("report");
+  if (first) selectReport(first);
+});

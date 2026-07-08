@@ -28,30 +28,43 @@
   <aside class="left-panel">
     <h3>Reports</h3>
     <div class="report-buttons">
-      <button class="report-btn" id="btn-ledger2"
+      {# Each sub-report can be switched off per company from the admin. #}
+      {% if features.accounts_reports.subs.detailed_ledger2 %}
+      <button class="report-btn" id="btn-ledger2" data-report="ledger2"
               onclick="selectReport('ledger2')">
         <i class="fa-solid fa-list-ul" style="margin-right:7px;font-size:0.78rem;"></i>Detailed Ledger
       </button>
-      <button class="report-btn active" id="btn-ledger"
+      {% endif %}
+      {% if features.accounts_reports.subs.detailed_ledger %}
+      <button class="report-btn active" id="btn-ledger" data-report="ledger"
               onclick="selectReport('ledger')">
         <i class="fa-solid fa-address-book" style="margin-right:7px;font-size:0.78rem;"></i>Party Ledger
       </button>
-      <button class="report-btn" id="btn-cash-ledger"
+      {% endif %}
+      {% if features.accounts_reports.subs.cash_ledger %}
+      <button class="report-btn" id="btn-cash-ledger" data-report="cash-ledger"
               onclick="selectReport('cash-ledger')">
         <i class="fa-solid fa-money-bill-wave" style="margin-right:7px;font-size:0.78rem;"></i>Cash Ledger
       </button>
-      <button class="report-btn" id="btn-trial"
+      {% endif %}
+      {% if features.accounts_reports.subs.trial_balance %}
+      <button class="report-btn" id="btn-trial" data-report="trial"
               onclick="selectReport('trial')">
         <i class="fa-solid fa-scale-balanced" style="margin-right:7px;font-size:0.78rem;"></i>Trial Balance
       </button>
-      <button class="report-btn" id="btn-receivable"
+      {% endif %}
+      {% if features.accounts_reports.subs.accounts_receivable %}
+      <button class="report-btn" id="btn-receivable" data-report="receivable"
               onclick="selectReport('receivable')">
         <i class="fa-solid fa-arrow-down-to-line" style="margin-right:7px;font-size:0.78rem;"></i>Receivable
       </button>
-      <button class="report-btn" id="btn-payable"
+      {% endif %}
+      {% if features.accounts_reports.subs.accounts_payable %}
+      <button class="report-btn" id="btn-payable" data-report="payable"
               onclick="selectReport('payable')">
         <i class="fa-solid fa-arrow-up-from-line" style="margin-right:7px;font-size:0.78rem;"></i>Payable
       </button>
+      {% endif %}
     </div>
   </aside>
 
@@ -78,9 +91,11 @@
         <button id="download_pdf" class="btn-download">
           <i class="fa-solid fa-file-pdf"></i> PDF
         </button>
+        {% if features.excel_export.enabled %}
         <button id="download_csv" class="btn-download btn-csv">
           <i class="fa-solid fa-file-csv"></i> CSV
         </button>
+        {% endif %}
       </div>
 
       <div class="table-container">

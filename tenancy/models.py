@@ -105,6 +105,17 @@ class Company(models.Model):
         ),
     )
 
+    # ── Per-company feature flags (admin-controlled) ──
+    # JSON list of DISABLED feature keys from tenancy.features.FEATURE_GROUPS:
+    # a group key ("stock_reports") or "group.sub" ("sales_reports.trend").
+    # Empty list (default) = every feature enabled. Managed through the grouped
+    # switches on the company admin form, not edited as raw JSON.
+    disabled_features = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Feature keys switched off for this company.",
+    )
+
     class Meta:
         db_table = "tenancy_company"
         verbose_name = "Company"
@@ -158,6 +169,19 @@ class Company(models.Model):
     @property
     def subscription_blocked(self):
         return self.subscription_state() in BLOCKED_STATES
+
+    # ── Feature flags ───────────────────────────────────────────────────
+    def feature_enabled(self, key):
+        """
+        True unless the key or its parent group is in ``disabled_features``.
+        Unknown keys are enabled by design: a stale key left in the JSON can
+        hide a feature but never break an unrelated request.
+        """
+        disabled = self.disabled_features or []
+        if key in disabled:
+            return False
+        group = key.split(".", 1)[0]
+        return group not in disabled
 
 
 class Membership(models.Model):

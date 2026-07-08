@@ -43,6 +43,7 @@ PASS/FAIL summary. Exit code is non-zero if any real check fails.
 | `test_month_close.py` | Period preview / close / duplicate-close guard / listing / reverse (self-restoring). |
 | `test_reports.py` | **Every** report: accounts, stock, serial, sales analytics, monthly, and all dashboard functions + views. |
 | `test_attachments.py` | Document attachment upload/update/replacement, metadata/preview/download endpoints, validation, cleanup, and attachment-only update behavior for sale, purchase, returns, payment, receipt, and contra documents. |
+| `test_feature_flags.py` | Per-company feature flags: registry/model semantics, admin form + change-view round-trip, middleware URL enforcement (group/sub blocking, GET redirects vs 403 JSON), UI hiding (sidebar, report buttons, CSV buttons, attachment widget), upload guard. |
 | `test_http.py` | Real Django endpoints via the test client: pages render, JSON APIs return no 5xx, auth works, a master-data write flow succeeds. |
 
 ## Invariants asserted throughout

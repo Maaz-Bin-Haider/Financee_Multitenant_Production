@@ -4161,7 +4161,8 @@ function renderDetailedLedger2(rows, partyName, fromDate, toDate) {
     <div class="ledger2-actions">
       <button class="l2-btn l2-btn-pdf"     onclick="downloadLedger2PDF(false)">📄 PDF — Summary</button>
       <button class="l2-btn l2-btn-pdf-det" onclick="downloadLedger2PDF(true)">📋 PDF — With Details</button>
-      <button class="l2-btn l2-btn-csv"     onclick="downloadLedger2CSV()">📊 Download CSV</button>
+      ${window.financeeFeatureEnabled && !financeeFeatureEnabled("excel_export") ? "" : `
+      <button class="l2-btn l2-btn-csv"     onclick="downloadLedger2CSV()">📊 Download CSV</button>`}
       <button class="l2-btn l2-btn-expand"  onclick="expandAllDetails()">⊞ Expand All</button>
       <button class="l2-btn l2-btn-collapse"onclick="collapseAllDetails()">⊟ Collapse All</button>
     </div>`;
@@ -4485,6 +4486,8 @@ function downloadLedger2PDF(withDetails) {
 
 /* ── CSV ───────────────────────────────────────────────────── */
 function downloadLedger2CSV() {
+  // Per-company feature flag: CSV/Excel export can be disabled from the admin.
+  if (window.financeeFeatureEnabled && !financeeFeatureEnabled("excel_export")) return;
   const d = window._ledger2Data;
   if (!d) return;
   const lines = [

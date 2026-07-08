@@ -125,7 +125,9 @@
                     placeholder="Add a note or reference for this receipt…">{{ description }}</textarea>
         </div>
 
+        {% if features.attachments.enabled %}
         {% include "components/document_attachments.html" %}
+        {% endif %}
 
         <!-- Action Buttons -->
         <div class="btn-row">

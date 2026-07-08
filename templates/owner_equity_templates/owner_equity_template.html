@@ -85,9 +85,11 @@
           <button type="button" id="oe-download-pdf" class="btn-download">
             <i class="fa-solid fa-file-pdf"></i> PDF
           </button>
+          {% if features.excel_export.enabled %}
           <button type="button" id="oe-download-csv" class="btn-download btn-csv">
             <i class="fa-solid fa-file-csv"></i> CSV
           </button>
+          {% endif %}
         </div>
       </div>
       <div class="oe-table-wrap">

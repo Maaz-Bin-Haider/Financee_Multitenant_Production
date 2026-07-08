@@ -28,6 +28,23 @@
   <!-- Excel File Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
+  <!-- Per-company feature flags (admin-controlled). JS-built toolbars read
+       window.FinanceeFeatures to hide disabled controls (e.g. CSV export). -->
+  {{ features_json|json_script:"financee-features" }}
+  <script>
+    window.FinanceeFeatures = JSON.parse(document.getElementById("financee-features").textContent);
+    // financeeFeatureEnabled("stock_reports")            -> group switch
+    // financeeFeatureEnabled("excel_export")             -> single feature
+    // financeeFeatureEnabled("sales_reports", "trend")   -> sub-report switch
+    // Fails open: unknown keys / missing map mean "enabled".
+    window.financeeFeatureEnabled = function (group, sub) {
+      const g = window.FinanceeFeatures && window.FinanceeFeatures[group];
+      if (!g) return true;
+      if (g.enabled === false) return false;
+      return !sub || !g.subs || g.subs[sub] !== false;
+    };
+  </script>
+
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
@@ -104,16 +121,22 @@
             <a href="{% url 'parties:partiesDash' %}" class="{% if request.resolver_match.namespace == 'parties' %}active{% endif %}">
                 <i class="fa-solid fa-users"></i> Parties
             </a>
+            {% if features.accounts_reports.enabled %}
             <a href="{% url 'accountsReports:cash_ledger' %}" class="{% if request.resolver_match.url_name == 'cash_ledger' %}active{% endif %}">
                 <i class="fa-solid fa-book-open"></i> Accounts Reports
             </a>
+            {% endif %}
+            {% if features.stock_reports.enabled %}
             <a href="{% url 'accountsReports:stock_summary' %}" class="{% if request.resolver_match.url_name == 'stock_summary' %}active{% endif %}">
                 <i class="fa-solid fa-warehouse"></i> Stock Reports
             </a>
+            {% endif %}
+            {% if features.monthly_reports.enabled %}
             <a href="{% url 'accountsReports:monthly_position_report' %}" class="{% if request.resolver_match.url_name == 'monthly_position_report' or request.resolver_match.url_name == 'monthly_income_report' %}active{% endif %}">
                 <i class="fa-solid fa-chart-pie"></i> Monthly Reports
             </a>
-            {% if perms.auth.can_set_or_update_opening %}
+            {% endif %}
+            {% if perms.auth.can_set_or_update_opening and features.opening_cash.enabled %}
             <a href="{% url 'set_opening:set_opening' %}" class="{% if request.resolver_match.url_name == 'set_opening' %}active{% endif %}">
                 <i class="fa-solid fa-sliders"></i> Set Opening
             </a>
@@ -128,12 +151,14 @@
                 <i class="fa-solid fa-calendar-check"></i> Month-End Close
             </a>
             {% endif %}
+            {% if features.sales_reports.enabled %}
             {% if perms.auth.can_view_sales_summary or perms.auth.can_view_product_profitability or ... %}
             <a href="{% url 'sales_reports:sales_reports' %}" class="{% if request.resolver_match.url_name == 'sales_reports' %}active{% endif %}">
                 <i class="fa-solid fa-chart-line"></i> Sales Reports
             </a>
             {% endif %}
-            {% if perms.auth.view_opening_stock %}
+            {% endif %}
+            {% if perms.auth.view_opening_stock and features.opening_stock.enabled %}
             <a href="{% url 'opening_stock:opening_stock' %}" class="{% if request.resolver_match.url_name == 'opening_stock' %}active{% endif %}">
                 <i class="fa-solid fa-boxes-stacked"></i> Opening Stock
             </a>

@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-07-06
+Last updated: 2026-07-08
 
 This file is the persistent engineering context for Financee. Update it on every meaningful project change, especially changes to architecture, routes, permissions, tenant SQL, deployment behavior, environment variables, tests, or data model assumptions.
 
@@ -182,6 +182,62 @@ Automatic emails to the **company's billing address** (`Company.contact_email`
 - Tests: `tests/suite/test_subscription_emails.py` (singleton behavior,
   scanner states/dedup/retry, content incl. WhatsApp/contact details, manual +
   test emails, admin screens and suspend-action email). Nothing real is sent.
+
+## Per-Company Feature Flags (admin-controlled)
+
+The operator can switch features on/off **per company** from the company admin
+form. Everything lives in the public schema — no tenant SQL. Migration
+`tenancy/0004_company_feature_flags`; registry and enforcement helpers in
+`tenancy/features.py`.
+
+Feature keys (stable, persisted): group switches `accounts_reports`,
+`stock_reports`, `monthly_reports`, `sales_reports`, `opening_stock`,
+`opening_cash`, `excel_export`, `attachments`, plus one `group.sub` switch per
+sub-report of the four report groups (e.g. `accounts_reports.cash_ledger`,
+`stock_reports.serial_ledger`, `monthly_reports.monthly_income`,
+`sales_reports.trend`). Sub key names follow the URLs; admin labels follow the
+UI button text (note `/detailed-ledger/` renders as "Party Ledger" and
+`/detailed-ledger2/` as "Detailed Ledger"; `/stock-summary/` as "Stock Report"
+and `/stock-report/` as "Stock Serial Wise").
+
+Semantics and storage:
+
+- `Company.disabled_features` (JSONField, list of **disabled** keys; default
+  `[]` = everything on, so the migration changes nothing for existing
+  companies). `Company.feature_enabled(key)` — disabling a group disables all
+  of its subs; unknown keys fail open.
+- `excel_export` removes only the **CSV/Excel** download buttons across all
+  report screens plus Month-End Close and Owner Equity; PDF and Print stay.
+- `attachments` hides the whole document-attachment widget (upload **and**
+  existing-file preview/download) and blocks `/attachments/`; files are never
+  deleted, so re-enabling restores them. `attachments/utils.py`
+  (`validate_request_attachments` raises / `save_document_attachments`
+  no-ops) guards uploads server-side.
+
+Enforcement (`tenancy/middleware.py` after the subscription guard, applied to
+**every** user of the company, superusers included):
+`tenancy.features.feature_for_path` longest-prefix-maps the request path to a
+feature key; disabled paths get `feature_disabled_response`
+(`financee/security.py`): non-GET/AJAX/API → scrubbed 403 JSON ("This feature
+is not enabled for your company."); a plain GET on a disabled **sub-report
+page** redirects to the first enabled sibling of the group
+(`GROUP_LANDING_PATHS`) so sidebar entry points keep working, else to the
+dashboard.
+
+UI hiding: `tenancy.context_processors.company_features` (registered in
+settings) exposes `features` (nested map) and `features_json` to every
+template. `base.html` gates the sidebar links and embeds
+`window.FinanceeFeatures` + `financeeFeatureEnabled()` (via `json_script`) for
+the JS-built toolbars (`accounts_reports.js`, `stock_reports.js`,
+`detailed_ledger2.js` gate their CSV buttons; report-page init handlers now
+start on the first *visible* report button). The report templates gate each
+sub-report button; the 7 document templates gate the attachment widget
+include.
+
+Admin (`tenancy/admin.py`): `CompanyAdminForm` renders the JSON column as
+grouped Boolean switches (one collapsible fieldset per group, master switch +
+sub switches; unticked = disabled); the changelist shows a "Features off"
+count. Tests: `tests/suite/test_feature_flags.py` (wired into `run_all.py`).
 
 ## Security and Permission Notes
 

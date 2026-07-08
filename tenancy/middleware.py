@@ -40,12 +40,14 @@ from django.utils.deprecation import MiddlewareMixin
 from financee.security import (
     TENANT_GUARD_EXEMPT_PREFIXES,
     deny_response,
+    feature_disabled_response,
     has_required_permissions,
     rate_limit_response,
     required_permissions_for_path,
     subscription_blocked_response,
     tenant_required_response,
 )
+from .features import feature_for_path
 from .models import BLOCKED_STATES
 from .utils import (
     PUBLIC_SCHEMA,
@@ -86,6 +88,13 @@ class TenantSchemaMiddleware(MiddlewareMixin):
             if state in BLOCKED_STATES and not user.is_superuser:
                 return subscription_blocked_response(request, company)
             request.subscription_state = state
+
+            # Feature guard: per-company switches set in the admin. Applies to
+            # every user of the company (superusers included) so backend access
+            # always matches the hidden UI.
+            feature_key = feature_for_path(request.path)
+            if feature_key and not company.feature_enabled(feature_key):
+                return feature_disabled_response(request, company, feature_key)
 
         perms, mode = required_permissions_for_path(request.path)
         if perms and not has_required_permissions(user, perms, mode):

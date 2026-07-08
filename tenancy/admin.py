@@ -33,6 +33,7 @@ from django.utils.html import format_html
 
 from financee.admin_site import financee_admin_site
 
+from .features import FEATURE_GROUPS, all_feature_keys
 from .models import (
     SUBSCRIPTION_ACTIVE,
     SUBSCRIPTION_BLOCKED,
@@ -94,13 +95,102 @@ class SubscriptionPaymentInline(admin.TabularInline):
         return False
 
 
+def _feature_field_name(key):
+    """Form-field name for a feature key ('sales_reports.trend' -> 'feat__sales_reports__trend')."""
+    return "feat__" + key.replace(".", "__")
+
+
+def _feature_form_fields():
+    """One BooleanField per feature key, declared at class-creation time.
+
+    The admin's ``modelform_factory`` validates fieldset entries against the
+    form's *declared* fields, so these cannot be added in ``__init__``.
+    """
+    fields = {}
+    for group, spec in FEATURE_GROUPS.items():
+        fields[_feature_field_name(group)] = forms.BooleanField(
+            required=False,
+            initial=True,
+            label=spec["label"],
+            help_text=(
+                "Master switch — unticking disables everything in this group below."
+                if spec["subs"]
+                else "Untick to hide this feature from the company."
+            ),
+        )
+        for sub, sub_label in spec["subs"].items():
+            fields[_feature_field_name(f"{group}.{sub}")] = forms.BooleanField(
+                required=False,
+                initial=True,
+                label=sub_label,
+            )
+    return fields
+
+
+class _CompanyAdminFormBase(forms.ModelForm):
+    """
+    Renders ``Company.disabled_features`` as grouped on/off switches — one
+    master switch per feature group plus one per sub-report — instead of raw
+    JSON. Everything ticked = feature enabled (the default for new companies).
+    """
+
+    class Meta:
+        model = Company
+        exclude = ("disabled_features",)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            disabled = set(self.instance.disabled_features or [])
+            for key in all_feature_keys():
+                self.fields[_feature_field_name(key)].initial = key not in disabled
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        obj.disabled_features = [
+            key
+            for key in all_feature_keys()
+            if not self.cleaned_data.get(_feature_field_name(key), False)
+        ]
+        if commit:
+            obj.save()
+        return obj
+
+
+CompanyAdminForm = type("CompanyAdminForm", (_CompanyAdminFormBase,), _feature_form_fields())
+
+
+def _feature_fieldsets():
+    """One collapsible admin fieldset per feature group."""
+    sets = []
+    for group, spec in FEATURE_GROUPS.items():
+        fields = [_feature_field_name(group)]
+        fields += [_feature_field_name(f"{group}.{sub}") for sub in spec["subs"]]
+        sets.append(
+            (
+                f"Features — {spec['label']}",
+                {
+                    "fields": fields,
+                    "classes": ("collapse",),
+                    "description": (
+                        "Unticked items disappear from this company's sidebar/screens "
+                        "and their pages and data endpoints are blocked."
+                    ),
+                },
+            )
+        )
+    return tuple(sets)
+
+
 class CompanyAdmin(admin.ModelAdmin):
+    form = CompanyAdminForm
     list_display = (
         "name",
         "schema_name",
         "is_active",
         "subscription_badge",
         "paid_until",
+        "features_off",
         "member_count",
         "created_at",
     )
@@ -126,11 +216,16 @@ class CompanyAdmin(admin.ModelAdmin):
                 ),
             },
         ),
-    )
+    ) + _feature_fieldsets()
 
     @admin.display(description="Subscription")
     def subscription_badge(self, obj):
         return subscription_badge_html(obj)
+
+    @admin.display(description="Features off")
+    def features_off(self, obj):
+        count = len(obj.disabled_features or [])
+        return str(count) if count else "—"
 
     @admin.display(description="Members")
     def member_count(self, obj):

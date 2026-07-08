@@ -121,9 +121,17 @@ def validate_upload(uploaded_file, file_kind):
         raise ValidationError("Unsupported attachment type.")
 
 
+def attachments_feature_enabled(request):
+    """Per-company feature flag (admin-controlled). No tenant company = enabled."""
+    company = getattr(request, "tenant_company", None)
+    return company is None or company.feature_enabled("attachments")
+
+
 def validate_request_attachments(request):
     if not request.FILES:
         return
+    if not attachments_feature_enabled(request):
+        raise ValidationError("Document attachments are not enabled for your company.")
     if len(request.FILES.getlist("attachment_image")) > 1:
         raise ValidationError("Only one image attachment is allowed.")
     if len(request.FILES.getlist("attachment_pdf")) > 1:
@@ -213,6 +221,10 @@ def build_metadata(request, document_type, document_id):
 def save_document_attachments(request, document_type, document_id):
     check_document_type(document_type)
     if not request.FILES:
+        return
+    # Defense in depth: views validate first, but never persist files for a
+    # company whose attachments feature is switched off in the admin.
+    if not attachments_feature_enabled(request):
         return
     if not document_exists(document_type, document_id):
         raise ValidationError("Cannot attach files to a missing document.")

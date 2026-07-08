@@ -118,7 +118,9 @@
                     placeholder="Add a note or reference for this transfer…">{{ description }}</textarea>
         </div>
 
+        {% if features.attachments.enabled %}
         {% include "components/document_attachments.html" %}
+        {% endif %}
 
         <div class="btn-row">
           <button type="submit" name="action" value="submit" class="save-and-update-btn" id="submitBtn">

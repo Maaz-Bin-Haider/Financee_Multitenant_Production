@@ -283,6 +283,36 @@ are untouched. Applying the migration blocks nobody: existing companies start
 with enforcement disabled until you set their first paid-until date or record
 a payment.
 
+## Per-Company Feature Flags
+
+The operator can enable/disable features for a specific company from the
+company's admin page (collapsible **Features** sections). Everything is
+public-schema registry data (`Company.disabled_features`,
+`tenancy/0004_company_feature_flags`) — no tenant SQL. All features start
+enabled; existing companies are unaffected by the migration.
+
+What can be switched per company:
+
+- **Report groups** — Accounts Reports, Stock Reports, Monthly Reports,
+  Sales Reports, Opening Stock, Opening Cash (Set Opening). Each group has a
+  master switch, and every sub-report inside the four report groups has its
+  own switch (e.g. Cash Ledger, Trial Balance, Serial Ledger, Company
+  Position, Invoice Register).
+- **CSV / Excel export** — removes the CSV download buttons from every report
+  screen (including Month-End Close and Owner Equity). PDF and Print stay.
+- **Document attachments** — hides the image/PDF widget entirely (uploads and
+  existing files) and blocks the attachment endpoints. Files are never
+  deleted; re-enabling the feature brings them back.
+
+Disabled features disappear from the sidebar and from in-page report buttons,
+and their URLs are enforced by the tenant middleware: data/API calls get a
+scrubbed 403 JSON, while a plain page visit to a disabled sub-report redirects
+to the first enabled report of the same group (or the dashboard). Enforcement
+applies to every user of the company, superusers included.
+
+The company changelist shows a **Features off** count per company. Coverage
+lives in `tests/suite/test_feature_flags.py`.
+
 ## Permissions and Guards
 
 Permissions are seeded through migrations in `authentication/migrations/`. The middleware has a path-level guard in `financee/security.py`.

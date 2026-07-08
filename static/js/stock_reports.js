@@ -243,9 +243,10 @@ function injectToolbar(total) {
         <button id="download_pdf" class="btn-download">
           <i class="fa-solid fa-file-pdf"></i> PDF
         </button>
+        ${window.financeeFeatureEnabled && !financeeFeatureEnabled("excel_export") ? "" : `
         <button id="download_csv" class="btn-download btn-csv">
           <i class="fa-solid fa-file-csv"></i> CSV
-        </button>
+        </button>`}
       </div>
     </div>`)
     .insertBefore(".table-container");
@@ -333,6 +334,8 @@ $(document).on("click", "#download_pdf", function () {
 // CSV
 // ═══════════════════════════════════════════
 $(document).on("click", "#download_csv", function () {
+  // Per-company feature flag: CSV/Excel export can be disabled from the admin.
+  if (window.financeeFeatureEnabled && !financeeFeatureEnabled("excel_export")) return;
   const tbl = document.getElementById("reportTable");
   // if (!tbl) { Swal.fire("No Data", "Nothing to export.", "warning"); return; }
   if (!tbl) { Alerts.warning("Nothing to export.", { title: "No Data" }); return; }
@@ -429,4 +432,12 @@ function initAutocompleteDetail() {
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
-$(document).ready(() => selectReport("summary"));
+// $(document).ready(() => selectReport("summary"));
+// Feature flags can hide individual report buttons per company, so start on
+// the Stock Report when present, otherwise on the first report button that is.
+$(document).ready(() => {
+  const first = document.getElementById("btn-summary")
+    ? "summary"
+    : $(".report-btn").first().data("report");
+  if (first) selectReport(first);
+});

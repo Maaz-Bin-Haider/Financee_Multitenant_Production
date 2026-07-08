@@ -27,21 +27,22 @@
   <aside class="left-panel">
     <h3>Reports</h3>
     <div class="report-buttons" id="sr-report-buttons">
-      {% if perms.auth.can_view_sales_summary %}
+      {# Each report needs its permission AND its per-company feature switch. #}
+      {% if perms.auth.can_view_sales_summary and features.sales_reports.subs.summary %}
       <button class="report-btn" data-report="summary"><i class="fa-solid fa-gauge-high"></i> Sales Summary</button>{% endif %}
-      {% if perms.auth.can_view_product_profitability %}
+      {% if perms.auth.can_view_product_profitability and features.sales_reports.subs.product_profitability %}
       <button class="report-btn" data-report="product_profitability"><i class="fa-solid fa-box"></i> Product Profitability</button>{% endif %}
-      {% if perms.auth.can_view_customer_profitability %}
+      {% if perms.auth.can_view_customer_profitability and features.sales_reports.subs.customer_profitability %}
       <button class="report-btn" data-report="customer_profitability"><i class="fa-solid fa-user-tag"></i> Customer Profitability</button>{% endif %}
-      {% if perms.auth.can_view_sales_by_product %}
+      {% if perms.auth.can_view_sales_by_product and features.sales_reports.subs.sales_by_product %}
       <button class="report-btn" data-report="sales_by_product"><i class="fa-solid fa-boxes-stacked"></i> Sales by Product</button>{% endif %}
-      {% if perms.auth.can_view_sales_by_customer %}
+      {% if perms.auth.can_view_sales_by_customer and features.sales_reports.subs.sales_by_customer %}
       <button class="report-btn" data-report="sales_by_customer"><i class="fa-solid fa-users"></i> Sales by Customer</button>{% endif %}
-      {% if perms.auth.can_view_sale_wise_profit %}
+      {% if perms.auth.can_view_sale_wise_profit and features.sales_reports.subs.sale_wise %}
       <button class="report-btn" data-report="sale_wise"><i class="fa-solid fa-receipt"></i> Sale-wise Profit</button>{% endif %}
-      {% if perms.auth.can_view_sales_trend %}
+      {% if perms.auth.can_view_sales_trend and features.sales_reports.subs.trend %}
       <button class="report-btn" data-report="trend"><i class="fa-solid fa-chart-line"></i> Sales Trend Dashboard</button>{% endif %}
-      {% if perms.auth.can_view_invoice_register %}
+      {% if perms.auth.can_view_invoice_register and features.sales_reports.subs.invoice_register %}
       <button class="report-btn" data-report="invoice_register"><i class="fa-solid fa-file-invoice"></i> Invoice Register</button>{% endif %}
     </div>
   </aside>
@@ -92,7 +93,9 @@
     <!-- Table actions -->
     <div class="table-actions" id="sr-actions" style="display:none;">
       <button id="sr-pdf" class="btn-download"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+      {% if features.excel_export.enabled %}
       <button id="sr-csv" class="btn-download btn-csv"><i class="fa-solid fa-file-csv"></i> CSV</button>
+      {% endif %}
     </div>
 
     <!-- Table -->
