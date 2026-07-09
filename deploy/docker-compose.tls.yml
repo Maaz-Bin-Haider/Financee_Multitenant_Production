@@ -1,0 +1,26 @@
+# =============================================================================
+# docker-compose.tls.yml  —  PRODUCTION TLS overlay (Cloudflare Origin Cert).
+# -----------------------------------------------------------------------------
+# Layered on top of docker-compose.yml ONLY on the EC2 host, and ONLY once the
+# Cloudflare Origin Certificate is installed at /etc/nginx/cloudflare/ on the
+# host. deploy_pull.sh and deploy.sh add this file automatically when they
+# detect /etc/nginx/cloudflare/origin.pem, so HTTP-only deploys keep working
+# until the cert is in place — there is no flag day.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d
+#
+# It only EXTENDS the nginx service: publishes 443, mounts the HTTPS server
+# block into conf.d/, and mounts the origin cert/key read-only. Compose
+# concatenates the `ports` and `volumes` lists onto the base service, so 80
+# stays published and the base mounts are preserved.
+#
+# NOT for local dev — the dev override is docker-compose.override.yml, which
+# compose auto-merges; this file is only ever added explicitly with `-f`.
+# =============================================================================
+services:
+  nginx:
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx/financee_tls.conf:/etc/nginx/conf.d/financee_tls.conf:ro
+      - /etc/nginx/cloudflare:/etc/nginx/cloudflare:ro

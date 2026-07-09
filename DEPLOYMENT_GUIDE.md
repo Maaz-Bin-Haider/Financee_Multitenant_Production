@@ -302,16 +302,144 @@ docker compose -f docker-compose.yml logs -f web nginx     # follow live
 
 ---
 
-## Part F — Later: custom domain + HTTPS (optional, recommended)
+## Part F — Custom domain + HTTPS (Cloudflare)
 
-1. Point your domain's A record at the server (use an Elastic IP first).
-2. Add the domain to `ALLOWED_HOSTS` and switch `CSRF_TRUSTED_ORIGINS` to
-   `https://your.domain.com` in `deploy/.env`.
-3. Get certificates (e.g. certbot) and enable the 443 server block +
-   HTTP→HTTPS redirect in `deploy/nginx/financee.conf` (a commented stub is
-   already there), mount the certs into the nginx container, then
-   `docker compose -f docker-compose.yml up -d --force-recreate nginx web`.
-4. **Remove `SECURE_COOKIES=False` from `deploy/.env`** (cookies must be
-   Secure-only again) and recreate web.
-5. Once HTTPS works end-to-end, consider `SECURE_SSL_REDIRECT=True` and the
-   HSTS settings flagged in `financee/settings.py`.
+This section is written for **this** setup: the domain **`financee-swisstech.com`**
+is on **Cloudflare** with both records **Proxied** (orange cloud):
+
+| Name | Type | Content | Proxy |
+|---|---|---|---|
+| `financee-swisstech.com` | A | `13.206.58.237` (Elastic IP) | Proxied |
+| `www.financee-swisstech.com` | CNAME | `financee-swisstech.com` | Proxied |
+
+Because the domain is **proxied**, traffic is **Browser → Cloudflare → origin
+(EC2)**. Cloudflare terminates TLS at its edge, so Let's Encrypt / certbot on
+the origin is the wrong tool (the HTTP-01 challenge hits Cloudflare, not your
+box). The correct, simplest path is a **Cloudflare Origin Certificate** on nginx
+with SSL mode **Full (strict)** — a free cert valid up to 15 years, so there is
+**no certbot and no renewal cron**, and encryption is end-to-end.
+
+### How the repo is wired for this
+
+- `deploy/nginx/financee.conf` — HTTP server on **port 80** (stays up for the
+  localhost health checks; Cloudflare does the visitor HTTP→HTTPS redirect).
+- `deploy/nginx/financee_tls.conf` — HTTPS server on **port 443** using the
+  origin cert.
+- `deploy/nginx/financee_common.conf` — the shared proxy/static/media body
+  included by **both**, so they never drift.
+- `deploy/docker-compose.tls.yml` — overlay that publishes 443 and mounts the
+  cert. `deploy_pull.sh` / `deploy.sh` add it **automatically once
+  `/etc/nginx/cloudflare/origin.pem` exists on the host** — so nothing here
+  breaks HTTP-only deploys before the cert is installed.
+
+> **Ordering rule:** install the origin cert on the host **before** the first
+> TLS-enabled deploy. The deploy scripts only switch nginx to 443 after they see
+> `origin.pem`, so this is safe by construction — but do the Cloudflare + cert
+> steps (F1–F2) before relying on HTTPS.
+
+### F1. Cloudflare dashboard
+
+1. **SSL/TLS → Overview → set encryption mode to `Full (strict)`.**
+   (Not "Flexible" — that leaves Cloudflare→origin unencrypted and causes
+   redirect loops. Not "Full" — that skips origin cert validation.)
+2. **SSL/TLS → Origin Server → Create Certificate.** Accept defaults (RSA,
+   hostnames `financee-swisstech.com, *.financee-swisstech.com`, 15 years).
+   Cloudflare shows two blocks **once** — copy both now:
+   - the **Origin Certificate** (`-----BEGIN CERTIFICATE-----` …)
+   - the **Private Key** (`-----BEGIN PRIVATE KEY-----` …)
+3. **SSL/TLS → Edge Certificates → turn on `Always Use HTTPS`** (Cloudflare
+   redirects visitors to HTTPS at the edge). Optionally enable **HSTS** there
+   too, but the origin already sends an HSTS header, so this is redundant.
+4. Keep **SSL/TLS → Edge Certificates → Minimum TLS Version** at 1.2.
+
+### F2. Install the origin cert on the EC2 host
+
+On the server:
+
+```bash
+sudo mkdir -p /etc/nginx/cloudflare
+sudo nano /etc/nginx/cloudflare/origin.pem   # paste the Origin Certificate block, save
+sudo nano /etc/nginx/cloudflare/origin.key   # paste the Private Key block, save
+sudo chmod 600 /etc/nginx/cloudflare/origin.key
+sudo chmod 644 /etc/nginx/cloudflare/origin.pem
+ls -l /etc/nginx/cloudflare/                  # both files present
+```
+
+These files live **only on the server** (never committed). The path
+`/etc/nginx/cloudflare` is what `docker-compose.tls.yml` mounts into nginx.
+
+### F3. Update the production `.env`
+
+Edit `~/Financee_Multitenant_Production/deploy/.env`:
+
+```env
+ALLOWED_HOSTS=localhost,financee-swisstech.com,www.financee-swisstech.com,ec2-13-206-58-237.ap-south-1.compute.amazonaws.com,13.206.58.237
+CSRF_TRUSTED_ORIGINS=https://financee-swisstech.com,https://www.financee-swisstech.com
+```
+
+- Keep `localhost` in `ALLOWED_HOSTS` (health checks call `http://localhost/`).
+- **Remove the `SECURE_COOKIES=False` line** (delete it entirely). With HTTPS
+  live, cookies must be `Secure` again — which they now can be, because
+  Cloudflare→origin is HTTPS and nginx forwards `X-Forwarded-Proto: https`.
+- Leave `SECURE_SSL_REDIRECT` unset. Cloudflare already forces HTTPS at the
+  edge; enabling it in Django would only add a redirect on the localhost health
+  path with no benefit.
+
+### F4. Roll it out (get the repo changes onto the server, then recreate)
+
+The nginx/compose files above ship via git. Get them onto the server and bring
+nginx up on 443. Either:
+
+- **Via CI (normal path):** merge to `main`, approve the deploy. `deploy_pull.sh`
+  git-pulls, sees `origin.pem`, adds the TLS overlay, and recreates nginx on
+  443. Because you changed `.env` (not baked into the image), also recreate web
+  once so the new cookie/host settings load — the deploy recreates web anyway.
+
+- **Manually on the server (immediate):**
+  ```bash
+  cd ~/Financee_Multitenant_Production/deploy
+  git pull --ff-only
+
+  # Validate the TLS config with the real cert mount BEFORE swapping nginx live
+  # (CI never exercises the 443 block, so test it here). Expect "test is successful".
+  docker compose -f docker-compose.yml -f docker-compose.tls.yml run --rm --no-deps nginx nginx -t
+
+  docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --force-recreate nginx web
+  docker compose -f docker-compose.yml logs --tail=30 nginx   # no ssl errors, listening on 443
+  ```
+
+### F5. Verify
+
+```bash
+# On the server — origin answers TLS with the Cloudflare origin cert:
+curl -kIsS https://localhost/authentication/login/ | head -1     # HTTP/2 200
+docker compose -f docker-compose.yml ps                          # nginx Up, web (healthy)
+```
+
+From your browser:
+
+- `https://financee-swisstech.com/` → padlock, Financee login page.
+- `http://financee-swisstech.com/` → redirects to `https://` (Cloudflare edge).
+- Log in and submit a form → **no "CSRF verification failed"** (the pre-TLS
+  cause is gone now that cookies are Secure over real HTTPS).
+
+If a form still fails CSRF, confirm the exact scheme+host you browsed is in
+`CSRF_TRUSTED_ORIGINS`, and that `SECURE_COOKIES=False` was actually removed
+from `.env` and web was recreated.
+
+### F6. (Recommended) Lock the origin to Cloudflare
+
+While proxied, only Cloudflare should be able to reach ports 80/443 — otherwise
+someone hitting the Elastic IP directly bypasses Cloudflare and can spoof
+`X-Forwarded-For` (which the rate limiter trusts). In the EC2 **security group**,
+replace the `0.0.0.0/0` rules on **80** and **443** with Cloudflare's published
+IP ranges (`https://www.cloudflare.com/ips/`). Leave SSH (22) as is. Do this
+only after HTTPS is confirmed working, so you don't lock yourself out of
+debugging over the direct DNS name.
+
+### F7. Cert renewal
+
+Nothing to do — a Cloudflare Origin Certificate is valid up to 15 years. Set a
+calendar reminder ~1 month before expiry to regenerate it (repeat F1.2 + F2 +
+recreate nginx). Cloudflare's *edge* certificate (what visitors see) is
+auto-managed and renews itself.

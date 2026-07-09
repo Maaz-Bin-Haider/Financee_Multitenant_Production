@@ -85,10 +85,26 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
 - `deploy/docker-compose.yml` web service now carries
   `image: ${WEB_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:latest}` so local
   builds tag the same name CI pushes and the server can `compose pull web`.
-- Nginx stale-upstream fix (2026-07-08): `deploy/nginx/financee.conf` uses
-  `resolver 127.0.0.11` + variable `proxy_pass` instead of a static
-  `upstream` block, so recreating web never needs an nginx restart (upstream
-  `keepalive` was retired with it; negligible on the Docker network).
+- Nginx stale-upstream fix (2026-07-08): the shared `location /` (now in
+  `deploy/nginx/financee_common.conf`) uses `resolver 127.0.0.11` + variable
+  `proxy_pass` instead of a static `upstream` block, so recreating web never
+  needs an nginx restart (upstream `keepalive` was retired with it; negligible
+  on the Docker network).
+- HTTPS / custom domain (2026-07-09): production domain
+  `financee-swisstech.com` (+ `www`) is on **Cloudflare, proxied**, TLS handled
+  by a **Cloudflare Origin Certificate** on nginx with SSL mode **Full
+  (strict)** — no certbot/Let's Encrypt, no renewal (15-yr cert). Nginx config
+  is split so the HTTP (`financee.conf`, port 80, kept for localhost health
+  checks) and HTTPS (`financee_tls.conf`, port 443) servers share one body
+  (`financee_common.conf`) and cannot drift. The 443 listener + cert mount
+  (`/etc/nginx/cloudflare/{origin.pem,origin.key}`, server-only, uncommitted)
+  live in the `deploy/docker-compose.tls.yml` overlay, which
+  `deploy_pull.sh`/`deploy.sh` add **automatically once `origin.pem` exists on
+  the host** (HTTP-only before that — no flag day). Local dev + the CI test job
+  use base `docker-compose.yml` only, so neither needs a cert. Once HTTPS is
+  live, drop `SECURE_COOKIES=False` from the server `.env` and set
+  `CSRF_TRUSTED_ORIGINS` to the `https://` origins. Full runbook:
+  `DEPLOYMENT_GUIDE.md` Part F.
 
 ## Runtime and Deployment Notes
 

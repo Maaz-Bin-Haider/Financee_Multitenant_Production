@@ -84,9 +84,13 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      # - "443:443"   # enable with certs
+      # 443 is published by docker-compose.tls.yml on the server once the
+      # Cloudflare origin cert is installed — see DEPLOYMENT_GUIDE.md Part F.
     volumes:
       - ./nginx/financee.conf:/etc/nginx/conf.d/default.conf:ro
+      # Shared server body included by both the HTTP and (on the server) HTTPS
+      # servers. Mounted under snippets/ so nginx does not auto-load the partial.
+      - ./nginx/financee_common.conf:/etc/nginx/snippets/financee_common.conf:ro
       - staticfiles:/app/staticfiles:ro
       - media:/app/media:ro
     depends_on:

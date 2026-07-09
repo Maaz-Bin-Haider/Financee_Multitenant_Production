@@ -19,6 +19,12 @@ cd "$(dirname "$0")"
 # Use ONLY the base compose file on the server (ignore any local-dev override
 # that may exist in the repo, which shrinks Postgres and exposes the DB port).
 COMPOSE="docker compose -f docker-compose.yml"
+# Add the Cloudflare TLS overlay automatically once the origin cert is present
+# (see DEPLOYMENT_GUIDE.md Part F). Stays HTTP-only until then.
+if [ -f /etc/nginx/cloudflare/origin.pem ] && [ -f docker-compose.tls.yml ]; then
+    COMPOSE="$COMPOSE -f docker-compose.tls.yml"
+    echo "==> TLS overlay active (Cloudflare origin cert found)"
+fi
 
 echo "==> Pulling latest code"
 git pull --ff-only

@@ -25,6 +25,13 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 COMPOSE="docker compose -f docker-compose.yml"
+# Enable the Cloudflare TLS overlay automatically once the origin cert is on the
+# host. Before that, deploys stay HTTP-only (no broken nginx, no flag day); the
+# moment /etc/nginx/cloudflare/origin.pem exists, nginx comes up on 443 too.
+if [ -f /etc/nginx/cloudflare/origin.pem ] && [ -f docker-compose.tls.yml ]; then
+    COMPOSE="$COMPOSE -f docker-compose.tls.yml"
+    echo "==> TLS overlay active (Cloudflare origin cert found)"
+fi
 : "${WEB_IMAGE:?Set WEB_IMAGE to the image tag to deploy (e.g. ghcr.io/maaz-bin-haider/financee-web:<sha>)}"
 export WEB_IMAGE
 
