@@ -542,3 +542,4 @@ The suite has three major harnesses:
 - Do not introduce Django ORM models for tenant business tables unless the multitenant `search_path` strategy is explicitly accounted for.
 - Always reset or preserve `search_path` in management commands and admin utilities that activate tenant schemas manually.
 - Keep tenant-facing errors generic; middleware currently scrubs JSON error details for 4xx/5xx responses.
+- Checking CI CD from new device
