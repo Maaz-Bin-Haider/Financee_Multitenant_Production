@@ -680,6 +680,9 @@ def _purchase_payload_matches_current(purchase_id, data, purchase_date):
 
 @login_required
 def purchasing(request):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.purchasing(request)
     if not request.user.has_perm("auth.view_purchase"):
         messages.error(request, "You do not have permission to View Purchase Invoices.")
         return redirect("home:home")
@@ -1076,6 +1079,9 @@ def purchasing(request):
 
 @login_required
 def get_purchase(request):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.get_purchase(request)
     action = request.GET.get("action")
     current_id = request.GET.get("current_id")
     try:
@@ -1176,6 +1182,9 @@ def get_purchase(request):
 
 @login_required
 def get_purchase_summary(request):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.get_purchase_summary(request)
     try:
         from_date_str = request.GET.get("from")
         to_date_str = request.GET.get("to")
@@ -1251,6 +1260,9 @@ def get_purchase_summary(request):
 # ---------------------------------------------------------------------------
 @login_required
 def purchase_serial_check(request):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.serial_check(request)
     if not request.user.has_perm("auth.view_purchase"):
         return JsonResponse({"success": False, "message": "Permission denied."})
  

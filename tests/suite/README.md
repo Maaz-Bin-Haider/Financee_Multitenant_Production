@@ -52,6 +52,7 @@ PASS/FAIL summary. Exit code is non-zero if any real check fails.
 | `test_quantity_warehouses.py` | Phase 8 warehouse CRUD, single-default lifecycle, reference deletion guard, permissions, HTTP contracts, and tenant/family isolation. |
 | `test_quantity_fifo.py` | Phase 9 immutable movement ledger, FIFO layers/allocations, backdated replay, concurrency locks, reconciliation, precision, and isolation. |
 | `test_quantity_opening_stock.py` | Phase 10 quantity opening documents, whole/decimal stock, FIFO/accounting, guarded reversal, Capital reclassification, HTTP workflow, and isolation. |
+| `test_quantity_purchases.py` | Phase 11 domestic quantity credit/cash purchases, FIFO/AP/Cash accounting, idempotency, guarded edit/reversal, navigation, concurrency, HTTP, and isolation. |
 | `test_http.py` | Real Django endpoints via the test client: pages render, JSON APIs return no 5xx, auth works, a master-data write flow succeeds. |
 
 ## Invariants asserted throughout

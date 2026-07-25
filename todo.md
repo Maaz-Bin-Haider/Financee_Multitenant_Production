@@ -106,8 +106,16 @@ high-level checklist and shall be updated from the detailed plan’s results.
   UI using the existing theme. The focused suite passed 37/37 and all serial
   regressions remained green. See
   `tests/PHASE10_OPENING_STOCK_RESULTS.md`.
-- [ ] **Phase 11 — Quantity Purchases:** not started.
-- [ ] Phases 12–32: not started; see
+- [x] **Phase 11 — Quantity Purchases:** completed 2026-07-25.
+  Added quantity schema version 7 with domestic credit/cash purchase documents,
+  required vendor snapshots, PUR numbering, SKU/warehouse quantity lines,
+  atomic FIFO and Inventory/AP/Cash journals, database-serialized idempotency,
+  audited guarded edits with historical replay, guarded reversal,
+  navigation/summary, and a no-serial quantity purchase UI. The focused suite
+  passed 46/46 and all serial regressions remained green. See
+  `tests/PHASE11_QUANTITY_PURCHASES_RESULTS.md`.
+- [ ] **Phase 12 — Quantity Sales:** not started.
+- [ ] Phases 13–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

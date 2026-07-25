@@ -608,6 +608,27 @@ serial system/HTTP/deep-lifecycle regressions is in
 `tests/PHASE10_OPENING_STOCK_RESULTS.md`. Phase 11 adds domestic quantity
 purchases.
 
+Phase 11 completed on 2026-07-25. Quantity schema version 7 adds domestic
+base-currency purchases with immutable invoice/line records, tenant-local
+`PUR-000001` numbering, required vendor-name snapshots, credit or cash mode,
+SKU/warehouse quantities, six-decimal unit costs, movement/FIFO lineage, and
+balanced journals. Credit purchases debit Inventory and credit Accounts
+Payable; cash purchases credit the selected Cash or Bank control account.
+Database advisory locking by tenant and idempotency key makes simultaneous
+duplicate submissions return one purchase. Edits preserve the document number,
+store the complete prior document in an immutable revision record, replace the
+source movements under controlled guards, replay every affected FIFO timeline,
+and reverse/repost accounting atomically. Any edit producing historical
+negative stock rolls back completely. Reversal is allowed only while every
+purchase layer remains wholly unconsumed. Quantity purchase navigation,
+summary, and the shared `/purchase/` routes now select a quantity-specific
+no-serial UI/API. The general quantity party master remains Phase 19, so Phase
+11 stores the vendor snapshot and uses the AP control account; tax, discounts,
+foreign currency, settlements, and attachments remain in their assigned
+phases. Evidence from 46 focused checks, all 24 mixed-family modules, and full
+serial regressions is in `tests/PHASE11_QUANTITY_PURCHASES_RESULTS.md`. Phase
+12 adds domestic quantity sales with FIFO COGS.
+
 ## Maintenance Checklist
 
 When changing the project, update this file if any answer changes:

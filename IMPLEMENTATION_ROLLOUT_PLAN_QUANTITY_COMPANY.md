@@ -572,6 +572,13 @@ Add quantity opening inventory and existing accounting reclassification.
 
 ## Phase 11 — Quantity Purchases
 
+**Status:** completed 2026-07-25. Quantity schema version 7 and the domestic
+base-currency credit/cash purchase lifecycle passed all focused and regression
+gates in the isolated mixed-family Docker environment. See
+`tests/PHASE11_QUANTITY_PURCHASES_RESULTS.md`. Tax, foreign currency,
+attachments, and the shared party master remain in their assigned later
+phases. Phase 12 is next.
+
 ### Objectives
 
 Implement domestic base-currency purchases before tax and foreign complexity.

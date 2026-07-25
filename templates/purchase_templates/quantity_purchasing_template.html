@@ -1,0 +1,69 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% block title %}Purchases{% endblock title %}
+{% block SeperateCssFile %}
+<link rel="stylesheet" href="{% static 'css/purchasing_styling.css' %}">
+<link rel="stylesheet" href="{% static 'css/opening_stock.css' %}">
+{% endblock SeperateCssFile %}
+{% block body %}
+{% csrf_token %}
+<div class="os-titlebar">
+  <div class="os-titlebar-icon"><i class="fa-solid fa-cart-flatbed"></i></div>
+  <div><h2>Quantity Purchases</h2><p>Post domestic purchases by SKU, warehouse and quantity. No serial numbers are required.</p></div>
+</div>
+
+<section class="sale-card os-form-card">
+  <div class="sale-card-body">
+    <input type="hidden" id="purchase-id">
+    <div class="sale-meta-grid" style="display:grid;grid-template-columns:1.3fr 150px 160px 160px;gap:12px;">
+      <div class="sale-field"><label class="sale-field-label">Vendor</label><input id="vendor-name" class="sale-input" maxlength="200" placeholder="Vendor name"></div>
+      <div class="sale-field"><label class="sale-field-label">Date</label><input id="invoice-date" type="date" class="sale-input"></div>
+      <div class="sale-field"><label class="sale-field-label">Purchase Type</label><select id="purchase-type" class="sale-input"><option value="credit">Credit Purchase</option><option value="cash">Cash Purchase</option></select></div>
+      <div class="sale-field"><label class="sale-field-label">Payment Account</label><select id="payment-account" class="sale-input" disabled><option value="1000">Cash</option><option value="1100">Bank</option></select></div>
+    </div>
+    <div class="sale-field" style="margin-top:12px;"><label class="sale-field-label">Description</label><input id="description" class="sale-input" maxlength="500" placeholder="Optional purchase description"></div>
+    <div class="items-section-header" style="margin-top:16px;">
+      <div class="items-section-title"><i class="fa-solid fa-layer-group"></i> Purchase Lines</div>
+      {% if can_create %}<button type="button" class="custom-btn btn-add-item" id="add-line"><i class="fa-solid fa-plus"></i> Add Line</button>{% endif %}
+    </div>
+    <div class="items-col-headers" style="grid-template-columns:2fr 1.4fr 100px 120px 110px;">
+      <span class="col-header">SKU / Variant</span><span class="col-header">Warehouse</span>
+      <span class="col-header">Quantity</span><span class="col-header">Unit Cost</span><span class="col-header">Actions</span>
+    </div>
+    <div id="purchase-lines"></div>
+  </div>
+  <div class="sale-card-footer">
+    <div class="sale-totals-group">
+      <div class="total-chip"><span class="total-chip-label">Document</span><span class="total-chip-value" id="document-number">New</span></div>
+      <div class="total-chip"><span class="total-chip-label">Quantity</span><span class="total-chip-value" id="total-quantity">0</span></div>
+      <div class="total-chip"><span class="total-chip-label">Total</span><span class="total-chip-value amount-value">{{ base_currency.code|default:"" }} <span id="total-cost">0.00</span></span></div>
+    </div>
+    <div class="sale-actions">
+      <button class="custom-btn" id="previous" type="button"><i class="fa-solid fa-chevron-left"></i></button>
+      <button class="custom-btn" id="next" type="button"><i class="fa-solid fa-chevron-right"></i></button>
+      {% if can_delete %}<button class="custom-btn" id="reverse" type="button"><i class="fa-solid fa-rotate-left"></i> Reverse</button>{% endif %}
+      {% if can_create or can_update %}<button class="save-and-update-btn" id="save" type="button"><i class="fa-solid fa-floppy-disk"></i> Save Purchase</button>{% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="os-card os-list-card" style="margin-top:18px;">
+  <div class="os-card-head"><h3>Purchase Summary</h3><button class="os-icon-btn" id="refresh-summary"><i class="fa-solid fa-rotate"></i></button></div>
+  <div class="os-table-wrap"><table class="os-table"><thead><tr><th>Number</th><th>Date</th><th>Vendor</th><th>Type</th><th>Status</th><th class="num">Total</th></tr></thead><tbody id="summary-body"></tbody></table></div>
+</section>
+
+<script>
+window.QPUR = {
+  urls: {
+    purchase: "{% url 'purchase:purchasing' %}",
+    navigate: "{% url 'purchase:get_purchase' %}",
+    summary: "{% url 'purchase:get_purchase_summary' %}",
+    catalog: "{% url 'items:quantity_catalog' %}",
+    warehouses: "{% url 'quantity_warehouses:list' %}"
+  },
+  canUpdate: {{ can_update|yesno:"true,false" }},
+  currency: "{{ base_currency.code|default:''|escapejs }}"
+};
+</script>
+<script src="{% static 'js/quantity_purchases.js' %}"></script>
+{% endblock body %}

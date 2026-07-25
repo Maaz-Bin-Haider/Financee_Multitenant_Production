@@ -135,7 +135,8 @@ def main():
         schema, schema_b = company.schema_name, company_b.schema_name
         definition = schema_family(INVENTORY_MODE_QUANTITY)
         chk("fresh schema reaches opening-stock version",
-            q(schema, "SELECT version FROM tenant_schema_metadata")[0][0] == 6)
+            q(schema, "SELECT version FROM tenant_schema_metadata")[0][0]
+            == definition.required_version)
         chk("fresh opening-stock schema verifies",
             verify_company_schema(company, use_cache=False).ok)
         chk("opening-stock document prefix is configured",

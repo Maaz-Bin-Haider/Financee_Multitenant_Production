@@ -553,6 +553,16 @@ reclassified to Owner's Capital after onboarding is complete. Serial companies
 continue to use the existing serial-based opening-stock screen. Phase 11 is
 quantity purchases.
 
+Quantity schema version 7 enables `/purchase/` for quantity companies.
+Domestic credit and cash purchases accept vendor, date, SKU, warehouse,
+quantity, unit cost, and description without serial numbers. Posting creates
+FIFO stock and balanced Inventory/AP or Inventory/Cash/Bank accounting.
+Duplicate requests are idempotent, navigation and summaries are available,
+safe edits retain revision history and replay later FIFO allocations, and
+untouched purchases can be reversed. Tax, discounts, foreign currency,
+attachments, and the full quantity party master remain scheduled later.
+Serial companies continue to use the existing serial purchase workflow.
+
 ### Tenant Login Redirect Loop
 
 If a company user signs in successfully but the browser reports too many redirects between `/home/` and `/authentication/login/`, the user is usually authenticated but the tenant guard is rejecting the assigned company schema.

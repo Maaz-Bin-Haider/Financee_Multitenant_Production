@@ -89,8 +89,8 @@ def main():
     quantity = schema_family(INVENTORY_MODE_QUANTITY)
     chk("families use separate templates", serial.template_path != quantity.template_path)
     chk("families use separate hardening", serial.hardening_path != quantity.hardening_path)
-    chk("quantity required version includes opening stock",
-        quantity.required_version == 6)
+    chk("quantity required version includes purchases",
+        quantity.required_version == 7)
     chk("quantity runtime remains gated after foundation",
         quantity.runtime_enabled is False)
     chk("SQL ownership resolves serial hardening",
@@ -127,7 +127,7 @@ def main():
             for c in companies
         ]
         chk("metadata family/version/currency matches public company",
-            all(row == ("quantity", 6, "PKR") for row in metadata), metadata)
+            all(row == ("quantity", 7, "PKR") for row in metadata), metadata)
         chk("quantity verifier accepts both schemas",
             all(verify_company_schema(c, use_cache=False).ok for c in companies))
 
@@ -158,11 +158,11 @@ def main():
         chk("document sequences seeded exactly once",
             all(q(c.schema_name, "SELECT count(*) FROM document_sequences")[0][0] == 11
                 for c in companies))
-        chk("all six quantity phase seeds registered exactly once",
+        chk("all seven quantity phase seeds registered exactly once",
             all(q(c.schema_name, """
                 SELECT count(*), count(DISTINCT seed_key)
                   FROM quantity_seed_registry
-            """)[0] == (6, 6) for c in companies))
+            """)[0] == (7, 7) for c in companies))
 
         for _ in range(2):
             call_command(
@@ -177,7 +177,7 @@ def main():
             and all(q(c.schema_name, """
                 SELECT count(*), count(DISTINCT seed_key)
                   FROM quantity_seed_registry
-            """)[0] == (6, 6) for c in companies))
+            """)[0] == (7, 7) for c in companies))
 
         serial_output = io.StringIO()
         call_command(
