@@ -554,6 +554,26 @@ SQL upgrades fresh and existing tenants. Evidence from the preserved upgrade,
 two fresh quantity tenants, 60 focused checks, all 20 suite modules, and full
 serial regressions is in `tests/PHASE7_ITEM_MASTER_RESULTS.md`.
 
+Phase 8 completed on 2026-07-25. Quantity schema version 4 adds normalized
+multi-warehouse identity, address and active/inactive state, and at most one
+active default warehouse. Default creation, switching, deactivation,
+replacement, and unreferenced deletion are serialized with a tenant-local
+transaction advisory lock. `warehouse_reference_registry` is the integration
+contract for later stock/document tables and prevents any referenced warehouse
+from being hard-deleted while still permitting deactivation for future use.
+The `/warehouses/quantity/` JSON API provides lookup, default resolution,
+create, rename/update, deactivate/reactivate, and guarded deletion. Four
+explicit Django permissions are installed by
+`authentication.0022_add_quantity_warehouse_permissions`, and both central
+route mapping and view-level checks enforce them. Fresh quantity provisioning
+now executes ordered cumulative family upgrades (item master, then warehouse)
+after the stable base template; existing version-3 tenants receive only the
+idempotent Phase 8 artifact during deployment. Evidence from the preserved
+upgrade, migration rollback/reapply, two fresh quantity tenants, 38 focused
+checks, all 21 suite modules, and full serial regressions is in
+`tests/PHASE8_WAREHOUSE_RESULTS.md`. Transfers and warehouse stock remain in
+their assigned later phases.
+
 ## Maintenance Checklist
 
 When changing the project, update this file if any answer changes:

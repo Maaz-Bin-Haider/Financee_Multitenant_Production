@@ -529,6 +529,12 @@ transaction-aware SKU/unit locking. Other quantity business screens remain
 intentionally gated until warehouse, stock, and transaction phases are
 complete.
 
+Quantity schema version 4 adds multi-warehouse setup through
+`/warehouses/quantity/`. Authorized users can list, create, rename, activate,
+deactivate, select a default, and delete only unreferenced warehouses. The
+database enforces normalized code/name uniqueness and at most one active
+default warehouse per quantity tenant.
+
 ### Tenant Login Redirect Loop
 
 If a company user signs in successfully but the browser reports too many redirects between `/home/` and `/authentication/login/`, the user is usually authenticated but the tenant guard is rejecting the assigned company schema.

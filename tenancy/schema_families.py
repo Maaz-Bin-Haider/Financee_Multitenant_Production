@@ -27,6 +27,7 @@ class SchemaFamily:
     required_functions: tuple[str, ...] = ()
     rollout_files: tuple[str, ...] = ()
     enabled_path_prefixes: tuple[str, ...] = ()
+    bootstrap_paths: tuple[Path, ...] = ()
 
 
 def _families():
@@ -55,8 +56,8 @@ def _families():
         INVENTORY_MODE_QUANTITY: SchemaFamily(
             key=INVENTORY_MODE_QUANTITY,
             template_path=SQL_DIR / "quantity_tenant_template.sql",
-            hardening_path=SQL_DIR / "quantity_item_master.sql",
-            required_version=3,
+            hardening_path=SQL_DIR / "quantity_warehouse_foundation.sql",
+            required_version=4,
             metadata_table="tenant_schema_metadata",
             runtime_enabled=False,
             required_tables=(
@@ -70,6 +71,8 @@ def _families():
                 "products",
                 "product_variants",
                 "variant_transaction_registry",
+                "warehouses",
+                "warehouse_reference_registry",
             ),
             required_sequences=(
                 "quantity_foundation_id_seq",
@@ -80,6 +83,8 @@ def _families():
                 "products_product_id_seq",
                 "product_variants_variant_id_seq",
                 "variant_transaction_registry_reference_id_seq",
+                "warehouses_warehouse_id_seq",
+                "warehouse_reference_registry_reference_id_seq",
             ),
             required_functions=(
                 "quantity_schema_fingerprint",
@@ -95,9 +100,21 @@ def _families():
                 "quantity_item_catalog",
                 "quantity_suggest_sku",
                 "quantity_validate_quantity",
+                "quantity_create_warehouse",
+                "quantity_update_warehouse",
+                "quantity_delete_warehouse",
+                "quantity_warehouse_lookup",
+                "quantity_default_warehouse",
             ),
-            rollout_files=("quantity_item_master.sql",),
-            enabled_path_prefixes=("/items/quantity/",),
+            rollout_files=("quantity_warehouse_foundation.sql",),
+            enabled_path_prefixes=(
+                "/items/quantity/",
+                "/warehouses/quantity/",
+            ),
+            bootstrap_paths=(
+                SQL_DIR / "quantity_item_master.sql",
+                SQL_DIR / "quantity_warehouse_foundation.sql",
+            ),
         ),
     }
 

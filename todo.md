@@ -84,8 +84,14 @@ high-level checklist and shall be updated from the detailed plan’s results.
   active/inactive catalogue behavior, a quantity-only JSON API slice, and
   tenant/permission isolation tests. See
   `tests/PHASE7_ITEM_MASTER_RESULTS.md`.
-- [ ] **Phase 8 — Warehouse Foundation:** not started.
-- [ ] Phases 9–32: not started; see
+- [x] **Phase 8 — Warehouse Foundation:** completed 2026-07-25.
+  Added quantity schema version 4, normalized multi-warehouse identity,
+  serialized single-default selection and reassignment, active/inactive
+  lifecycle, reference-protected deletion, explicit Django permissions,
+  quantity-only lookup/mutation APIs, cumulative fresh-schema upgrades, and
+  tenant/family isolation tests. See `tests/PHASE8_WAREHOUSE_RESULTS.md`.
+- [ ] **Phase 9 — Stock Movement and FIFO Engine:** not started.
+- [ ] Phases 10–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

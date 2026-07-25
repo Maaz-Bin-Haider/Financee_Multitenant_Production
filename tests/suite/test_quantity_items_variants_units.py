@@ -148,12 +148,12 @@ def main():
             family=INVENTORY_MODE_QUANTITY,
             stdout=io.StringIO(),
         )
-        chk("item master hardening is idempotent",
+        chk("current quantity hardening preserves item master idempotently",
             q(schema, "SELECT count(*) FROM units_of_measure")[0][0] == 6
             and q(schema, """
                 SELECT count(*), count(DISTINCT seed_key)
                   FROM quantity_seed_registry
-            """)[0] == (3, 3))
+            """)[0] == (4, 4))
 
         product_id = product(schema)
         chk("product stores normalized identity",

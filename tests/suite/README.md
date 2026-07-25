@@ -49,6 +49,7 @@ PASS/FAIL summary. Exit code is non-zero if any real check fails.
 | `test_quantity_foundation.py` | Phase 5 family registry, two deterministic quantity schemas, metadata/fingerprint verification, idempotent family hardening, rollout isolation, mismatch denial, sanitized failure state, and search-path reset. |
 | `test_quantity_accounting.py` | Phase 6 quantity chart of accounts, journal posting/reversal/immutability, trial balance, precision, concurrent numbering, and tenant isolation. |
 | `test_quantity_items_variants_units.py` | Phase 7 quantity products, seven-dimension variants, SKU suggestion/locking, units/precision, catalogue HTTP API, and isolation. |
+| `test_quantity_warehouses.py` | Phase 8 warehouse CRUD, single-default lifecycle, reference deletion guard, permissions, HTTP contracts, and tenant/family isolation. |
 | `test_http.py` | Real Django endpoints via the test client: pages render, JSON APIs return no 5xx, auth works, a master-data write flow succeeds. |
 
 ## Invariants asserted throughout

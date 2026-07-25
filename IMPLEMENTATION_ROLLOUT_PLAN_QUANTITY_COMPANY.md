@@ -467,6 +467,9 @@ Implement quantity sellable-item identity.
 
 ## Phase 8 — Warehouse Foundation
 
+**Status:** Completed 2026-07-25. Evidence:
+`tests/PHASE8_WAREHOUSE_RESULTS.md`.
+
 ### Objectives
 
 Implement warehouse identity and permissions before stock exists.

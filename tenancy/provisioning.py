@@ -21,11 +21,11 @@ from .utils import (
 def _read_template(family_key: str) -> str:
     definition = schema_family(family_key)
     sql = definition.template_path.read_text(encoding="utf-8")
-    if definition.key == INVENTORY_MODE_QUANTITY:
-        # A fresh quantity tenant is composed from the stable base template
-        # plus the family's current idempotent upgrade artifact. This keeps one
-        # authoritative upgrade body for fresh and existing quantity schemas.
-        sql += "\n" + definition.hardening_path.read_text(encoding="utf-8")
+    for upgrade_path in definition.bootstrap_paths:
+        # Fresh quantity tenants are composed from the stable base template
+        # plus ordered family upgrades. Each file remains the authoritative,
+        # independently deployable upgrade for existing schemas.
+        sql += "\n" + upgrade_path.read_text(encoding="utf-8")
     return sql
 
 
