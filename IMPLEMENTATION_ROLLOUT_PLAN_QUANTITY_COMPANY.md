@@ -331,6 +331,9 @@ backfill policy, immutability rules, and tests land atomically.
 
 ## Phase 4 — Currency Catalogue and Company Setup
 
+**Status:** Completed 2026-07-25. Evidence:
+`tests/PHASE4_COMPANY_SETUP_RESULTS.md`.
+
 ### Objectives
 
 Provide stable shared reference data needed before quantity schemas are

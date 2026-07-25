@@ -30,6 +30,7 @@ MODULES = [
     "test_subscription_emails.py",
     "test_feature_flags.py",
     "test_company_metadata.py",
+    "test_company_setup.py",
     "test_http.py",
 ]
 

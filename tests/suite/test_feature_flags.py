@@ -126,6 +126,8 @@ def check_admin_form(company):
     data = {
         "name": company.name,
         "inventory_mode": company.inventory_mode,
+        "base_currency": company.base_currency_id,
+        "tax_environment": company.tax_environment,
         "contact_email": company.contact_email or "",
         "paid_until": company.paid_until or "",
         "grace_days": company.grace_days,
@@ -169,6 +171,8 @@ def check_admin_views(company):
     # Full POST round-trip through the real admin (inlines included).
     data = {
         "name": company.name,
+        "base_currency": company.base_currency_id,
+        "tax_environment": company.tax_environment,
         "contact_email": company.contact_email or "",
         "paid_until": company.paid_until.isoformat() if company.paid_until else "",
         "grace_days": company.grace_days,
@@ -192,7 +196,13 @@ def check_admin_views(company):
     snapshot = list(company.disabled_features or [])
     try:
         resp = client.post(url, data)
-        chk("admin save redirects", resp.status_code == 302, resp.status_code)
+        error_text = re.sub(r"<[^>]+>", " ", resp.content.decode("utf-8", "ignore"))
+        error_text = " ".join(error_text.split())
+        chk(
+            "admin save redirects",
+            resp.status_code == 302,
+            f"{resp.status_code}: {error_text[:2000]}",
+        )
         fresh = Company.objects.get(pk=company.pk)
         chk("admin save persists unticked switches",
             set(fresh.disabled_features) == {"excel_export", "sales_reports.trend"},

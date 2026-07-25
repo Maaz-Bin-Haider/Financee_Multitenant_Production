@@ -27,6 +27,7 @@ Subscription workflow (payments arrive outside the system, e.g. bank transfer):
 """
 from django import forms
 from django.contrib import admin, messages
+from django.db.models import Q
 from django.shortcuts import redirect
 from django.urls import path, reverse
 from django.utils.html import format_html
@@ -43,6 +44,7 @@ from .models import (
     SUBSCRIPTION_UNRESTRICTED,
     BillingSettings,
     Company,
+    Currency,
     Membership,
     SubscriptionEmailLog,
     SubscriptionPayment,
@@ -140,9 +142,16 @@ class _CompanyAdminFormBase(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if "base_currency" in self.fields:
+            currencies = Currency.objects.filter(is_active=True)
+            if self.instance.pk and self.instance.base_currency_id:
+                currencies = Currency.objects.filter(
+                    Q(is_active=True) | Q(pk=self.instance.base_currency_id)
+                )
+            self.fields["base_currency"].queryset = currencies.order_by("code")
         if not self.instance.pk:
             self.fields["inventory_mode"].help_text = (
-                "Serial-number based is the only provisionable mode in Phase 3. "
+                "Serial-number based is the only provisionable mode currently. "
                 "Quantity based is visible for the approved future schema family "
                 "but cannot be saved until Phase 5 enables provisioning."
             )
@@ -193,6 +202,8 @@ class CompanyAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "inventory_mode",
+        "base_currency",
+        "tax_environment",
         "schema_name",
         "is_active",
         "subscription_badge",
@@ -201,14 +212,30 @@ class CompanyAdmin(admin.ModelAdmin):
         "member_count",
         "created_at",
     )
-    list_filter = ("inventory_mode", "is_active", "is_suspended")
+    list_filter = (
+        "inventory_mode", "base_currency", "tax_environment",
+        "is_active", "is_suspended",
+    )
     search_fields = ("name", "schema_name")
     readonly_fields = ("schema_name", "created_at", "subscription_badge")
     inlines = [SubscriptionPaymentInline, MembershipInline]
     actions = ["suspend_companies", "unsuspend_companies"]
 
     fieldsets = (
-        (None, {"fields": ("name", "inventory_mode", "schema_name", "is_active", "created_at")}),
+        (
+            "Company setup",
+            {
+                "fields": (
+                    "name", "inventory_mode", "base_currency",
+                    "tax_environment", "schema_name", "is_active", "created_at",
+                ),
+                "description": (
+                    "Inventory mode is permanent after creation. Base currency "
+                    "and tax environment can be corrected only before the "
+                    "company has financial activity."
+                ),
+            },
+        ),
         (
             "Subscription",
             {
@@ -229,6 +256,8 @@ class CompanyAdmin(admin.ModelAdmin):
         fields = list(super().get_readonly_fields(request, obj))
         if obj is not None:
             fields.append("inventory_mode")
+            if obj.has_financial_activity():
+                fields.extend(("base_currency", "tax_environment"))
         return tuple(fields)
 
     @admin.display(description="Subscription")
@@ -446,7 +475,21 @@ class SubscriptionEmailLogAdmin(admin.ModelAdmin):
         return False
 
 
+class CurrencyAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "symbol", "minor_units", "is_active")
+    list_filter = ("is_active", "minor_units")
+    search_fields = ("code", "name")
+    ordering = ("code",)
+
+    def get_readonly_fields(self, request, obj=None):
+        return ("code",) if obj is not None else ()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
 financee_admin_site.register(Company, CompanyAdmin)
+financee_admin_site.register(Currency, CurrencyAdmin)
 financee_admin_site.register(Membership, MembershipAdmin)
 financee_admin_site.register(SubscriptionPayment, SubscriptionPaymentAdmin)
 financee_admin_site.register(BillingSettings, BillingSettingsAdmin)

@@ -486,6 +486,20 @@ isolated Docker environments. Evidence is in
 `tests/PHASE3_COMPANY_METADATA_RESULTS.md`. Base currency and tax-environment
 configuration remain Phase 4 work.
 
+Phase 4 completed on 2026-07-25. Public migration
+`tenancy.0006_currency_company_setup` adds the controlled `Currency` catalogue,
+required company base currency, and tax/non-tax environment. The frozen
+catalogue contains 178 entries from the official SIX/ISO 4217 List One
+published 2026-01-01; 165 entries with defined minor-unit precision are active
+for selection. Existing companies are safely backfilled to PKR/non-tax without
+changing tenant schemas or stored financial values. Base currency and tax
+environment can be corrected before tenant journal activity and are locked
+afterward. Admin and `provision_tenant` support the setup fields, and
+`seed_currencies` refreshes catalogue data idempotently. Upgrade, clean install,
+rollback/reapply, 30 focused checks, all 17 suite modules, and full serial
+accounting/lifecycle regressions passed. Evidence is in
+`tests/PHASE4_COMPANY_SETUP_RESULTS.md`.
+
 ## Maintenance Checklist
 
 When changing the project, update this file if any answer changes:

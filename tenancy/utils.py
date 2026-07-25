@@ -85,6 +85,27 @@ def schema_has_tables(schema_name: str) -> bool:
         return cur.fetchone() is not None
 
 
+def tenant_table_has_rows(schema_name: str, table_name: str) -> bool:
+    """Return whether a validated tenant table exists and contains any row."""
+    validate_schema_name(schema_name)
+    if not table_name or not re.match(r"^[a-z_][a-z0-9_]{0,62}$", table_name):
+        raise ValueError(f"Unsafe / invalid table name: {table_name!r}")
+    quoted_schema = connection.ops.quote_name(schema_name)
+    quoted_table = connection.ops.quote_name(table_name)
+    with connection.cursor() as cur:
+        cur.execute(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = %s AND table_name = %s LIMIT 1",
+            [schema_name, table_name],
+        )
+        if cur.fetchone() is None:
+            return False
+        cur.execute(
+            f"SELECT EXISTS (SELECT 1 FROM {quoted_schema}.{quoted_table} LIMIT 1)"
+        )
+        return bool(cur.fetchone()[0])
+
+
 def list_tenant_schemas():
     """All provisioned tenant schemas (named tenant_%), ordered."""
     with connection.cursor() as cur:

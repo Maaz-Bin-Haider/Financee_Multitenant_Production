@@ -1,14 +1,18 @@
 """
 tenancy.models
 ==============
-The tenant registry. These two tables live in the SHARED ``public`` schema and
-are the only ORM models the system has. They map Django users to companies and
-companies to PostgreSQL schemas.
+Public tenant registry, company setup, subscription, and email-audit models.
+Tenant business/accounting data continues to live in PostgreSQL tenant schemas
+and is not represented by Django ORM models.
 
 Company
     One row per tenant. ``schema_name`` is machine-generated as
     ``tenant_company_<pk>`` the first time the row is saved, so administrators
     never type a schema name by hand (which keeps it a safe SQL identifier).
+
+Currency
+    Controlled ISO 4217 reference data used to select each company's base
+    accounting/reporting currency.
 
 Membership
     Enforces critical business rule #1 — *a user belongs to exactly one
@@ -55,6 +59,42 @@ INVENTORY_MODE_CHOICES = (
     (INVENTORY_MODE_QUANTITY, "Quantity based"),
 )
 
+TAX_ENVIRONMENT_TAX = "tax"
+TAX_ENVIRONMENT_NON_TAX = "non_tax"
+TAX_ENVIRONMENT_CHOICES = (
+    (TAX_ENVIRONMENT_NON_TAX, "Non-tax"),
+    (TAX_ENVIRONMENT_TAX, "Tax-based"),
+)
+
+
+class Currency(models.Model):
+    """Controlled public ISO 4217 currency catalogue."""
+
+    code = models.CharField(max_length=3, primary_key=True)
+    name = models.CharField(max_length=100)
+    symbol = models.CharField(max_length=12)
+    minor_units = models.PositiveSmallIntegerField()
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "tenancy_currency"
+        verbose_name = "Currency"
+        verbose_name_plural = "Currencies"
+        ordering = ["code"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(code__regex=r"^[A-Z]{3}$"),
+                name="tenancy_currency_valid_code",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(minor_units__lte=4),
+                name="tenancy_currency_valid_minor_units",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.code} — {self.name}"
+
 
 class Company(models.Model):
     """A tenant. Its data lives in the schema named by ``schema_name``."""
@@ -81,6 +121,25 @@ class Company(models.Model):
             "Permanent inventory model for this company. Existing companies "
             "are serial-number based. Quantity-company provisioning is enabled "
             "only after its separate schema family is deployed."
+        ),
+    )
+    base_currency = models.ForeignKey(
+        Currency,
+        default="PKR",
+        on_delete=models.PROTECT,
+        related_name="companies",
+        help_text=(
+            "Accounting and reporting currency. It can be changed only before "
+            "the company has financial activity."
+        ),
+    )
+    tax_environment = models.CharField(
+        max_length=16,
+        choices=TAX_ENVIRONMENT_CHOICES,
+        default=TAX_ENVIRONMENT_NON_TAX,
+        help_text=(
+            "Choose whether this company operates in a tax-based or non-tax "
+            "environment. It can be changed only before financial activity."
         ),
     )
 
@@ -147,6 +206,13 @@ class Company(models.Model):
                 ]),
                 name="tenancy_company_valid_inventory_mode",
             ),
+            models.CheckConstraint(
+                condition=models.Q(tax_environment__in=[
+                    TAX_ENVIRONMENT_TAX,
+                    TAX_ENVIRONMENT_NON_TAX,
+                ]),
+                name="tenancy_company_valid_tax_environment",
+            ),
         ]
 
     def __str__(self):
@@ -154,6 +220,23 @@ class Company(models.Model):
 
     def clean(self):
         super().clean()
+        if self.base_currency_id:
+            selected_currency = Currency.objects.filter(
+                pk=self.base_currency_id
+            ).only("is_active").first()
+            if selected_currency is not None and not selected_currency.is_active:
+                original_currency = None
+                if self.pk:
+                    original_currency = type(self).objects.filter(
+                        pk=self.pk
+                    ).values_list("base_currency_id", flat=True).first()
+                if original_currency != self.base_currency_id:
+                    raise ValidationError({
+                        "base_currency": (
+                            "Inactive currency codes cannot be selected for "
+                            "new company setup."
+                        )
+                    })
         if self._state.adding and self.inventory_mode == INVENTORY_MODE_QUANTITY:
             raise ValidationError({
                 "inventory_mode": (
@@ -162,16 +245,36 @@ class Company(models.Model):
                 )
             })
         if self.pk:
-            original_mode = type(self).objects.filter(pk=self.pk).values_list(
-                "inventory_mode", flat=True
+            original = type(self).objects.filter(pk=self.pk).values(
+                "inventory_mode", "base_currency_id", "tax_environment"
             ).first()
-            if original_mode is not None and original_mode != self.inventory_mode:
+            if original is not None and original["inventory_mode"] != self.inventory_mode:
                 raise ValidationError({
                     "inventory_mode": (
                         "Company inventory mode is permanent after creation. "
                         "A schema conversion requires a separate migration project."
                     )
                 })
+            setup_changed = original is not None and (
+                original["base_currency_id"] != self.base_currency_id
+                or original["tax_environment"] != self.tax_environment
+            )
+            if setup_changed and self.has_financial_activity():
+                message = (
+                    "Base currency and tax environment cannot be changed "
+                    "after financial activity exists."
+                )
+                raise ValidationError({
+                    "base_currency": message,
+                    "tax_environment": message,
+                })
+
+    def has_financial_activity(self):
+        """Return whether this tenant contains posted accounting entries."""
+        if not self.schema_name:
+            return False
+        from .utils import tenant_table_has_rows
+        return tenant_table_has_rows(self.schema_name, "journalentries")
 
     def save(self, *args, **kwargs):
         """

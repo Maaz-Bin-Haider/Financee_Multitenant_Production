@@ -53,11 +53,12 @@ Unauthenticated requests use `public`. Authenticated users without an active com
 
 ## Multitenancy Model
 
-Only two Django ORM models represent tenancy:
+The public tenancy registry and setup models include:
 
 | Model | Location | Purpose |
 | --- | --- | --- |
-| `Company` | `tenancy/models.py` | Tenant registry row. Auto-generates `schema_name` as `tenant_company_<id>`. |
+| `Company` | `tenancy/models.py` | Tenant registry row with immutable inventory mode, base currency, and tax environment. Auto-generates `schema_name` as `tenant_company_<id>`. |
+| `Currency` | `tenancy/models.py` | Controlled ISO 4217 catalogue used for company base-currency selection. |
 | `Membership` | `tenancy/models.py` | One-to-one mapping from user to company. Enforces one company per user. |
 
 Creating a `Company` through the custom admin or `provision_tenant` command provisions a physical tenant schema from `tenancy/sql/tenant_template.sql`.
@@ -469,6 +470,21 @@ Create a tenant and assign an existing user:
 
 ```bash
 python manage.py provision_tenant "Company Name" --owner username
+```
+
+Select company accounting setup explicitly:
+
+```bash
+python manage.py provision_tenant "Company Name" \
+  --base-currency USD \
+  --tax-environment tax \
+  --owner username
+```
+
+Synchronize the bundled ISO 4217 catalogue idempotently:
+
+```bash
+python manage.py seed_currencies
 ```
 
 Apply SQL to every tenant:

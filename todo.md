@@ -57,8 +57,14 @@ high-level checklist and shall be updated from the detailed plan’s results.
   constraint, safe admin behavior, and a Phase 5 quantity-provisioning gate.
   Upgrade, clean-install, rollback/reapply, focused metadata, and complete
   serial regressions passed. See `tests/PHASE3_COMPANY_METADATA_RESULTS.md`.
-- [ ] **Phase 4 — Currency Catalogue and Company Setup:** not started.
-- [ ] Phases 5–32: not started; see
+- [x] **Phase 4 — Currency Catalogue and Company Setup:** completed
+  2026-07-25. Added the controlled worldwide currency catalogue, PKR/non-tax
+  compatibility backfill, company base-currency/tax setup, activity locks,
+  admin and provisioning support, and idempotent seeding. Upgrade,
+  clean-install, rollback/reapply, and full serial regressions passed. See
+  `tests/PHASE4_COMPANY_SETUP_RESULTS.md`.
+- [ ] **Phase 5 — Quantity Schema Foundation:** not started.
+- [ ] Phases 6–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements
