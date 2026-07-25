@@ -538,6 +538,12 @@ Build and prove the inventory core independently of full invoices.
 
 ## Phase 10 — Opening Stock
 
+**Status:** completed 2026-07-25. Quantity schema version 6, the guarded
+quantity opening-stock UI/API, and all mandatory acceptance tests passed in the
+isolated mixed-family Docker environment. See
+`tests/PHASE10_OPENING_STOCK_RESULTS.md`. Phase 11 is the next authorized
+phase.
+
 ### Objectives
 
 Add quantity opening inventory and existing accounting reclassification.

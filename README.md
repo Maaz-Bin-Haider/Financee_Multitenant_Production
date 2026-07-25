@@ -544,6 +544,15 @@ ordering supports future multi-warehouse operations, and reconciliation
 functions prove movement, balance, and FIFO agreement. Quantity invoice screens
 remain gated until their assigned phases; Phase 10 is opening stock.
 
+Quantity schema version 6 enables `/opening-stock/` for quantity companies.
+Users select SKU, warehouse, quantity, and unit cost without entering serial
+numbers. Posting creates an immutable opening document, FIFO stock movements,
+and a balanced Inventory/Opening Balance journal. Untouched opening layers can
+be reversed through linked movements and journals, and Opening Balance can be
+reclassified to Owner's Capital after onboarding is complete. Serial companies
+continue to use the existing serial-based opening-stock screen. Phase 11 is
+quantity purchases.
+
 ### Tenant Login Redirect Loop
 
 If a company user signs in successfully but the browser reports too many redirects between `/home/` and `/authentication/login/`, the user is usually authenticated but the tenant guard is rejecting the assigned company schema.

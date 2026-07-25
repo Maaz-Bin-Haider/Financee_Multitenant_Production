@@ -56,8 +56,8 @@ def _families():
         INVENTORY_MODE_QUANTITY: SchemaFamily(
             key=INVENTORY_MODE_QUANTITY,
             template_path=SQL_DIR / "quantity_tenant_template.sql",
-            hardening_path=SQL_DIR / "quantity_fifo_engine.sql",
-            required_version=5,
+            hardening_path=SQL_DIR / "quantity_opening_stock.sql",
+            required_version=6,
             metadata_table="tenant_schema_metadata",
             runtime_enabled=False,
             required_tables=(
@@ -77,6 +77,8 @@ def _families():
                 "stock_balances",
                 "fifo_layers",
                 "fifo_allocations",
+                "opening_stock_documents",
+                "opening_stock_lines",
             ),
             required_sequences=(
                 "quantity_foundation_id_seq",
@@ -93,6 +95,8 @@ def _families():
                 "fifo_layers_layer_id_seq",
                 "fifo_allocations_allocation_id_seq",
                 "inventory_effective_sequence_seq",
+                "opening_stock_documents_opening_stock_id_seq",
+                "opening_stock_lines_opening_stock_line_id_seq",
             ),
             required_functions=(
                 "quantity_schema_fingerprint",
@@ -119,16 +123,24 @@ def _families():
                 "quantity_stock_availability",
                 "quantity_inventory_reconciliation",
                 "quantity_lock_inventory_pairs",
+                "quantity_create_opening_stock",
+                "quantity_opening_stock_list",
+                "quantity_opening_stock_details",
+                "quantity_reverse_opening_stock",
+                "quantity_opening_balance_status",
+                "quantity_reclassify_opening_balance",
             ),
-            rollout_files=("quantity_fifo_engine.sql",),
+            rollout_files=("quantity_opening_stock.sql",),
             enabled_path_prefixes=(
                 "/items/quantity/",
                 "/warehouses/quantity/",
+                "/opening-stock/",
             ),
             bootstrap_paths=(
                 SQL_DIR / "quantity_item_master.sql",
                 SQL_DIR / "quantity_warehouse_foundation.sql",
                 SQL_DIR / "quantity_fifo_engine.sql",
+                SQL_DIR / "quantity_opening_stock.sql",
             ),
         ),
     }

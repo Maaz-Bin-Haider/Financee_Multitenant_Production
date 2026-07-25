@@ -98,8 +98,16 @@ high-level checklist and shall be updated from the detailed plan’s results.
   guarded reversals, and movement/balance/FIFO reconciliation. The focused
   suite passed 38/38 and all serial regressions remained green. No invoice UI
   was enabled. See `tests/PHASE9_FIFO_ENGINE_RESULTS.md`.
-- [ ] **Phase 10 — Opening Stock:** not started.
-- [ ] Phases 11–32: not started; see
+- [x] **Phase 10 — Opening Stock:** completed 2026-07-25.
+  Added quantity schema version 6 with immutable opening-stock documents,
+  OPN numbering, whole/decimal SKU and warehouse lines, atomic FIFO movements,
+  Inventory/Opening Balance journals, guarded untouched-layer reversal,
+  Opening Balance status and Capital reclassification, and a quantity-specific
+  UI using the existing theme. The focused suite passed 37/37 and all serial
+  regressions remained green. See
+  `tests/PHASE10_OPENING_STOCK_RESULTS.md`.
+- [ ] **Phase 11 — Quantity Purchases:** not started.
+- [ ] Phases 12–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

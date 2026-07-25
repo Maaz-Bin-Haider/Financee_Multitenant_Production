@@ -36,6 +36,7 @@ MODULES = [
     "test_quantity_items_variants_units.py",
     "test_quantity_warehouses.py",
     "test_quantity_fifo.py",
+    "test_quantity_opening_stock.py",
     "test_http.py",
 ]
 

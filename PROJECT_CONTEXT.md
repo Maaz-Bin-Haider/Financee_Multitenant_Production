@@ -590,6 +590,24 @@ lifecycle regressions remained green. Evidence is in
 `tests/PHASE9_FIFO_ENGINE_RESULTS.md`. Quantity invoice UI remains gated;
 Phase 10 adds opening stock through this engine.
 
+Phase 10 completed on 2026-07-25. Quantity schema version 6 adds immutable
+opening-stock documents and lines with independent `OPN-000001` numbering.
+Each document posts SKU quantities into their selected warehouses through the
+Phase 9 movement/FIFO engine and atomically debits Inventory while crediting
+Opening Balance. Piece and Box remain whole-only; measurement units retain
+three-decimal quantity precision and costs retain six decimals. An opening
+document can be reversed only while every original FIFO layer remains wholly
+unconsumed, preventing a reversal from substituting arbitrary current FIFO
+cost. Reversal uses linked stock movements and an immutable reversing journal.
+Opening Balance status and serialized reclassification move its exact balance
+to Owner's Capital, including the inverse direction when necessary. The shared
+opening-stock route now selects a quantity-specific no-serial UI for quantity
+tenants while preserving the existing serial screen and functions unchanged.
+Evidence from 37 focused checks, all 23 mixed-family modules, and complete
+serial system/HTTP/deep-lifecycle regressions is in
+`tests/PHASE10_OPENING_STOCK_RESULTS.md`. Phase 11 adds domestic quantity
+purchases.
+
 ## Maintenance Checklist
 
 When changing the project, update this file if any answer changes:
