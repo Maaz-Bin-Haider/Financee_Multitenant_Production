@@ -29,6 +29,7 @@ django.setup()
 
 from django.test import Client
 from django.contrib.auth import get_user_model
+from tenancy.models import Company, Membership
 
 TAG = time.strftime("%H%M%S")
 PARTY = f"HTTP CUST {TAG}"
@@ -36,9 +37,25 @@ VENDOR = f"HTTP VEND {TAG}"
 ITEM = f"HTTP ITEM {TAG}"
 
 U = get_user_model()
-user = U.objects.filter(username="user1").first() or U.objects.filter(is_superuser=True).first()
+user = U.objects.filter(is_superuser=True).first()
 if user is None:
-    raise SystemExit("No superuser found. Create one and attach a Membership first.")
+    raise SystemExit("No superuser found. Create one before running this harness.")
+
+# The tenant guard correctly rejects even a superuser when no active company is
+# assigned. Fresh CI creates tenant memberships for ci_user* accounts, but those
+# users intentionally have no broad permissions; use the superuser and attach a
+# temporary membership exactly as tests/suite/test_http.py does. This keeps the
+# standalone harness self-contained and avoids a misleading wall of expected
+# tenant-guard 403 responses on a fresh database.
+created_membership = False
+try:
+    user.membership
+except Membership.DoesNotExist:
+    company = Company.objects.filter(is_active=True).exclude(schema_name="").order_by("id").first()
+    if company is None:
+        raise SystemExit("No active provisioned company found.")
+    Membership.objects.create(user=user, company=company)
+    created_membership = True
 
 # Use a host the app already trusts, so we never depend on (or modify) the
 # production ALLOWED_HOSTS. Falls back to 'localhost' when '*' is allowed.
@@ -129,3 +146,10 @@ if fails:
     print("\n--- PROBLEM DETAIL (review each) ---")
     for m, p, code, ok, body in fails:
         print(f"\n{m} {p} -> {code}\n  {body}")
+
+if created_membership:
+    Membership.objects.filter(user=user).delete()
+
+# This harness is a CI gate, not only a diagnostic printer. A reported problem
+# must produce a non-zero process exit so `&&` chains and GitHub Actions stop.
+sys.exit(1 if fails else 0)

@@ -46,5 +46,8 @@ python manage.py migrate --no-input
 echo "[entrypoint] applying required tenant hardening SQL ..."
 python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql
 
+echo "[entrypoint] applying required tenant indexes ..."
+python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql
+
 echo "[entrypoint] starting: $*"
 exec "$@"

@@ -2,6 +2,51 @@
 
 This file records production/setup issues that were diagnosed and fixed, including the root cause, code or SQL changes, and verification steps.
 
+## 2026-07-25: Phase 1 Baseline Exposed a False-Green HTTP Harness and Fresh-Database Index Drift
+
+### Symptoms
+
+The comprehensive suite passed on a fresh isolated two-tenant stack, but the
+separate `tests/test_http.py` harness printed 66/66 endpoint failures (all
+tenant-guard 403 responses) and still exited with status 0. In the same fresh
+stack, `tenant_company_1` had only 36 indexes while the newly provisioned
+`tenant_company_2` had 86.
+
+### Root Causes
+
+1. The standalone HTTP harness looked for a user literally named `user1`, then
+   fell back to the superuser. Fresh CI creates `ci_user1`, while the superuser
+   intentionally has no tenant membership. The tenant middleware correctly
+   denied every business route. Unlike `tests/suite/test_http.py`, the legacy
+   harness did not attach a temporary membership.
+2. The harness printed failures but never returned a non-zero process status,
+   so CI treated the failing HTTP stage as green.
+3. The 50 secondary indexes from `tenant_indexes.sql` were present at the end
+   of `tenant_template.sql`, so tenants provisioned at runtime received them.
+   The bootstrap tenant from `build_multitenant_db.sql` did not. Deploy scripts
+   apply the index patch later, but the web entrypoint/CI startup path ran only
+   `production_hardening.sql`, leaving the first tenant unindexed during CI and
+   on a fresh startup before a deploy-script pass.
+
+### Fix
+
+- `tests/test_http.py` now uses the superuser with a temporary membership in
+  the first active provisioned company, removes only the membership it created,
+  and exits non-zero when any endpoint fails.
+- `deploy/entrypoint.sh` now applies the idempotent `tenant_indexes.sql` patch
+  after tenant hardening on every web-container start.
+
+### Verification
+
+- The repaired standalone HTTP harness exercises all 66 endpoints successfully
+  on a fresh isolated tenant and returns status 0.
+- Applying `tenant_indexes.sql` to both fresh tenants is idempotent and brings
+  the bootstrap tenant to the same required secondary-index set as a tenant
+  provisioned from `tenant_template.sql`.
+- The comprehensive suite, SQL business-function harness, and deep transaction
+  lifecycle suite remain green; full baseline details are recorded in
+  `tests/PHASE1_BASELINE_RESULTS.md`.
+
 ## 2026-07-08: Freshly Provisioned Tenants 403'd Until the Next Container Restart (missing v6 bump in tenant_template.sql)
 
 ### Symptoms

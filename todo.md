@@ -38,6 +38,16 @@ relevant serial regression tests, recorded evidence, and a passed exit gate
 before the next dependent phase begins. The broader phases below remain the
 high-level checklist and shall be updated from the detailed plan’s results.
 
+### Detailed Plan Execution Status
+
+- [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
+- [x] **Phase 1 — Baseline Capture and Test Stabilization:** completed
+  2026-07-25. All serial suites passed on two fresh isolated tenants; fixed the
+  standalone HTTP false-green condition and bootstrap-tenant index drift. See
+  `tests/PHASE1_BASELINE_RESULTS.md`.
+- [ ] Phases 2–32: not started; see
+  `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
+
 ### Non-Negotiable Requirements
 
 - Do not rewrite, weaken, or remove the existing serial-based workflow.

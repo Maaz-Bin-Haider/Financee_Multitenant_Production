@@ -455,6 +455,15 @@ The detailed plan intentionally divides delivery into 33 phases (0–32). Tests
 are mandatory after every phase, including a relevant serial regression subset.
 Dependent work does not begin until the previous phase exit gate passes.
 
+Phase 1 completed on 2026-07-25 against two fresh isolated serial tenants. The
+comprehensive suite, SQL harness, standalone HTTP harness, and deep lifecycle
+tests all pass. The baseline also fixed two test/deployment defects:
+`tests/test_http.py` now creates a temporary tenant membership and returns a
+non-zero exit on reported problems, and the web entrypoint applies
+`tenant_indexes.sql` so the bootstrap tenant receives the same required 50
+secondary indexes as runtime-provisioned tenants. Evidence is in
+`tests/PHASE1_BASELINE_RESULTS.md`.
+
 ## Maintenance Checklist
 
 When changing the project, update this file if any answer changes:

@@ -1,5 +1,8 @@
 # Functional Test Suite
 
+The clean two-tenant serial baseline captured before quantity-company
+implementation is recorded in `tests/PHASE1_BASELINE_RESULTS.md`.
+
 Three complementary harnesses that together exercise **every** business operation,
 the HTTP layer, and high-risk real-world serial lifecycles.
 
