@@ -26,6 +26,7 @@ class SchemaFamily:
     required_sequences: tuple[str, ...] = ()
     required_functions: tuple[str, ...] = ()
     rollout_files: tuple[str, ...] = ()
+    enabled_path_prefixes: tuple[str, ...] = ()
 
 
 def _families():
@@ -54,8 +55,8 @@ def _families():
         INVENTORY_MODE_QUANTITY: SchemaFamily(
             key=INVENTORY_MODE_QUANTITY,
             template_path=SQL_DIR / "quantity_tenant_template.sql",
-            hardening_path=SQL_DIR / "quantity_accounting_foundation.sql",
-            required_version=2,
+            hardening_path=SQL_DIR / "quantity_item_master.sql",
+            required_version=3,
             metadata_table="tenant_schema_metadata",
             runtime_enabled=False,
             required_tables=(
@@ -65,12 +66,20 @@ def _families():
                 "chart_of_accounts",
                 "journal_entries",
                 "journal_lines",
+                "units_of_measure",
+                "products",
+                "product_variants",
+                "variant_transaction_registry",
             ),
             required_sequences=(
                 "quantity_foundation_id_seq",
                 "chart_of_accounts_account_id_seq",
                 "journal_entries_journal_id_seq",
                 "journal_lines_line_id_seq",
+                "units_of_measure_unit_id_seq",
+                "products_product_id_seq",
+                "product_variants_variant_id_seq",
+                "variant_transaction_registry_reference_id_seq",
             ),
             required_functions=(
                 "quantity_schema_fingerprint",
@@ -79,8 +88,16 @@ def _families():
                 "quantity_post_journal",
                 "quantity_reverse_journal",
                 "quantity_account_lookup",
+                "quantity_create_product",
+                "quantity_update_product",
+                "quantity_create_variant",
+                "quantity_update_variant",
+                "quantity_item_catalog",
+                "quantity_suggest_sku",
+                "quantity_validate_quantity",
             ),
-            rollout_files=("quantity_accounting_foundation.sql",),
+            rollout_files=("quantity_item_master.sql",),
+            enabled_path_prefixes=("/items/quantity/",),
         ),
     }
 

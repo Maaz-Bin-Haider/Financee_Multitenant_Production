@@ -77,8 +77,15 @@ high-level checklist and shall be updated from the detailed plan’s results.
   balance/account lookup, concurrency-safe document numbering, idempotent
   rollout, and tenant-isolation tests. See
   `tests/PHASE6_ACCOUNTING_FOUNDATION_RESULTS.md`.
-- [ ] **Phase 7 — Product, Variant, SKU, and Unit Masters:** not started.
-- [ ] Phases 8–32: not started; see
+- [x] **Phase 7 — Product, Variant, SKU, and Unit Masters:** completed
+  2026-07-25. Added quantity schema version 3, six controlled units, normalized
+  product and seven-dimension variant identity, collision-safe SKU suggestion,
+  manual SKU and unit transaction locks, exact unit precision enforcement,
+  active/inactive catalogue behavior, a quantity-only JSON API slice, and
+  tenant/permission isolation tests. See
+  `tests/PHASE7_ITEM_MASTER_RESULTS.md`.
+- [ ] **Phase 8 — Warehouse Foundation:** not started.
+- [ ] Phases 9–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

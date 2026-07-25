@@ -518,11 +518,16 @@ Retry a failed or pending schema build:
 python manage.py retry_tenant_provisioning COMPANY_ID
 ```
 
-Quantity tenants are currently provisioned at schema version 2. Their
-accounting foundation includes the system chart of accounts, immutable
+The quantity accounting foundation includes the system chart of accounts, immutable
 double-entry journals and reversals, trial balance, and concurrency-safe
-document numbering. Quantity business screens remain intentionally gated until
-the product, warehouse, stock, and transaction phases are complete.
+document numbering.
+
+Quantity schema version 3 also provides the product/variant master through
+`/items/quantity/`: six controlled units, seven required variant dimensions,
+unique or suggested SKUs, unit precision validation, catalogue lookup, and
+transaction-aware SKU/unit locking. Other quantity business screens remain
+intentionally gated until warehouse, stock, and transaction phases are
+complete.
 
 ### Tenant Login Redirect Loop
 

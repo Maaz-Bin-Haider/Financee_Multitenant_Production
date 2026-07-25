@@ -69,10 +69,15 @@ class TenantSchemaMiddleware(MiddlewareMixin):
         set_search_path(schema)
         if tenant_ok and schema != PUBLIC_SCHEMA:
             verification = verify_company_schema(company)
+            definition = schema_family(company.inventory_mode)
+            path_enabled = any(
+                request.path.startswith(prefix)
+                for prefix in definition.enabled_path_prefixes
+            )
             request.tenant_schema_compatible = verification.ok
             request.tenant_is_active = (
                 verification.ok
-                and schema_family(company.inventory_mode).runtime_enabled
+                and (definition.runtime_enabled or path_enabled)
             )
             request.tenant_schema_error = verification.reason
 

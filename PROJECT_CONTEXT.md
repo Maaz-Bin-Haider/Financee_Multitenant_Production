@@ -535,6 +535,25 @@ numbering, 39 focused checks, all 19 suite modules, and complete serial
 regressions is in `tests/PHASE6_ACCOUNTING_FOUNDATION_RESULTS.md`. Quantity
 business routes remain gated; Phase 7 is the product/variant/SKU/unit master.
 
+Phase 7 completed on 2026-07-25. Quantity schema version 3 adds controlled
+Piece, Box, Kilogram, Gram, Litre, and Metre units; normalized products; and
+sellable variants requiring brand, model, color, storage, RAM, region, and
+condition. The unit participates in normalized combination identity, so the
+same attributes stocked as Pieces and Boxes remain separate SKUs. Suggested
+SKUs are normalized, deterministic, collision-suffixed under an advisory lock,
+and may be manually supplied. SKU and unit become immutable when
+`variant_transaction_registry` records the first business reference. Piece/Box
+quantities are whole-only; measurement units accept at most three decimals,
+and exact numeric checks reject rather than silently round a fourth decimal.
+The `/items/quantity/` JSON API slice provides unit lookup, product/variant
+creation and updates, SKU suggestion, and active/inactive catalogue search.
+This path is centrally enabled for quantity tenants while all unimplemented
+quantity routes remain gated. Fresh provisioning composes the stable quantity
+base template with the current family hardening artifact, ensuring the same
+SQL upgrades fresh and existing tenants. Evidence from the preserved upgrade,
+two fresh quantity tenants, 60 focused checks, all 20 suite modules, and full
+serial regressions is in `tests/PHASE7_ITEM_MASTER_RESULTS.md`.
+
 ## Maintenance Checklist
 
 When changing the project, update this file if any answer changes:

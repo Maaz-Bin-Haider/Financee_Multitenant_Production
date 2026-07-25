@@ -89,8 +89,8 @@ def main():
     quantity = schema_family(INVENTORY_MODE_QUANTITY)
     chk("families use separate templates", serial.template_path != quantity.template_path)
     chk("families use separate hardening", serial.hardening_path != quantity.hardening_path)
-    chk("quantity required version includes accounting foundation",
-        quantity.required_version == 2)
+    chk("quantity required version includes item master",
+        quantity.required_version == 3)
     chk("quantity runtime remains gated after foundation",
         quantity.runtime_enabled is False)
     chk("SQL ownership resolves serial hardening",
@@ -127,7 +127,7 @@ def main():
             for c in companies
         ]
         chk("metadata family/version/currency matches public company",
-            all(row == ("quantity", 2, "PKR") for row in metadata), metadata)
+            all(row == ("quantity", 3, "PKR") for row in metadata), metadata)
         chk("quantity verifier accepts both schemas",
             all(verify_company_schema(c, use_cache=False).ok for c in companies))
 
@@ -158,11 +158,11 @@ def main():
         chk("document sequences seeded exactly once",
             all(q(c.schema_name, "SELECT count(*) FROM document_sequences")[0][0] == 10
                 for c in companies))
-        chk("foundation and accounting seeds registered exactly once",
+        chk("foundation, accounting, and item seeds registered exactly once",
             all(q(c.schema_name, """
                 SELECT count(*), count(DISTINCT seed_key)
                   FROM quantity_seed_registry
-            """)[0] == (2, 2) for c in companies))
+            """)[0] == (3, 3) for c in companies))
 
         for _ in range(2):
             call_command(
@@ -177,7 +177,7 @@ def main():
             and all(q(c.schema_name, """
                 SELECT count(*), count(DISTINCT seed_key)
                   FROM quantity_seed_registry
-            """)[0] == (2, 2) for c in companies))
+            """)[0] == (3, 3) for c in companies))
 
         serial_output = io.StringIO()
         call_command(

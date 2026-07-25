@@ -431,6 +431,9 @@ Establish the quantity schema’s chart of accounts and double-entry primitives.
 
 ## Phase 7 — Product, Variant, SKU, and Unit Masters
 
+**Status:** Completed 2026-07-25. Evidence:
+`tests/PHASE7_ITEM_MASTER_RESULTS.md`.
+
 ### Objectives
 
 Implement quantity sellable-item identity.

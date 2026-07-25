@@ -19,8 +19,14 @@ from .utils import (
 
 
 def _read_template(family_key: str) -> str:
-    path = schema_family(family_key).template_path
-    return path.read_text(encoding="utf-8")
+    definition = schema_family(family_key)
+    sql = definition.template_path.read_text(encoding="utf-8")
+    if definition.key == INVENTORY_MODE_QUANTITY:
+        # A fresh quantity tenant is composed from the stable base template
+        # plus the family's current idempotent upgrade artifact. This keeps one
+        # authoritative upgrade body for fresh and existing quantity schemas.
+        sql += "\n" + definition.hardening_path.read_text(encoding="utf-8")
+    return sql
 
 
 def _assert_provisioned(cur, definition, base_currency_code):
