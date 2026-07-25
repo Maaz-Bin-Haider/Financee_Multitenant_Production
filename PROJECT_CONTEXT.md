@@ -396,6 +396,65 @@ Always roll out tenant SQL to **all** tenants via `apply_sql_all_tenants` to pre
 - The generated header comment in `financee/settings.py` says Django 5.2.6, but dependency files currently pin Django 6.0.6. Treat dependency files as source of truth unless code compatibility work says otherwise.
 - Some view files retain older commented-out implementations. Active functions are the uncommented definitions later in the files.
 
+## Approved Quantity-Company Requirements (Phase 0, 2026-07-25)
+
+This is an approved design target, not an implemented feature. Existing
+companies remain serial-based. A future quantity company will use a separate
+schema family selected by an immutable company type during provisioning.
+
+- Inventory: FIFO costing; no negative stock; clear insufficient-stock
+  warnings; multiple warehouses; warehouse transfers; physical counts and
+  controlled/audited adjustments.
+- Quantities and units: `numeric(18, 3)` capacity; Pieces and Boxes must be
+  whole numbers; Kilograms, Grams, Litres, and Metres may use up to three
+  decimals; one inventory unit per item/variant and no unit conversions.
+- Products: brand, model, color, storage, RAM, region, and condition variants.
+  Every unique sellable combination has a unique SKU. The system suggests a
+  SKU, which may be edited only before transactions exist.
+- Transactions: backdating is allowed only in open periods and must safely
+  rebuild FIFO/COGS without creating negative stock. Posted documents are
+  editable only when downstream state can be atomically and safely rebuilt.
+  Document types have independent, gap-preserving sequences such as
+  `SAL-000001` and `PUR-000001`.
+- Returns: sale returns restore exact original FIFO COGS; purchase returns use
+  original purchase cost and require eligible stock; partial returns are
+  allowed but cumulative returns cannot exceed the source line.
+- Tax and discounts: company creation selects tax or non-tax environment.
+  Tax names/codes/rates are tenant-configurable. Tax-based companies support
+  inclusive/exclusive pricing, taxable/zero-rated/exempt lines, per-line
+  calculation, invoice summaries, and optional exemption references. Percentage
+  and fixed discounts work at line and invoice levels and reduce taxable value
+  before tax by default. Applied calculation inputs are stored historically.
+- Currency: admin selects the base currency from a worldwide catalogue during
+  company creation. Foreign invoices store transaction currency, foreign
+  amount, manually entered invoice rate, and base amount. Settlement stores its
+  manual rate and automatically posts proportional realized exchange gain/loss,
+  including partial settlements. No month-end unrealized revaluation is
+  required.
+- Reporting: the approved quantity report catalogue in `todo.md` replaces
+  serial-only reports with movement, valuation, reconciliation, aging, reorder,
+  margin, return-rate, purchase-variance, and fast/slow-moving reports.
+- Validation target: four isolated companies (two serial and two quantity),
+  concurrent tenant-leakage tests, 100 concurrent sessions, 100,000 SKUs, five
+  million stock movements, ordinary reports under three seconds, and a pilot
+  quantity wholesaler holding approximately 100,000 physical units across
+  warehouses.
+- Rollout: all three current paying companies remain serial-based. The first
+  quantity company is a new pilot after staging, full regression, backup,
+  security, performance, and rollback approval.
+
+Full phase gates, report definitions, tests, and rollout tasks are maintained in
+`todo.md`. The implementation-grade requirements baseline, requirement IDs,
+origin labels, acceptance criteria, and traceability register are maintained in
+`SRS_QUANTITY_BASED_COMPANY.md`. The authoritative implementation order,
+mandatory per-phase test gates, evidence format, staging process, deployment,
+rollback, pilot, and observation plan are maintained in
+`IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
+
+The detailed plan intentionally divides delivery into 33 phases (0–32). Tests
+are mandatory after every phase, including a relevant serial regression subset.
+Dependent work does not begin until the previous phase exit gate passes.
+
 ## Maintenance Checklist
 
 When changing the project, update this file if any answer changes:
