@@ -292,6 +292,9 @@ Define the solution before physical SQL and shared backend changes.
 
 ## Phase 3 — Public Company Metadata Migration
 
+**Status:** Completed 2026-07-25. Evidence:
+`tests/PHASE3_COMPANY_METADATA_RESULTS.md`.
+
 ### Objectives
 
 Introduce company type safely without changing existing tenant behavior.
@@ -304,6 +307,11 @@ Introduce company type safely without changing existing tenant behavior.
 - Update admin form and confirmation.
 - Add audit evidence for company creation/type.
 - Do not enable quantity provisioning yet.
+
+Implementation note: this phase delivered the inventory-mode migration and
+gate. The worldwide currency catalogue, base-currency selection, and
+tax/non-tax company setup remain grouped in Phase 4 so their reference data,
+backfill policy, immutability rules, and tests land atomically.
 
 ### Mandatory tests
 

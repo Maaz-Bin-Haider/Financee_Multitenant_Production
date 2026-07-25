@@ -473,6 +473,19 @@ test evidence are in `REQUIREMENTS_TRACEABILITY_QUANTITY_COMPANY.md`; review
 evidence is in `tests/PHASE2_ARCHITECTURE_RESULTS.md`. No runtime code or SQL
 was introduced in Phase 2.
 
+Phase 3 completed on 2026-07-25. The public `Company` record now has an
+`inventory_mode` constrained to `serial` or `quantity`; migration
+`tenancy.0005_company_inventory_mode` safely assigns `serial` to all existing
+and bootstrap companies. The mode is immutable after creation at both model
+validation and normal `save()` boundaries, and the admin displays it as
+read-only on existing companies. Quantity creation is intentionally rejected
+until the quantity schema template and provisioning registry exist in Phase 5.
+Upgrade, clean-install, migration rollback/reapply, 14 focused metadata checks,
+all 16 suite modules, and the serial system/lifecycle regressions passed in
+isolated Docker environments. Evidence is in
+`tests/PHASE3_COMPANY_METADATA_RESULTS.md`. Base currency and tax-environment
+configuration remain Phase 4 work.
+
 ## Maintenance Checklist
 
 When changing the project, update this file if any answer changes:

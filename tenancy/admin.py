@@ -140,6 +140,12 @@ class _CompanyAdminFormBase(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.fields["inventory_mode"].help_text = (
+                "Serial-number based is the only provisionable mode in Phase 3. "
+                "Quantity based is visible for the approved future schema family "
+                "but cannot be saved until Phase 5 enables provisioning."
+            )
         if self.instance.pk:
             disabled = set(self.instance.disabled_features or [])
             for key in all_feature_keys():
@@ -186,6 +192,7 @@ class CompanyAdmin(admin.ModelAdmin):
     form = CompanyAdminForm
     list_display = (
         "name",
+        "inventory_mode",
         "schema_name",
         "is_active",
         "subscription_badge",
@@ -194,14 +201,14 @@ class CompanyAdmin(admin.ModelAdmin):
         "member_count",
         "created_at",
     )
-    list_filter = ("is_active", "is_suspended")
+    list_filter = ("inventory_mode", "is_active", "is_suspended")
     search_fields = ("name", "schema_name")
     readonly_fields = ("schema_name", "created_at", "subscription_badge")
     inlines = [SubscriptionPaymentInline, MembershipInline]
     actions = ["suspend_companies", "unsuspend_companies"]
 
     fieldsets = (
-        (None, {"fields": ("name", "schema_name", "is_active", "created_at")}),
+        (None, {"fields": ("name", "inventory_mode", "schema_name", "is_active", "created_at")}),
         (
             "Subscription",
             {
@@ -217,6 +224,12 @@ class CompanyAdmin(admin.ModelAdmin):
             },
         ),
     ) + _feature_fieldsets()
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = list(super().get_readonly_fields(request, obj))
+        if obj is not None:
+            fields.append("inventory_mode")
+        return tuple(fields)
 
     @admin.display(description="Subscription")
     def subscription_badge(self, obj):

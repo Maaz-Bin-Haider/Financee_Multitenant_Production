@@ -125,6 +125,7 @@ def check_admin_form(company):
 
     data = {
         "name": company.name,
+        "inventory_mode": company.inventory_mode,
         "contact_email": company.contact_email or "",
         "paid_until": company.paid_until or "",
         "grace_days": company.grace_days,

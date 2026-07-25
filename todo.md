@@ -52,7 +52,13 @@ high-level checklist and shall be updated from the detailed plan’s results.
   `ARCHITECTURE_QUANTITY_COMPANY.md`,
   `REQUIREMENTS_TRACEABILITY_QUANTITY_COMPANY.md`, and
   `tests/PHASE2_ARCHITECTURE_RESULTS.md`.
-- [ ] Phases 3–32: not started; see
+- [x] **Phase 3 — Public Company Metadata Migration:** completed 2026-07-25.
+  Added immutable `Company.inventory_mode`, serial backfill, database
+  constraint, safe admin behavior, and a Phase 5 quantity-provisioning gate.
+  Upgrade, clean-install, rollback/reapply, focused metadata, and complete
+  serial regressions passed. See `tests/PHASE3_COMPANY_METADATA_RESULTS.md`.
+- [ ] **Phase 4 — Currency Catalogue and Company Setup:** not started.
+- [ ] Phases 5–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

@@ -26,6 +26,7 @@ import calendar
 from datetime import date, timedelta
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 
 
@@ -47,6 +48,13 @@ SUBSCRIPTION_UNRESTRICTED = "unrestricted"  # no paid_until set: not enforced
 
 BLOCKED_STATES = frozenset({SUBSCRIPTION_SUSPENDED, SUBSCRIPTION_BLOCKED})
 
+INVENTORY_MODE_SERIAL = "serial"
+INVENTORY_MODE_QUANTITY = "quantity"
+INVENTORY_MODE_CHOICES = (
+    (INVENTORY_MODE_SERIAL, "Serial-number based"),
+    (INVENTORY_MODE_QUANTITY, "Quantity based"),
+)
+
 
 class Company(models.Model):
     """A tenant. Its data lives in the schema named by ``schema_name``."""
@@ -65,6 +73,16 @@ class Company(models.Model):
         help_text="Inactive companies cannot have their schema activated for requests.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    inventory_mode = models.CharField(
+        max_length=16,
+        choices=INVENTORY_MODE_CHOICES,
+        default=INVENTORY_MODE_SERIAL,
+        help_text=(
+            "Permanent inventory model for this company. Existing companies "
+            "are serial-number based. Quantity-company provisioning is enabled "
+            "only after its separate schema family is deployed."
+        ),
+    )
 
     # ── Subscription control (payments are collected outside the system) ──
     contact_email = models.EmailField(
@@ -121,9 +139,39 @@ class Company(models.Model):
         verbose_name = "Company"
         verbose_name_plural = "Companies"
         ordering = ["name"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(inventory_mode__in=[
+                    INVENTORY_MODE_SERIAL,
+                    INVENTORY_MODE_QUANTITY,
+                ]),
+                name="tenancy_company_valid_inventory_mode",
+            ),
+        ]
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        super().clean()
+        if self._state.adding and self.inventory_mode == INVENTORY_MODE_QUANTITY:
+            raise ValidationError({
+                "inventory_mode": (
+                    "Quantity-company provisioning is not enabled yet. "
+                    "Complete the separate quantity schema rollout first."
+                )
+            })
+        if self.pk:
+            original_mode = type(self).objects.filter(pk=self.pk).values_list(
+                "inventory_mode", flat=True
+            ).first()
+            if original_mode is not None and original_mode != self.inventory_mode:
+                raise ValidationError({
+                    "inventory_mode": (
+                        "Company inventory mode is permanent after creation. "
+                        "A schema conversion requires a separate migration project."
+                    )
+                })
 
     def save(self, *args, **kwargs):
         """
@@ -134,6 +182,12 @@ class Company(models.Model):
         The post_save signal — which provisions the physical schema — fires on
         the *second* save, by which point schema_name is populated.
         """
+        # ModelForm calls full_clean(), but programmatic saves must not be able
+        # to bypass the two Phase 3 safety rules: quantity provisioning remains
+        # disabled until Phase 5, and an existing company's schema family is
+        # immutable.
+        self.clean()
+
         creating = self._state.adding and not self.schema_name
         super().save(*args, **kwargs)
         if creating:
