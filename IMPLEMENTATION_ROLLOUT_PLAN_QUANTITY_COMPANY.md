@@ -8,6 +8,10 @@
 **Execution checklist:** `todo.md`  
 **Persistent architecture context:** `PROJECT_CONTEXT.md`
 
+**Phase 2 architecture:** `ARCHITECTURE_QUANTITY_COMPANY.md`
+
+**Requirements traceability:** `REQUIREMENTS_TRACEABILITY_QUANTITY_COMPANY.md`
+
 ---
 
 ## 1. Purpose
@@ -1255,9 +1259,15 @@ After each phase, the implementation report shall state:
 - New risks or decisions.
 - Documents updated.
 - Whether the next phase is authorized.
+- Exact recommended Git commit title and body covering only that completed
+  phase.
 
 The next phase shall not start merely because code exists. Its predecessor’s
 exit gate must pass.
+
+The phase commit should be created before starting the next phase so each phase
+has a recoverable, reviewable boundary. If unrelated user changes are present,
+they shall not be included in the recommended phase commit.
 
 ---
 
@@ -1278,4 +1288,3 @@ The quantity-company program is complete only when:
 - Backup, restore, rollback, monitoring, and support processes operate.
 - The SRS, plan, TODO, project context, fixed-issues log, test results, and
   deployment guides describe the released system accurately.
-

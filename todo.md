@@ -45,7 +45,14 @@ high-level checklist and shall be updated from the detailed plan’s results.
   2026-07-25. All serial suites passed on two fresh isolated tenants; fixed the
   standalone HTTP false-green condition and bootstrap-tenant index drift. See
   `tests/PHASE1_BASELINE_RESULTS.md`.
-- [ ] Phases 2–32: not started; see
+- [x] **Phase 2 — Architecture and Schema-Family Design:** completed
+  2026-07-25. Schema families, logical data model, FIFO/replay/locking,
+  capability and payload contracts, precision, report reconciliation, rollback,
+  and full SRS traceability are defined. See
+  `ARCHITECTURE_QUANTITY_COMPANY.md`,
+  `REQUIREMENTS_TRACEABILITY_QUANTITY_COMPANY.md`, and
+  `tests/PHASE2_ARCHITECTURE_RESULTS.md`.
+- [ ] Phases 3–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

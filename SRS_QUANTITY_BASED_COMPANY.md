@@ -14,6 +14,12 @@ behavior; the implementation plan defines the 33 controlled phases, mandatory
 tests after each phase, evidence, exit gates, staging, production rollout,
 rollback, pilot, and observation process.
 
+**Approved architecture and traceability:**
+`ARCHITECTURE_QUANTITY_COMPANY.md` defines the Phase 2 component, data, FIFO,
+locking, replay, precision, and contract design.
+`REQUIREMENTS_TRACEABILITY_QUANTITY_COMPANY.md` maps requirements to phases,
+components, SQL ownership, and test evidence.
+
 ---
 
 ## 1. Purpose

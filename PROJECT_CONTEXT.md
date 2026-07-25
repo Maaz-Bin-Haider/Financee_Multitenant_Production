@@ -464,6 +464,15 @@ non-zero exit on reported problems, and the web entrypoint applies
 secondary indexes as runtime-provisioned tenants. Evidence is in
 `tests/PHASE1_BASELINE_RESULTS.md`.
 
+Phase 2 completed on 2026-07-25 as a design-only gate. The approved dual-family
+architecture, logical quantity data model, FIFO/source lineage, deterministic
+backdated replay, canonical locks, idempotency, document lifecycles, precision,
+capability/payload contracts, reconciliation, provisioning, and rollback design
+are in `ARCHITECTURE_QUANTITY_COMPANY.md`. Requirement ownership and planned
+test evidence are in `REQUIREMENTS_TRACEABILITY_QUANTITY_COMPANY.md`; review
+evidence is in `tests/PHASE2_ARCHITECTURE_RESULTS.md`. No runtime code or SQL
+was introduced in Phase 2.
+
 ## Maintenance Checklist
 
 When changing the project, update this file if any answer changes:
