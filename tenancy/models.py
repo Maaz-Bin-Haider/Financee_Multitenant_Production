@@ -66,6 +66,17 @@ TAX_ENVIRONMENT_CHOICES = (
     (TAX_ENVIRONMENT_TAX, "Tax-based"),
 )
 
+PROVISIONING_PENDING = "pending"
+PROVISIONING_PROVISIONING = "provisioning"
+PROVISIONING_READY = "ready"
+PROVISIONING_FAILED = "failed"
+PROVISIONING_STATE_CHOICES = (
+    (PROVISIONING_PENDING, "Pending"),
+    (PROVISIONING_PROVISIONING, "Provisioning"),
+    (PROVISIONING_READY, "Ready"),
+    (PROVISIONING_FAILED, "Failed"),
+)
+
 
 class Currency(models.Model):
     """Controlled public ISO 4217 currency catalogue."""
@@ -142,6 +153,17 @@ class Company(models.Model):
             "environment. It can be changed only before financial activity."
         ),
     )
+    provisioning_state = models.CharField(
+        max_length=16,
+        choices=PROVISIONING_STATE_CHOICES,
+        default=PROVISIONING_PENDING,
+        help_text="Operational state of the physical tenant schema.",
+    )
+    provisioning_error_code = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text="Sanitized provisioning failure category; never contains SQL or secrets.",
+    )
 
     # ── Subscription control (payments are collected outside the system) ──
     contact_email = models.EmailField(
@@ -213,6 +235,15 @@ class Company(models.Model):
                 ]),
                 name="tenancy_company_valid_tax_environment",
             ),
+            models.CheckConstraint(
+                condition=models.Q(provisioning_state__in=[
+                    PROVISIONING_PENDING,
+                    PROVISIONING_PROVISIONING,
+                    PROVISIONING_READY,
+                    PROVISIONING_FAILED,
+                ]),
+                name="tenancy_company_valid_provisioning_state",
+            ),
         ]
 
     def __str__(self):
@@ -237,13 +268,6 @@ class Company(models.Model):
                             "new company setup."
                         )
                     })
-        if self._state.adding and self.inventory_mode == INVENTORY_MODE_QUANTITY:
-            raise ValidationError({
-                "inventory_mode": (
-                    "Quantity-company provisioning is not enabled yet. "
-                    "Complete the separate quantity schema rollout first."
-                )
-            })
         if self.pk:
             original = type(self).objects.filter(pk=self.pk).values(
                 "inventory_mode", "base_currency_id", "tax_environment"

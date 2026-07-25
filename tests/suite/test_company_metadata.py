@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Phase 3 tests for public Company inventory-mode metadata.
+"""Company inventory-mode metadata and Phase 5 availability checks.
 
 Runs inside the production web container. It intentionally does not provision
-or delete schemas: Phase 3 must preserve all existing tenants and must keep
-quantity provisioning disabled until Phase 5.
+or delete schemas. Quantity schema provisioning is covered separately by the
+Phase 5 foundation suite.
 """
 import os
 import sys
@@ -48,9 +48,18 @@ def main():
     companies = list(Company.objects.order_by("id"))
     chk("active baseline companies exist", bool(companies), len(companies))
     chk(
-        "all existing companies backfilled as serial",
-        bool(companies) and all(c.inventory_mode == INVENTORY_MODE_SERIAL for c in companies),
+        "all companies use a supported inventory mode",
+        bool(companies) and all(
+            c.inventory_mode in {INVENTORY_MODE_SERIAL, INVENTORY_MODE_QUANTITY}
+            for c in companies
+        ),
         [(c.id, c.inventory_mode) for c in companies],
+    )
+    bootstrap = Company.objects.filter(name="Company One").first()
+    chk(
+        "legacy bootstrap company remains serial",
+        bootstrap is None or bootstrap.inventory_mode == INVENTORY_MODE_SERIAL,
+        None if bootstrap is None else bootstrap.inventory_mode,
     )
 
     choice_values = {value for value, _label in INVENTORY_MODE_CHOICES}
@@ -78,26 +87,14 @@ def main():
     )
     try:
         quantity_candidate.full_clean()
-        chk("quantity provisioning blocked during Phase 3", False, "validation allowed")
+        chk("quantity company metadata is available in Phase 5", True)
     except ValidationError as exc:
-        chk(
-            "quantity provisioning blocked during Phase 3",
-            "not enabled yet" in validation_message(exc).lower(),
-            validation_message(exc),
-        )
+        chk("quantity company metadata is available in Phase 5", False, validation_message(exc))
 
-    count_before = Company.objects.count()
-    try:
-        quantity_candidate.save()
-        chk("direct quantity save cannot bypass validation", False, "save succeeded")
-    except ValidationError:
-        chk(
-            "direct quantity save cannot bypass validation",
-            Company.objects.count() == count_before,
-            Company.objects.count(),
-        )
-
-    company = companies[0]
+    company = next(
+        value for value in companies
+        if value.inventory_mode == INVENTORY_MODE_SERIAL
+    )
     original_schema = company.schema_name
     company.inventory_mode = INVENTORY_MODE_QUANTITY
     try:
@@ -150,15 +147,15 @@ def main():
     form = CompanyAdminForm(data={
         "name": f"PHASE3 ADMIN QUANTITY {time.time_ns()}",
         "inventory_mode": INVENTORY_MODE_QUANTITY,
+        "base_currency": "PKR",
+        "tax_environment": "non_tax",
         "is_active": "on",
         "grace_days": "3",
         "warn_days_before": "7",
     })
     chk(
-        "admin form rejects quantity company before Phase 5",
-        not form.is_valid()
-        and "inventory_mode" in form.errors
-        and "not enabled yet" in form.errors["inventory_mode"][0].lower(),
+        "admin form accepts quantity foundation company in Phase 5",
+        form.is_valid(),
         form.errors.as_json(),
     )
 

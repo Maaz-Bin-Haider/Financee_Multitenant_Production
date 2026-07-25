@@ -44,10 +44,14 @@ echo "[entrypoint] applying public-schema migrations ..."
 python manage.py migrate --no-input
 
 echo "[entrypoint] applying required tenant hardening SQL ..."
-python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql
+python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql --family serial
 
 echo "[entrypoint] applying required tenant indexes ..."
-python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql
+python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql --family serial
+
+echo "[entrypoint] applying required quantity hardening SQL ..."
+python manage.py apply_sql_all_tenants \
+    tenancy/sql/quantity_production_hardening.sql --family quantity
 
 echo "[entrypoint] starting: $*"
 exec "$@"

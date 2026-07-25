@@ -24,7 +24,13 @@ from tenancy.models import Company, Membership  # noqa: E402
 
 def main():
     User = get_user_model()
-    companies = Company.objects.filter(is_active=True).exclude(schema_name="").order_by("id")
+    # Quantity companies remain runtime-gated until their business modules are
+    # delivered. Legacy serial suites must receive memberships only for serial
+    # schemas; quantity phases use dedicated family-aware harnesses.
+    companies = Company.objects.filter(
+        is_active=True,
+        inventory_mode="serial",
+    ).exclude(schema_name="").order_by("id")
     if not companies:
         print("No active companies — nothing to bootstrap.")
         return 1

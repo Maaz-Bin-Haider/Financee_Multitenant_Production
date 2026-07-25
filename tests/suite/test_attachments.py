@@ -27,7 +27,11 @@ from django.contrib.auth import get_user_model  # noqa: E402
 from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: E402
 from django.db import connection  # noqa: E402
 from django.test import Client  # noqa: E402
-from tenancy.models import Company, Membership  # noqa: E402
+from tenancy.models import (  # noqa: E402
+    INVENTORY_MODE_SERIAL,
+    Company,
+    Membership,
+)
 
 GROUP = "attachments"
 TAG = f"{time.strftime('%H%M%S')}_{os.getpid()}"
@@ -511,7 +515,13 @@ def main():
         chk("a superuser exists", False, "no superuser to drive attachment tests")
         return report()
 
-    companies = list(Company.objects.filter(is_active=True, schema_name__isnull=False).order_by("id"))
+    # Quantity attachments arrive with the shared document foundation in a
+    # later phase. This legacy suite must exercise only the serial capability.
+    companies = list(Company.objects.filter(
+        is_active=True,
+        inventory_mode=INVENTORY_MODE_SERIAL,
+        schema_name__isnull=False,
+    ).order_by("id"))
     if not companies:
         chk("an active company exists", False, "no active tenant companies")
         return report()

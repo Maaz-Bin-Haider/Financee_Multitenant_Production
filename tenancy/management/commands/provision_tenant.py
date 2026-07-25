@@ -16,10 +16,12 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from tenancy.models import (
+    INVENTORY_MODE_CHOICES,
     TAX_ENVIRONMENT_CHOICES,
     Company,
     Currency,
     Membership,
+    PROVISIONING_READY,
 )
 from tenancy.utils import schema_exists
 
@@ -29,6 +31,12 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("name", help="Company / tenant display name.")
+        parser.add_argument(
+            "--inventory-mode",
+            choices=[value for value, _ in INVENTORY_MODE_CHOICES],
+            default="serial",
+            help="Tenant schema family (default: serial).",
+        )
         parser.add_argument(
             "--owner",
             dest="owner",
@@ -53,6 +61,7 @@ class Command(BaseCommand):
         owner_username = options["owner"]
         base_currency_code = options["base_currency"].strip().upper()
         tax_environment = options["tax_environment"]
+        inventory_mode = options["inventory_mode"]
 
         if Company.objects.filter(name=name).exists():
             raise CommandError(f"A company named {name!r} already exists.")
@@ -85,6 +94,7 @@ class Command(BaseCommand):
             # physical schema from tenant_template.sql.
             company = Company.objects.create(
                 name=name,
+                inventory_mode=inventory_mode,
                 base_currency=base_currency,
                 tax_environment=tax_environment,
             )
@@ -92,11 +102,19 @@ class Command(BaseCommand):
                 Membership.objects.create(user=owner, company=company)
 
         provisioned = schema_exists(company.schema_name)
+        company.refresh_from_db()
+        if company.provisioning_state != PROVISIONING_READY or not provisioned:
+            raise CommandError(
+                f"Company schema provisioning failed "
+                f"({company.provisioning_error_code or 'schema_missing'})."
+            )
         self.stdout.write(
             self.style.SUCCESS(
                 f"Company {company.name!r} created (schema {company.schema_name!r}, "
                 f"base_currency={company.base_currency_id}, "
                 f"tax_environment={company.tax_environment}, "
+                f"inventory_mode={company.inventory_mode}, "
+                f"state={company.provisioning_state}, "
                 f"provisioned={provisioned})."
             )
         )

@@ -31,6 +31,7 @@ MODULES = [
     "test_feature_flags.py",
     "test_company_metadata.py",
     "test_company_setup.py",
+    "test_quantity_foundation.py",
     "test_http.py",
 ]
 

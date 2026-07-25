@@ -46,6 +46,7 @@ PASS/FAIL summary. Exit code is non-zero if any real check fails.
 | `test_feature_flags.py` | Per-company feature flags: registry/model semantics, admin form + change-view round-trip, middleware URL enforcement (group/sub blocking, GET redirects vs 403 JSON), UI hiding (sidebar, report buttons, CSV buttons, attachment widget), upload guard. |
 | `test_company_metadata.py` | Phase 3 public company inventory-mode metadata: serial backfill, supported choices, quantity-provisioning gate, model/save immutability, database constraint, and admin add/change behavior. |
 | `test_company_setup.py` | Phase 4 ISO 4217 catalogue, idempotent seed, PKR/non-tax compatibility backfill, company setup validation/locking, constraints, protected currency references, and admin selection behavior. |
+| `test_quantity_foundation.py` | Phase 5 family registry, two deterministic quantity schemas, metadata/fingerprint verification, idempotent family hardening, rollout isolation, mismatch denial, sanitized failure state, and search-path reset. |
 | `test_http.py` | Real Django endpoints via the test client: pages render, JSON APIs return no 5xx, auth works, a master-data write flow succeeds. |
 
 ## Invariants asserted throughout

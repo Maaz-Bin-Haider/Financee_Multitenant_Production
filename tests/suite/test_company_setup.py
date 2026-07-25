@@ -25,6 +25,7 @@ from tenancy.currency_data import CURRENCY_SEED_ROWS, ISO_4217_PUBLISHED  # noqa
 from tenancy.models import (  # noqa: E402
     TAX_ENVIRONMENT_NON_TAX,
     TAX_ENVIRONMENT_TAX,
+    INVENTORY_MODE_SERIAL,
     Company,
     Currency,
 )
@@ -105,11 +106,16 @@ def main():
     activity_matches = []
     with connection.cursor() as cur:
         for value in companies:
-            quoted = connection.ops.quote_name(value.schema_name)
-            cur.execute(
-                f"SELECT EXISTS (SELECT 1 FROM {quoted}.journalentries LIMIT 1)"
-            )
-            expected = bool(cur.fetchone()[0])
+            if value.inventory_mode == INVENTORY_MODE_SERIAL:
+                quoted = connection.ops.quote_name(value.schema_name)
+                cur.execute(
+                    f"SELECT EXISTS (SELECT 1 FROM {quoted}.journalentries LIMIT 1)"
+                )
+                expected = bool(cur.fetchone()[0])
+            else:
+                # The Phase 5 quantity foundation has no journals until the
+                # Phase 6 accounting foundation is installed.
+                expected = False
             activity_matches.append((
                 value.schema_name,
                 expected,

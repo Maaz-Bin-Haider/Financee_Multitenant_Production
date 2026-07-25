@@ -61,7 +61,10 @@ The public tenancy registry and setup models include:
 | `Currency` | `tenancy/models.py` | Controlled ISO 4217 catalogue used for company base-currency selection. |
 | `Membership` | `tenancy/models.py` | One-to-one mapping from user to company. Enforces one company per user. |
 
-Creating a `Company` through the custom admin or `provision_tenant` command provisions a physical tenant schema from `tenancy/sql/tenant_template.sql`.
+Creating a `Company` through the custom admin or `provision_tenant` command
+selects the registered serial or quantity template from the trusted company
+inventory mode. Quantity schemas use separate template, hardening, metadata,
+and versioning artifacts.
 
 Business tables are not Django models. They are created in each tenant schema from SQL.
 
@@ -476,6 +479,7 @@ Select company accounting setup explicitly:
 
 ```bash
 python manage.py provision_tenant "Company Name" \
+  --inventory-mode quantity \
   --base-currency USD \
   --tax-environment tax \
   --owner username
@@ -490,19 +494,28 @@ python manage.py seed_currencies
 Apply SQL to every tenant:
 
 ```bash
-python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql
+python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql \
+  --family serial
 ```
 
 Preview target schemas without applying:
 
 ```bash
-python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql --dry-run
+python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql \
+  --family serial --dry-run
 ```
 
 Apply to one tenant:
 
 ```bash
-python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql --only tenant_company_3
+python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql \
+  --family serial --only tenant_company_3
+```
+
+Retry a failed or pending schema build:
+
+```bash
+python manage.py retry_tenant_provisioning COMPANY_ID
 ```
 
 ### Tenant Login Redirect Loop
@@ -514,13 +527,16 @@ Check that the user has a `Membership`, the company is active, the physical tena
 Apply the existing hardening patch to all tenants:
 
 ```bash
-python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql
+python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql \
+  --family serial
 ```
 
 With Docker:
 
 ```bash
-docker compose -f deploy/docker-compose.yml exec -T web python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql
+docker compose -f deploy/docker-compose.yml exec -T web \
+  python manage.py apply_sql_all_tenants \
+  tenancy/sql/production_hardening.sql --family serial
 ```
 
 After applying it, clear the browser cookie/session for the host or use a fresh private window before logging in again.

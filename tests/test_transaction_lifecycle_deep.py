@@ -1091,7 +1091,9 @@ def discover_tenants(conn):
             SELECT c.schema_name, MIN(m.user_id) AS user_id
             FROM public.tenancy_company c
             JOIN public.tenancy_membership m ON m.company_id = c.id
-            WHERE c.is_active = true AND c.schema_name IS NOT NULL
+            WHERE c.is_active = true
+              AND c.inventory_mode = 'serial'
+              AND c.schema_name IS NOT NULL
             GROUP BY c.id, c.schema_name
             ORDER BY c.id
             """

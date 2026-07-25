@@ -12,7 +12,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from .models import Company
-from .provisioning import provision_schema
+from .provisioning import provision_company
 from .utils import schema_exists
 
 
@@ -28,4 +28,4 @@ def provision_company_schema(sender, instance: Company, **kwargs):
     # on every ordinary Company edit.
     if schema_exists(schema):
         return
-    provision_schema(schema)
+    provision_company(instance)

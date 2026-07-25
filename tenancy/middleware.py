@@ -48,12 +48,13 @@ from financee.security import (
     tenant_required_response,
 )
 from .features import feature_for_path
-from .models import BLOCKED_STATES
+from .models import BLOCKED_STATES, PROVISIONING_READY
+from .schema_verification import verify_company_schema
+from .schema_families import schema_family
 from .utils import (
     PUBLIC_SCHEMA,
     reset_search_path,
     set_search_path,
-    tenant_schema_version_ok,
 )
 
 
@@ -67,7 +68,13 @@ class TenantSchemaMiddleware(MiddlewareMixin):
         request.tenant_company = company
         set_search_path(schema)
         if tenant_ok and schema != PUBLIC_SCHEMA:
-            request.tenant_is_active = tenant_schema_version_ok(schema)
+            verification = verify_company_schema(company)
+            request.tenant_schema_compatible = verification.ok
+            request.tenant_is_active = (
+                verification.ok
+                and schema_family(company.inventory_mode).runtime_enabled
+            )
+            request.tenant_schema_error = verification.reason
 
     def process_view(self, request, view_func, view_args, view_kwargs):
         user = getattr(request, "user", None)
@@ -168,7 +175,12 @@ class TenantSchemaMiddleware(MiddlewareMixin):
             return PUBLIC_SCHEMA, False, None
 
         company = membership.company
-        if company is None or not company.is_active or not company.schema_name:
+        if (
+            company is None
+            or not company.is_active
+            or not company.schema_name
+            or company.provisioning_state != PROVISIONING_READY
+        ):
             return PUBLIC_SCHEMA, False, None
 
         return company.schema_name, True, company

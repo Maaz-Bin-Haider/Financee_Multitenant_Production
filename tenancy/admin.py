@@ -138,7 +138,11 @@ class _CompanyAdminFormBase(forms.ModelForm):
 
     class Meta:
         model = Company
-        exclude = ("disabled_features",)
+        exclude = (
+            "disabled_features",
+            "provisioning_state",
+            "provisioning_error_code",
+        )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -204,6 +208,7 @@ class CompanyAdmin(admin.ModelAdmin):
         "inventory_mode",
         "base_currency",
         "tax_environment",
+        "provisioning_state",
         "schema_name",
         "is_active",
         "subscription_badge",
@@ -228,6 +233,7 @@ class CompanyAdmin(admin.ModelAdmin):
                 "fields": (
                     "name", "inventory_mode", "base_currency",
                     "tax_environment", "schema_name", "is_active", "created_at",
+                    "provisioning_state", "provisioning_error_code",
                 ),
                 "description": (
                     "Inventory mode is permanent after creation. Base currency "
@@ -254,6 +260,7 @@ class CompanyAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
+        fields.extend(("provisioning_state", "provisioning_error_code"))
         if obj is not None:
             fields.append("inventory_mode")
             if obj.has_financial_activity():

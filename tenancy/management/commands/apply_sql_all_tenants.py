@@ -33,6 +33,9 @@ import os
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 
+from tenancy.models import Company, INVENTORY_MODE_CHOICES
+from tenancy.schema_families import family_for_sql_file, schema_family
+from tenancy.schema_verification import verify_company_schema
 from tenancy.utils import (
     PUBLIC_SCHEMA,
     list_tenant_schemas,
@@ -45,6 +48,15 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("sql_file", help="Path to the .sql file to execute.")
+        parser.add_argument(
+            "--family",
+            choices=[value for value, _label in INVENTORY_MODE_CHOICES],
+            default=None,
+            help=(
+                "Target schema family. Must agree with the controlled SQL "
+                "artifact; inferred from the registered filename when omitted."
+            ),
+        )
         parser.add_argument(
             "--include-public",
             action="store_true",
@@ -69,20 +81,45 @@ class Command(BaseCommand):
         with open(sql_path, "r", encoding="utf-8") as fh:
             sql_text = fh.read()
 
+        try:
+            registered_family = family_for_sql_file(sql_path)
+        except ValueError as exc:
+            raise CommandError(str(exc)) from exc
+        requested_family = opts["family"] or registered_family
+        if requested_family != registered_family:
+            raise CommandError(
+                f"SQL file belongs to {registered_family!r}, not "
+                f"{requested_family!r}."
+            )
+        definition = schema_family(requested_family)
+
+        companies = Company.objects.filter(
+            inventory_mode=requested_family,
+        ).exclude(schema_name="").order_by("schema_name")
+        registered_targets = list(companies.values_list("schema_name", flat=True))
+        companies_by_schema = {company.schema_name: company for company in companies}
         if opts["only"]:
+            if opts["only"] not in registered_targets:
+                raise CommandError(
+                    f"Schema {opts['only']!r} is not a registered "
+                    f"{requested_family} company."
+                )
             targets = [opts["only"]]
         else:
-            targets = list_tenant_schemas()
-            if opts["include_public"]:
-                targets = [PUBLIC_SCHEMA] + targets
+            targets = registered_targets
+        if opts["include_public"]:
+            targets = [PUBLIC_SCHEMA] + targets
 
         if not targets:
-            self.stdout.write(self.style.WARNING("No tenant schemas found."))
+            self.stdout.write(self.style.WARNING(
+                f"No {requested_family} tenant schemas found."
+            ))
             return
 
         self.stdout.write(
             f"{'DRY RUN: ' if opts['dry_run'] else ''}applying {sql_path!r} "
-            f"to {len(targets)} schema(s)."
+            f"to {len(targets)} {requested_family} schema(s), "
+            f"target version {definition.required_version}."
         )
 
         ok, failed = 0, 0
@@ -99,7 +136,24 @@ class Command(BaseCommand):
                         cur.execute(sql_text)
                     finally:
                         cur.execute(f"SET search_path TO {previous}")
-                self.stdout.write(self.style.SUCCESS(f"  ok   -> {schema}"))
+                if schema != PUBLIC_SCHEMA:
+                    verification = verify_company_schema(
+                        companies_by_schema[schema],
+                        use_cache=False,
+                    )
+                    if not verification.ok:
+                        raise CommandError(
+                            f"post-upgrade verification failed: "
+                            f"{verification.reason}"
+                        )
+                    suffix = (
+                        f" ({verification.family} v{verification.version})"
+                    )
+                else:
+                    suffix = ""
+                self.stdout.write(self.style.SUCCESS(
+                    f"  ok   -> {schema}{suffix}"
+                ))
                 ok += 1
             except Exception as exc:  # noqa: BLE001 - report and continue
                 self.stderr.write(self.style.ERROR(f"  FAIL -> {schema}: {exc}"))

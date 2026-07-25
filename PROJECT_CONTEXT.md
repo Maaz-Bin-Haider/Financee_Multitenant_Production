@@ -500,6 +500,23 @@ rollback/reapply, 30 focused checks, all 17 suite modules, and full serial
 accounting/lifecycle regressions passed. Evidence is in
 `tests/PHASE4_COMPANY_SETUP_RESULTS.md`.
 
+Phase 5 completed on 2026-07-25. A central schema-family registry now owns
+serial/quantity templates, hardening paths, required versions, fingerprints,
+and runtime gates. Quantity schema version 1 is independently provisionable
+from `quantity_tenant_template.sql` and maintained by the idempotent
+`quantity_production_hardening.sql`; it contains family/base-currency metadata,
+seed registry, document counters, a foundation sequence, and verification
+functions, with no serial inventory tables. Public migration
+`tenancy.0007_company_provisioning_state` adds pending/provisioning/ready/failed
+operational states and sanitized failure codes. Provisioning verifies the
+required fingerprint before commit, supports controlled failed-build retry, and
+rollout commands enforce family/file ownership plus post-upgrade verification.
+Middleware denies family/version/base-currency/fingerprint mismatch. Quantity
+business routes remain intentionally gated until later functional phases.
+Evidence from clean and upgraded mixed-family environments, 28 focused checks,
+all 18 suite modules, and full serial accounting/lifecycle regressions is in
+`tests/PHASE5_QUANTITY_FOUNDATION_RESULTS.md`.
+
 ## Maintenance Checklist
 
 When changing the project, update this file if any answer changes:

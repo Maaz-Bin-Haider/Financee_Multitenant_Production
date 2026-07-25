@@ -365,6 +365,9 @@ provisioned.
 
 ## Phase 5 — Quantity Schema Foundation
 
+**Status:** Completed 2026-07-25. Evidence:
+`tests/PHASE5_QUANTITY_FOUNDATION_RESULTS.md`.
+
 ### Objectives
 
 Create the independently provisionable quantity schema skeleton.

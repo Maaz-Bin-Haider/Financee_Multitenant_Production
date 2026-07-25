@@ -438,8 +438,16 @@ def main():
     conn.autocommit = True
     # discover tenant schemas
     c = conn.cursor()
-    c.execute("SELECT schema_name FROM information_schema.schemata "
-              "WHERE schema_name LIKE 'tenant\\_%' ESCAPE '\\' ORDER BY 1")
+    c.execute(
+        """
+        SELECT schema_name
+          FROM public.tenancy_company
+         WHERE is_active = true
+           AND inventory_mode = 'serial'
+           AND schema_name IS NOT NULL
+         ORDER BY id
+        """
+    )
     schemas = [r[0] for r in c.fetchall()]
     c.execute("SELECT id FROM public.auth_user ORDER BY id LIMIT 1")
     row = c.fetchone()

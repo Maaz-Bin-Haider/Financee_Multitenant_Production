@@ -63,8 +63,15 @@ high-level checklist and shall be updated from the detailed plan’s results.
   admin and provisioning support, and idempotent seeding. Upgrade,
   clean-install, rollback/reapply, and full serial regressions passed. See
   `tests/PHASE4_COMPANY_SETUP_RESULTS.md`.
-- [ ] **Phase 5 — Quantity Schema Foundation:** not started.
-- [ ] Phases 6–32: not started; see
+- [x] **Phase 5 — Quantity Schema Foundation:** completed 2026-07-25.
+  Added independent quantity template/hardening, central family registry,
+  schema metadata/fingerprint verification, provisioning states and retry,
+  family-filtered rollout, safe runtime gating, and mixed-family tests.
+  Upgrade, clean provisioning, idempotency, mismatch denial, rollback/reapply,
+  and full serial regressions passed. See
+  `tests/PHASE5_QUANTITY_FOUNDATION_RESULTS.md`.
+- [ ] **Phase 6 — Accounting and Journal Foundation:** not started.
+- [ ] Phases 7–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements
