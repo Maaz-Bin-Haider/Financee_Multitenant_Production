@@ -517,6 +517,24 @@ Evidence from clean and upgraded mixed-family environments, 28 focused checks,
 all 18 suite modules, and full serial accounting/lifecycle regressions is in
 `tests/PHASE5_QUANTITY_FOUNDATION_RESULTS.md`.
 
+Phase 6 completed on 2026-07-25. Quantity schema version 2 adds an idempotently
+seeded 17-account system chart covering cash/bank, AR/AP, inventory, revenue,
+COGS, opening balance, capital/retained earnings, input/output tax, inventory
+adjustment gain/loss, realized exchange gain/loss, and rounding difference.
+The base-currency ledger uses `numeric(24,4)` journal lines, immutable posted
+journals, linked reversing journals, source-document uniqueness, and deferred
+database constraint triggers that reject empty or unbalanced direct writes.
+`quantity_post_journal`, `quantity_reverse_journal`, account lookup, trial
+balance, and atomic per-document numbering form the SQL boundary for later
+quantity modules. Existing version-1 quantity schemas upgrade through
+`quantity_accounting_foundation.sql`; fresh schemas receive the same objects
+from `quantity_tenant_template.sql`. The schema verifier now correctly
+fingerprints PostgreSQL identity sequences through `pg_class`. Evidence from
+the preserved Phase 5 upgrade database, two fresh quantity tenants, concurrent
+numbering, 39 focused checks, all 19 suite modules, and complete serial
+regressions is in `tests/PHASE6_ACCOUNTING_FOUNDATION_RESULTS.md`. Quantity
+business routes remain gated; Phase 7 is the product/variant/SKU/unit master.
+
 ## Maintenance Checklist
 
 When changing the project, update this file if any answer changes:

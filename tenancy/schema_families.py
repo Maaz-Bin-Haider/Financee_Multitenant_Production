@@ -54,21 +54,33 @@ def _families():
         INVENTORY_MODE_QUANTITY: SchemaFamily(
             key=INVENTORY_MODE_QUANTITY,
             template_path=SQL_DIR / "quantity_tenant_template.sql",
-            hardening_path=SQL_DIR / "quantity_production_hardening.sql",
-            required_version=1,
+            hardening_path=SQL_DIR / "quantity_accounting_foundation.sql",
+            required_version=2,
             metadata_table="tenant_schema_metadata",
             runtime_enabled=False,
             required_tables=(
                 "tenant_schema_metadata",
                 "quantity_seed_registry",
                 "document_sequences",
+                "chart_of_accounts",
+                "journal_entries",
+                "journal_lines",
             ),
-            required_sequences=("quantity_foundation_id_seq",),
+            required_sequences=(
+                "quantity_foundation_id_seq",
+                "chart_of_accounts_account_id_seq",
+                "journal_entries_journal_id_seq",
+                "journal_lines_line_id_seq",
+            ),
             required_functions=(
                 "quantity_schema_fingerprint",
                 "quantity_assert_schema_family",
+                "quantity_next_document_number",
+                "quantity_post_journal",
+                "quantity_reverse_journal",
+                "quantity_account_lookup",
             ),
-            rollout_files=("quantity_production_hardening.sql",),
+            rollout_files=("quantity_accounting_foundation.sql",),
         ),
     }
 

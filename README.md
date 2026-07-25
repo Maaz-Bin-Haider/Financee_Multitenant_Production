@@ -518,6 +518,12 @@ Retry a failed or pending schema build:
 python manage.py retry_tenant_provisioning COMPANY_ID
 ```
 
+Quantity tenants are currently provisioned at schema version 2. Their
+accounting foundation includes the system chart of accounts, immutable
+double-entry journals and reversals, trial balance, and concurrency-safe
+document numbering. Quantity business screens remain intentionally gated until
+the product, warehouse, stock, and transaction phases are complete.
+
 ### Tenant Login Redirect Loop
 
 If a company user signs in successfully but the browser reports too many redirects between `/home/` and `/authentication/login/`, the user is usually authenticated but the tenant guard is rejecting the assigned company schema.

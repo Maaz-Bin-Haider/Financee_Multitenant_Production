@@ -70,8 +70,15 @@ high-level checklist and shall be updated from the detailed plan’s results.
   Upgrade, clean provisioning, idempotency, mismatch denial, rollback/reapply,
   and full serial regressions passed. See
   `tests/PHASE5_QUANTITY_FOUNDATION_RESULTS.md`.
-- [ ] **Phase 6 — Accounting and Journal Foundation:** not started.
-- [ ] Phases 7–32: not started; see
+- [x] **Phase 6 — Accounting and Journal Foundation:** completed
+  2026-07-25. Added quantity schema version 2 with the system chart of
+  accounts, four-decimal double-entry ledger, atomic posting and reversal,
+  immutable posted journals, deferred database balance enforcement, trial
+  balance/account lookup, concurrency-safe document numbering, idempotent
+  rollout, and tenant-isolation tests. See
+  `tests/PHASE6_ACCOUNTING_FOUNDATION_RESULTS.md`.
+- [ ] **Phase 7 — Product, Variant, SKU, and Unit Masters:** not started.
+- [ ] Phases 8–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

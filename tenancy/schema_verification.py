@@ -21,9 +21,24 @@ class SchemaVerification:
 def _objects_exist(schema_name, kind, names):
     if not names:
         return True
+    if kind == "sequence":
+        # information_schema.sequences intentionally omits identity backing
+        # sequences; pg_class is the complete PostgreSQL object catalogue.
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT c.relname
+                  FROM pg_class c
+                  JOIN pg_namespace n ON n.oid = c.relnamespace
+                 WHERE n.nspname = %s
+                   AND c.relkind = 'S'
+                """,
+                [schema_name],
+            )
+            found = {row[0] for row in cur.fetchall()}
+        return set(names).issubset(found)
     catalog = {
         "table": ("information_schema.tables", "table_name"),
-        "sequence": ("information_schema.sequences", "sequence_name"),
         "function": ("information_schema.routines", "routine_name"),
     }
     source, column = catalog[kind]
@@ -31,8 +46,6 @@ def _objects_exist(schema_name, kind, names):
         cur.execute(
             f"SELECT {column} FROM {source} WHERE routine_schema = %s"
             if kind == "function"
-            else f"SELECT {column} FROM {source} WHERE sequence_schema = %s"
-            if kind == "sequence"
             else f"SELECT {column} FROM {source} WHERE table_schema = %s",
             [schema_name],
         )

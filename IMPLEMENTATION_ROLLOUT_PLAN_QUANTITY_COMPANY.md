@@ -399,6 +399,9 @@ Create the independently provisionable quantity schema skeleton.
 
 ## Phase 6 — Accounting and Journal Foundation
 
+**Status:** Completed 2026-07-25. Evidence:
+`tests/PHASE6_ACCOUNTING_FOUNDATION_RESULTS.md`.
+
 ### Objectives
 
 Establish the quantity schema’s chart of accounts and double-entry primitives.
