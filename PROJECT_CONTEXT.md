@@ -574,6 +574,22 @@ checks, all 21 suite modules, and full serial regressions is in
 `tests/PHASE8_WAREHOUSE_RESULTS.md`. Transfers and warehouse stock remain in
 their assigned later phases.
 
+Phase 9 completed on 2026-07-25. Quantity schema version 5 adds the inventory
+core independently of invoice screens: immutable stock movements, atomic
+per-variant/per-warehouse balances, FIFO receipt layers, durable outbound
+allocation lineage, and current or historical availability. All writes pass
+through controlled SQL functions. Tenant-and-scope advisory locks serialize
+near-zero consumption, while multi-scope operations acquire warehouse/variant
+locks in a canonical order. Deterministic replay orders events by business
+date and effective sequence, rejects any backdated event that would make
+historical stock negative, and rebuilds projections and allocations
+atomically. Reconciliation compares movements, balances, FIFO remainder, and
+allocated outbound quantities. The focused suite passed 38/38, all 22
+mixed-family modules passed, and the complete serial system, HTTP, and deep
+lifecycle regressions remained green. Evidence is in
+`tests/PHASE9_FIFO_ENGINE_RESULTS.md`. Quantity invoice UI remains gated;
+Phase 10 adds opening stock through this engine.
+
 ## Maintenance Checklist
 
 When changing the project, update this file if any answer changes:

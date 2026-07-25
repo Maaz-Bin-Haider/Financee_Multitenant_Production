@@ -90,8 +90,16 @@ high-level checklist and shall be updated from the detailed plan’s results.
   lifecycle, reference-protected deletion, explicit Django permissions,
   quantity-only lookup/mutation APIs, cumulative fresh-schema upgrades, and
   tenant/family isolation tests. See `tests/PHASE8_WAREHOUSE_RESULTS.md`.
-- [ ] **Phase 9 — Stock Movement and FIFO Engine:** not started.
-- [ ] Phases 10–32: not started; see
+- [x] **Phase 9 — Stock Movement and FIFO Engine:** completed
+  2026-07-25. Added quantity schema version 5 with an immutable stock movement
+  ledger, per-SKU/per-warehouse balance projection, FIFO layers and durable
+  outbound allocations, current/historical availability, deterministic
+  backdated replay, historical negative-stock denial, canonical scope locking,
+  guarded reversals, and movement/balance/FIFO reconciliation. The focused
+  suite passed 38/38 and all serial regressions remained green. No invoice UI
+  was enabled. See `tests/PHASE9_FIFO_ENGINE_RESULTS.md`.
+- [ ] **Phase 10 — Opening Stock:** not started.
+- [ ] Phases 11–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

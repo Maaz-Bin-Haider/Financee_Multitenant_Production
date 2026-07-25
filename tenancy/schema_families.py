@@ -56,8 +56,8 @@ def _families():
         INVENTORY_MODE_QUANTITY: SchemaFamily(
             key=INVENTORY_MODE_QUANTITY,
             template_path=SQL_DIR / "quantity_tenant_template.sql",
-            hardening_path=SQL_DIR / "quantity_warehouse_foundation.sql",
-            required_version=4,
+            hardening_path=SQL_DIR / "quantity_fifo_engine.sql",
+            required_version=5,
             metadata_table="tenant_schema_metadata",
             runtime_enabled=False,
             required_tables=(
@@ -73,6 +73,10 @@ def _families():
                 "variant_transaction_registry",
                 "warehouses",
                 "warehouse_reference_registry",
+                "stock_movements",
+                "stock_balances",
+                "fifo_layers",
+                "fifo_allocations",
             ),
             required_sequences=(
                 "quantity_foundation_id_seq",
@@ -85,6 +89,10 @@ def _families():
                 "variant_transaction_registry_reference_id_seq",
                 "warehouses_warehouse_id_seq",
                 "warehouse_reference_registry_reference_id_seq",
+                "stock_movements_movement_id_seq",
+                "fifo_layers_layer_id_seq",
+                "fifo_allocations_allocation_id_seq",
+                "inventory_effective_sequence_seq",
             ),
             required_functions=(
                 "quantity_schema_fingerprint",
@@ -105,8 +113,14 @@ def _families():
                 "quantity_delete_warehouse",
                 "quantity_warehouse_lookup",
                 "quantity_default_warehouse",
+                "quantity_post_stock_movement",
+                "quantity_reverse_stock_movement",
+                "quantity_replay_inventory",
+                "quantity_stock_availability",
+                "quantity_inventory_reconciliation",
+                "quantity_lock_inventory_pairs",
             ),
-            rollout_files=("quantity_warehouse_foundation.sql",),
+            rollout_files=("quantity_fifo_engine.sql",),
             enabled_path_prefixes=(
                 "/items/quantity/",
                 "/warehouses/quantity/",
@@ -114,6 +128,7 @@ def _families():
             bootstrap_paths=(
                 SQL_DIR / "quantity_item_master.sql",
                 SQL_DIR / "quantity_warehouse_foundation.sql",
+                SQL_DIR / "quantity_fifo_engine.sql",
             ),
         ),
     }

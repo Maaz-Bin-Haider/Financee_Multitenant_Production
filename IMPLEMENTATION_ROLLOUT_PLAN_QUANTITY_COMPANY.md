@@ -498,6 +498,11 @@ Implement warehouse identity and permissions before stock exists.
 
 ## Phase 9 — Stock Movement and FIFO Engine
 
+**Status:** completed 2026-07-25. Quantity schema version 5 and all mandatory
+acceptance tests passed in the isolated mixed-family Docker environment. See
+`tests/PHASE9_FIFO_ENGINE_RESULTS.md`. Phase 10 is the next authorized phase;
+no invoice UI was enabled by this phase.
+
 ### Objectives
 
 Build and prove the inventory core independently of full invoices.

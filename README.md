@@ -535,6 +535,15 @@ deactivate, select a default, and delete only unreferenced warehouses. The
 database enforces normalized code/name uniqueness and at most one active
 default warehouse per quantity tenant.
 
+Quantity schema version 5 adds the isolated stock core used by later quantity
+documents. It records immutable movements, maintains per-SKU/per-warehouse
+balances, consumes FIFO cost layers with durable allocation lineage, supports
+historical availability, and deterministically replays permitted backdated
+events. Scope locks prevent overselling under concurrency, canonical lock
+ordering supports future multi-warehouse operations, and reconciliation
+functions prove movement, balance, and FIFO agreement. Quantity invoice screens
+remain gated until their assigned phases; Phase 10 is opening stock.
+
 ### Tenant Login Redirect Loop
 
 If a company user signs in successfully but the browser reports too many redirects between `/home/` and `/authentication/login/`, the user is usually authenticated but the tenant guard is rejecting the assigned company schema.
