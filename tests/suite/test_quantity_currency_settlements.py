@@ -29,7 +29,7 @@ def main():
  try:
   company=Company.objects.create(name=f"PH18 {TAG}",inventory_mode=INVENTORY_MODE_QUANTITY,
    base_currency=Currency.objects.get(pk="PKR"),tax_environment="non_tax")
-  s=company.schema_name;chk("fresh schema reaches currency version",q(s,"SELECT version FROM tenant_schema_metadata")[0][0]==14);chk("schema verifies",verify_company_schema(company,use_cache=False).ok)
+  s=company.schema_name;chk("fresh schema includes currency version",q(s,"SELECT version FROM tenant_schema_metadata")[0][0]>=14);chk("schema verifies",verify_company_schema(company,use_cache=False).ok)
   tables={x[0] for x in q(s,"SELECT tablename FROM pg_tables WHERE schemaname=current_schema()")}
   chk("settlement allocation entities exist",{"foreign_payments","payment_allocations","foreign_receipts","receipt_allocations"}<=tables)
   v,w=setup_scope(s,"FX","PCS");user=get_user_model().objects.create_superuser(username=f"p18_{TAG}",email="p18@example.com",password="pass");Membership.objects.create(user=user,company=company);client=Client(SERVER_NAME="localhost");client.force_login(user)

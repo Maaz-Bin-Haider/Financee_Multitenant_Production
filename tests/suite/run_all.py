@@ -45,6 +45,7 @@ MODULES = [
     "test_quantity_counts_adjustments.py",
     "test_quantity_tax_discounts.py",
     "test_quantity_currency_settlements.py",
+    "test_quantity_financial_modules.py",
     "test_http.py",
 ]
 

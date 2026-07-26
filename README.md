@@ -1,7 +1,7 @@
 # Financee Multitenant Accounting and Inventory System
 
-> Development resume point: Phases 0–18 are complete. **Phase 19 —
-> Shared Financial Modules and Month Close** is next.
+> Development resume point: Phases 0–19 are complete. **Phase 20 —
+> Attachments, Descriptions, Audit, Permissions, and Features** is next.
 > Read `PROJECT_CONTEXT.md` and
 > `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md` before starting.
 

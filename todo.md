@@ -55,10 +55,9 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **CURRENT CHECKPOINT:** Phases 0–18 are complete. **Phase 19 — Shared
-> Financial Modules and Month Close is next.** Phase 18 delivered schema v14
-> foreign posting, allocation-based settlement, realized gain/loss, returns,
-> reporting, UI, and complete release evidence.
+> **CURRENT CHECKPOINT:** Phases 0–19 are complete. **Phase 20 — Attachments,
+> Descriptions, Audit, Permissions, and Features is next.** Phase 19 delivered
+> schema v15 shared financial modules and universal closed-period enforcement.
 > Do not commit or push.
 
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
@@ -187,7 +186,14 @@ high-level checklist and shall be updated from the detailed plan’s results.
   return/settlement guards, and UI. Focused tests passed 23/23; all 31
   mixed-family modules, HTTP 70/70, system 111/111, and deep serial 2702/2702
   passed. See `tests/PHASE18_QUANTITY_CURRENCY_RESULTS.md`.
-- [ ] Phases 19–32: not started; see
+- [x] **Phase 19 — Shared Financial Modules and Month Close:** completed
+  2026-07-26. Added quantity parties and opening balances, payments, receipts,
+  contra, opening cash, owner equity, month preview/close/reversal, shared UI
+  compatibility, and universal close guards for quantity inventory and
+  financial mutations. Focused tests passed 27/27; all 32 mixed-family modules,
+  HTTP 70/70, system 111/111, and deep serial 2702/2702 passed. See
+  `tests/PHASE19_QUANTITY_FINANCIAL_MODULES_RESULTS.md`.
+- [ ] Phases 20–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

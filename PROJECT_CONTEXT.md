@@ -6,9 +6,15 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
-- **Last completed phase:** Phase 18 — Multi-Currency and Realized Gain/Loss.
-- **Next phase:** Phase 19 — Shared Financial Modules and Month Close.
-- **Quantity schema development baseline:** version 14.
+- **Last completed phase:** Phase 19 — Shared Financial Modules and Month Close.
+- **Next phase:** Phase 20 — Attachments, Descriptions, Audit, Permissions,
+  and Features.
+- **Quantity schema development baseline:** version 15.
+- **Phase 19 delivered:** quantity-compatible shared party and opening-balance
+  contracts, payments, receipts, contra, opening cash, owner equity, period
+  preview/close/reversal, shared financial UI routes, and universal closed-
+  period guards across quantity inventory and financial mutations.
+- **Phase 19 evidence:** `tests/PHASE19_QUANTITY_FINANCIAL_MODULES_RESULTS.md`.
 - **Phase 18 delivered:** foreign/base invoice and line snapshots, durable
   payment/receipt allocations, partial/final cash or bank settlement, realized
   exchange gain/loss journals and reporting, unsettled-balance-aware foreign
@@ -23,7 +29,7 @@ This file is the persistent engineering context for Financee. Update it on every
 - **Phase 17 evidence:** `tests/PHASE17_QUANTITY_TAX_DISCOUNTS_RESULTS.md`.
 - **Preserve:** all serial-company behavior and the completed quantity schema
   version 12 count/adjustment lifecycle.
-- **Do not commit or push:** provide commit text to the owner after Phase 18;
+- **Do not commit or push:** provide commit text to the owner after Phase 19;
   the owner performs the commit.
 
 ## System Identity
