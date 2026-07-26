@@ -33,6 +33,7 @@ path, so the custom admin keeps working; if a superuser is also given a
 Membership they additionally get that tenant's business data in the UI.
 """
 import json
+import logging
 
 from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
@@ -56,6 +57,8 @@ from .utils import (
     reset_search_path,
     set_search_path,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class TenantSchemaMiddleware(MiddlewareMixin):
@@ -137,6 +140,10 @@ class TenantSchemaMiddleware(MiddlewareMixin):
     def process_exception(self, request, exception):
         # Make sure a failed request never leaves tenant context on the
         # connection. process_response also resets, but exceptions may bypass it.
+        logger.error(
+            "Tenant request failed: %s", exception,
+            exc_info=(type(exception), exception, exception.__traceback__),
+        )
         reset_search_path()
         if request.path.startswith("/admin/"):
             return None

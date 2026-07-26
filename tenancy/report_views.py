@@ -44,6 +44,8 @@ def _report(request, key):
         )
         row = cursor.fetchone()
     result = row[0] if row and row[0] else {"columns": [], "rows": [], "totals": {}}
+    if isinstance(result, str):
+        result = json.loads(result)
     result["key"] = key
     result["label"] = definition.label
     return result

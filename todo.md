@@ -55,10 +55,10 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **CURRENT CHECKPOINT:** Phases 0–24 are complete. **Phase 25 —
-> Four-Company Isolation and Concurrency is next.** Phase 24 certified two
-> fresh serial tenants against the Phase 1 functional, schema, report, system,
-> and deep-lifecycle baselines and proved quantity-only surfaces stay absent.
+> **CURRENT CHECKPOINT:** Phases 0–25 are complete. **Phase 26 —
+> Performance and Capacity is next.** Phase 25 certified simultaneous activity
+> across two serial and two quantity tenants with zero data, report, file,
+> cache, error, or database-connection leakage.
 > Do not commit or push.
 
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
@@ -231,7 +231,16 @@ high-level checklist and shall be updated from the detailed plan’s results.
   hardening/indexes, and absence of quantity tables/functions/routes/UI.
   Focused checks passed 51/51 and all 37 aggregate modules passed. See
   `tests/PHASE24_COMPLETE_SERIAL_REGRESSION_RESULTS.md`.
-- [ ] Phases 25–32: not started; see
+- [x] **Phase 25 — Four-Company Isolation and Concurrency:** completed
+  2026-07-26. Added the permanent T6 runner with two fresh serial and two fresh
+  quantity companies, simultaneous posting/report/export/logout activity,
+  persistent-connection switching, tenant-scoped rate limiting, guessed
+  attachment probes, schema mismatch rejection, safe exception handling, and
+  final public search paths. Fixed real quantity report JSON decoding and
+  completed route allowlisting. Focused checks passed 17/17 and all 38
+  aggregate modules passed; the ARM64 production image built successfully.
+  See `tests/PHASE25_FOUR_COMPANY_ISOLATION_RESULTS.md`.
+- [ ] Phases 26–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

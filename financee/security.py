@@ -153,6 +153,22 @@ def log_and_safe_json_error(exc, public_message="An unexpected error occurred.",
     return safe_json_error(public_message, status=status)
 
 
+def _rate_limit_key(request, key_prefix, bucket):
+    """Build a cache key whose quota cannot leak between tenant companies."""
+    identity = (
+        getattr(request.user, "pk", None)
+        or request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
+        or request.META.get("REMOTE_ADDR", "unknown")
+    )
+    company = getattr(request, "tenant_company", None)
+    tenant = (
+        getattr(company, "pk", None)
+        or getattr(request, "tenant_schema", None)
+        or "public"
+    )
+    return f"rl:{key_prefix}:{tenant}:{identity}:{bucket}"
+
+
 def rate_limit(key_prefix, limit=60, window=60, methods=None):
     """
     Lightweight per-process/cache rate limiter.
@@ -166,13 +182,8 @@ def rate_limit(key_prefix, limit=60, window=60, methods=None):
         def wrapper(request, *args, **kwargs):
             if methods is not None and request.method.upper() not in methods:
                 return view_func(request, *args, **kwargs)
-            identity = (
-                getattr(request.user, "pk", None)
-                or request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
-                or request.META.get("REMOTE_ADDR", "unknown")
-            )
             bucket = int(time.time() // window)
-            key = f"rl:{key_prefix}:{identity}:{bucket}"
+            key = _rate_limit_key(request, key_prefix, bucket)
             current = cache.get(key, 0)
             if current >= limit:
                 return JsonResponse(
@@ -199,13 +210,8 @@ def user_has_active_company(user):
 
 
 def rate_limit_response(request, key_prefix, limit=60, window=60):
-    identity = (
-        getattr(request.user, "pk", None)
-        or request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
-        or request.META.get("REMOTE_ADDR", "unknown")
-    )
     bucket = int(time.time() // window)
-    key = f"rl:{key_prefix}:{identity}:{bucket}"
+    key = _rate_limit_key(request, key_prefix, bucket)
     current = cache.get(key, 0)
     if current >= limit:
         return JsonResponse(

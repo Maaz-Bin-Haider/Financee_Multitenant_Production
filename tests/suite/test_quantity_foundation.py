@@ -141,8 +141,8 @@ def main():
         client = Client(SERVER_NAME="localhost")
         client.force_login(quantity_user)
         response = client.get("/home/")
-        chk("quantity business UI remains safely gated after foundation",
-            response.status_code == 403, response.status_code)
+        chk("quantity business UI is enabled after the completed rollout",
+            response.status_code == 200, response.status_code)
 
         fingerprints = [object_fingerprint(c.schema_name) for c in companies]
         chk("two quantity schema fingerprints are identical",

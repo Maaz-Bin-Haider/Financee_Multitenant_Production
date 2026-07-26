@@ -51,6 +51,7 @@ MODULES = [
     "test_quantity_reports_dashboards.py",
     "test_quantity_complete_suite.py",
     "../phase24_serial_matrix.py",
+    "../phase25_four_company_isolation.py",
     "test_http.py",
 ]
 

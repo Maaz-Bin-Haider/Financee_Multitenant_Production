@@ -63,6 +63,10 @@ PASS/FAIL summary. Exit code is non-zero if any real check fails.
 | `test_quantity_financial_modules.py` | Phase 19 quantity parties, cash movements, opening cash, owner equity, month close, universal closed-period guards, accounting, UI, and isolation. |
 | `test_quantity_platform_controls.py` | Phase 20 quantity attachment mappings, immutable audit deployment, type-aware features, permissions, and schema-family gates. |
 | `test_quantity_type_aware_ui.py` | Phase 21 central company-type dispatch, payload-family rejection, shared quantity interaction, responsive, keyboard, accessibility, and authoritative preview contracts. |
+| `test_quantity_reports_dashboards.py` | Phase 22 quantity report catalogue, filters, SQL execution, dashboards, permissions, CSV, and Excel-compatible exports. |
+| `test_quantity_complete_suite.py` | Phase 23 two-fresh-quantity-tenant lifecycle, hostile-input, isolation, reconciliation, fingerprint, rollout, and evidence certification. |
+| `../phase24_serial_matrix.py` | Phase 24 two-fresh-serial-tenant unchanged regression, schema/report compatibility, and quantity-absence certification. |
+| `../phase25_four_company_isolation.py` | Phase 25 simultaneous two-serial/two-quantity posting, report/export, attachment, logout, cache, exception, schema mismatch, and persistent-connection isolation. |
 | `test_http.py` | Real Django endpoints via the test client: pages render, JSON APIs return no 5xx, auth works, a master-data write flow succeeds. |
 
 ## Invariants asserted throughout

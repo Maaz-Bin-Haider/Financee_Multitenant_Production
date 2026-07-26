@@ -275,6 +275,9 @@ def _families():
                 "quantity_reports_dashboards.sql",
             ),
             enabled_path_prefixes=(
+                "/home/",
+                "/attachments/",
+                "/quantity-audit/",
                 "/items/quantity/",
                 "/warehouses/quantity/",
                 "/opening-stock/",

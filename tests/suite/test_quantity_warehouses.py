@@ -383,8 +383,8 @@ def main():
             serial_client.get("/warehouses/quantity/manage/").status_code == 404)
         chk("serial tenant cannot invoke quantity warehouse SQL",
             serial_client.get("/warehouses/quantity/").status_code == 404)
-        chk("unimplemented quantity home remains gated",
-            client.get("/home/").status_code == 403)
+        chk("completed quantity home route is enabled",
+            client.get("/home/").status_code == 200)
         chk("request search path resets to public",
             q("public", "SELECT current_schema()")[0][0] == "public")
     finally:

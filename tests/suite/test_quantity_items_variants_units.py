@@ -480,8 +480,8 @@ def main():
         chk("read-only user cannot mutate quantity masters",
             denied_create.status_code == 403, denied_create.status_code)
         home_response = client.get("/home/")
-        chk("unimplemented quantity routes remain gated",
-            home_response.status_code == 403, home_response.status_code)
+        chk("completed quantity home route is enabled",
+            home_response.status_code == 200, home_response.status_code)
         chk("request search path resets to public",
             q("public", "SELECT current_schema()")[0][0] == "public")
     finally:

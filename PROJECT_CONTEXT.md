@@ -6,8 +6,8 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
-- **Last completed phase:** Phase 24 — Complete Serial Regression.
-- **Next phase:** Phase 25 — Four-Company Isolation and Concurrency.
+- **Last completed phase:** Phase 25 — Four-Company Isolation and Concurrency.
+- **Next phase:** Phase 26 — Performance and Capacity.
 - **Quantity schema development baseline:** version 22.
 - **Phase 22 delivered:** central mode-aware 40-report catalogue, validated
   report-filter contract, accounting/stock/FIFO/sales/purchase/return and
@@ -27,6 +27,14 @@ This file is the persistent engineering context for Financee. Update it on every
   serial hardening/indexes; rejects XFAIL; and proves quantity database, route,
   and navigation surfaces remain absent.
 - **Phase 24 evidence:** `tests/PHASE24_COMPLETE_SERIAL_REGRESSION_RESULTS.md`.
+- **Phase 25 delivered:** a permanent four-company mixed-mode concurrency
+  matrix (two serial, two quantity) covering simultaneous posting, returns,
+  transfers, counts, reports, exports, attachment probes, logouts, persistent
+  connections, rate-limit cache separation, exception reset/scrubbing, schema
+  mismatch rejection, and final `public` search paths. It also fixed
+  tenant-scoped rate-limit keys, real JSONB report response decoding, and the
+  completed quantity home/attachment/audit route allowlist.
+- **Phase 25 evidence:** `tests/PHASE25_FOUR_COMPANY_ISOLATION_RESULTS.md`.
 - **Phase 20 delivered:** quantity attachments and lifecycle cleanup, smart
   descriptions, immutable cross-module audit events, new platform permissions,
   a permission-gated audit UI/API, type-aware feature catalogue/route guards,
@@ -57,7 +65,7 @@ This file is the persistent engineering context for Financee. Update it on every
 - **Phase 17 evidence:** `tests/PHASE17_QUANTITY_TAX_DISCOUNTS_RESULTS.md`.
 - **Preserve:** all serial-company behavior and the completed quantity schema
   version 12 count/adjustment lifecycle.
-- **Do not commit or push:** provide commit text to the owner after Phase 24;
+- **Do not commit or push:** provide commit text to the owner after Phase 25;
   the owner performs the commit.
 
 ## System Identity
