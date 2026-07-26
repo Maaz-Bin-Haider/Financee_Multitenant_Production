@@ -9,7 +9,8 @@
 #     WEB_IMAGE=ghcr.io/maaz-bin-haider/financee-web:<sha> ./deploy_pull.sh
 #
 # Steps:
-#   1. Pull the pinned image (repo files — compose/nginx/tenant SQL — were
+#   1. Reclaim unused image/build-cache space, then pull the pinned image
+#      (repo files — compose/nginx/tenant SQL — were
 #      already git-pulled by the caller; run `git pull --ff-only` first when
 #      invoking by hand).
 #   2. Recreate web (+ nginx if its config changed). Nginx needs no restart
@@ -41,6 +42,27 @@ if [ -n "$PREV_CID" ]; then
     PREV_IMAGE=$(docker inspect -f '{{.Image}}' "$PREV_CID" || true)
 fi
 echo "==> Deploying $WEB_IMAGE (previous image: ${PREV_IMAGE:-none})"
+
+# SHA-tagged releases are not dangling, so `docker image prune -f` never
+# removed them. On a small EC2 root volume they accumulated until containerd
+# could no longer extract the next ARM64 image. `-a` removes every image not
+# referenced by a container; the currently running web image (our rollback
+# target) is therefore retained. Volumes are deliberately never pruned.
+echo "==> Docker disk usage before cleanup"
+docker system df || true
+echo "==> Reclaiming unused images and build cache (volumes are preserved)"
+docker image prune -af
+docker builder prune -af
+
+DOCKER_ROOT=$(docker info --format '{{.DockerRootDir}}')
+AVAILABLE_KB=$(df -Pk "$DOCKER_ROOT" | awk 'NR == 2 {print $4}')
+MIN_AVAILABLE_KB=1048576
+if [ -z "$AVAILABLE_KB" ] || [ "$AVAILABLE_KB" -lt "$MIN_AVAILABLE_KB" ]; then
+    echo "!! Less than 1 GiB is free under $DOCKER_ROOT after safe cleanup."
+    echo "!! Expand the EC2 root EBS volume or inspect large non-Docker files."
+    df -h "$DOCKER_ROOT" || true
+    exit 1
+fi
 
 echo "==> Pulling image"
 $COMPOSE pull web
@@ -74,8 +96,9 @@ fi
 echo "==> Applying tenant SQL to all schemas (idempotent)"
 $COMPOSE exec -T web python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql
 
-echo "==> Pruning old images"
-docker image prune -f
+echo "==> Pruning superseded images and build cache"
+docker image prune -af
+docker builder prune -af
 
 echo "==> Deploy complete."
 $COMPOSE ps

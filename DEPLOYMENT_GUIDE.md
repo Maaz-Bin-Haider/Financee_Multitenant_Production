@@ -274,6 +274,31 @@ existing idempotent-patch discipline).
 
 ## Part E — Troubleshooting on the server
 
+### Deployment fails with `no space left on device`
+
+The registry uses commit-SHA image tags. Those images are not "dangling", so
+plain `docker image prune -f` does not remove superseded releases. On a small
+EC2 root disk they can accumulate until containerd cannot extract a new ARM64
+image.
+
+`deploy_pull.sh` now removes all images not referenced by a container and clears
+unused build cache before every pull. It never prunes volumes, and Docker keeps
+the image used by the currently running web container for health-check rollback.
+If a host failed before receiving that fix, run:
+
+```bash
+cd ~/Financee_Multitenant_Production/deploy
+docker system df
+docker image prune -af
+docker builder prune -af
+df -h
+WEB_IMAGE=ghcr.io/maaz-bin-haider/financee-web:<commit-sha> bash deploy_pull.sh
+```
+
+If less than 1 GiB remains after cleanup, expand the instance's root EBS volume
+before retrying. Do not run `docker volume prune`: PostgreSQL and uploaded media
+use Docker volumes.
+
 ```bash
 cd ~/Financee_Multitenant_Production/deploy
 
