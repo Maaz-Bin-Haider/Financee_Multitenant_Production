@@ -6,21 +6,20 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
-- **Last completed phase:** Phase 13 — Quantity Sale Returns.
-- **Current worktree:** Phases 12–13 complete; owner commit pending.
-- **Next phase to start:** Phase 14 — Quantity Purchase Returns.
-- **Quantity schema baseline:** version 9.
-- **Required Phase 14 scope:** source-linked quantity purchase returns,
-  source-eligible quantity, original purchase cost, vendor/Cash accounting,
-  guarded update/reversal, idempotency, and no serial-number UI.
-- **Start by reading:** the Phase 14 section of
+- **Last completed phase:** Phase 14 — Quantity Purchase Returns.
+- **Current worktree:** Phase 14 complete; owner commit pending.
+- **Next phase to start:** Phase 15 — Warehouse Transfers.
+- **Quantity schema baseline:** version 10.
+- **Required Phase 15 scope:** atomic source/destination warehouse transfers,
+  FIFO cost preservation, backdating guards, and no accounting value change.
+- **Start by reading:** the Phase 15 section of
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`, requirements
-  purchase-return requirements in `SRS_QUANTITY_BASED_COMPANY.md`, the
-  eligibility/FIFO sections of `ARCHITECTURE_QUANTITY_COMPANY.md`, and
-  `tests/PHASE13_QUANTITY_SALE_RETURNS_RESULTS.md`.
+  transfer requirements in `SRS_QUANTITY_BASED_COMPANY.md`, the FIFO/transfer
+  sections of `ARCHITECTURE_QUANTITY_COMPANY.md`, and
+  `tests/PHASE14_QUANTITY_PURCHASE_RETURNS_RESULTS.md`.
 - **Preserve:** all serial-company behavior and the completed quantity schema
-  version 9 sale-return lifecycle.
-- **Do not commit or push:** provide commit text to the owner after Phase 14;
+  version 10 purchase-return lifecycle.
+- **Do not commit or push:** provide commit text to the owner after Phase 15;
   the owner performs the commit.
 
 ## System Identity

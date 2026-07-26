@@ -735,6 +735,9 @@ def _purchase_return_payload_matches_current(return_id, data, return_date):
 
 @login_required
 def createPurchaseReturn(request):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.purchase_returns(request)
     if not request.user.has_perm("auth.view_purchase_return"):
         messages.error(request, "You do not have permission to View Purchase Return")
         return redirect("home:home")
@@ -927,6 +930,9 @@ def createPurchaseReturn(request):
 
 @login_required
 def purchase_return_lookup(request,serial:str):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.serial_check(request, serial)
 
     #validating Serial Number
     try:
@@ -953,6 +959,9 @@ def purchase_return_lookup(request,serial:str):
     
 @login_required
 def get_purchase_return(request):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.navigate(request)
     action = request.GET.get("action")
     current_id = request.GET.get("current_id")
     try:
@@ -1053,6 +1062,9 @@ def get_purchase_return(request):
 
 @login_required
 def get_purchase_return_summary(request):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.summary(request)
     try:
         from_date_str = request.GET.get("from")
         to_date_str = request.GET.get("to")

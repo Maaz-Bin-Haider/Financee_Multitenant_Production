@@ -1,0 +1,39 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% block title %}Purchase Returns{% endblock title %}
+{% block SeperateCssFile %}
+<link rel="stylesheet" href="{% static 'css/purchase_return_styling.css' %}">
+<link rel="stylesheet" href="{% static 'css/opening_stock.css' %}">
+{% endblock SeperateCssFile %}
+{% block body %}
+{% csrf_token %}
+<div class="os-titlebar">
+ <div class="os-titlebar-icon"><i class="fa-solid fa-arrow-rotate-left"></i></div>
+ <div><h2>Quantity Purchase Returns</h2><p>Return only eligible quantities from their original purchase line and cost.</p></div>
+</div>
+<section class="sale-card os-form-card"><div class="sale-card-body">
+ <input type="hidden" id="return-id">
+ <div class="sale-meta-grid" style="display:grid;grid-template-columns:1.5fr 180px;gap:12px;">
+  <div class="sale-field"><label class="sale-field-label">Vendor</label><input id="vendor-name" class="sale-input" maxlength="200"></div>
+  <div class="sale-field"><label class="sale-field-label">Return Date</label><input id="return-date" type="date" class="sale-input"></div>
+ </div>
+ <div class="sale-field" style="margin-top:12px;"><label class="sale-field-label">Description</label><input id="description" class="sale-input" maxlength="500"></div>
+ <div class="items-section-header" style="margin-top:16px;"><div class="items-section-title">Original Purchase Lines</div>
+ {% if can_create %}<button id="add-line" type="button" class="custom-btn">Add Line</button>{% endif %}</div>
+ <div id="return-lines"></div>
+</div><div class="sale-card-footer">
+ <div class="sale-totals-group"><div class="total-chip"><span class="total-chip-label">Document</span><span id="document-number" class="total-chip-value">New</span></div></div>
+ <div class="sale-actions"><button id="previous" type="button" class="custom-btn">Previous</button><button id="next" type="button" class="custom-btn">Next</button>
+ {% if can_delete %}<button id="reverse" type="button" class="custom-btn">Reverse</button>{% endif %}
+ {% if can_create or can_update %}<button id="save" type="button" class="save-and-update-btn">Save Return</button>{% endif %}</div>
+</div></section>
+<section class="os-card os-list-card" style="margin-top:18px;"><div class="os-card-head"><h3>Return Summary</h3><button id="refresh-summary" class="os-icon-btn">Refresh</button></div>
+<div class="os-table-wrap"><table class="os-table"><thead><tr><th>Number</th><th>Date</th><th>Vendor</th><th>Status</th><th>Total</th></tr></thead><tbody id="summary-body"></tbody></table></div></section>
+<script>window.QPRET={urls:{
+ create:"{% url 'purchaseReturn:create_purchase_return' %}",
+ navigate:"{% url 'purchaseReturn:get_purchase_return' %}",
+ summary:"{% url 'purchaseReturn:get_purchase_return_summary' %}",
+ sources:"{% url 'purchaseReturn:quantity_sources' %}"
+}};</script>
+<script src="{% static 'js/quantity_purchase_returns.js' %}"></script>
+{% endblock body %}

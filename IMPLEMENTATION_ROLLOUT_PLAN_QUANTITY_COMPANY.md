@@ -16,15 +16,15 @@
 
 ## Execution Resume Checkpoint
 
-- **Last completed:** Phase 13 — Quantity Sale Returns
+- **Last completed:** Phase 14 — Quantity Purchase Returns
 - **Commit:** owner commit pending
-- **Next authorized phase:** Phase 14 — Quantity Purchase Returns
-- **Quantity schema baseline:** version 9
+- **Next authorized phase:** Phase 15 — Warehouse Transfers
+- **Quantity schema baseline:** version 10
 
-**Phase 13 evidence:** `tests/PHASE13_QUANTITY_SALE_RETURNS_RESULTS.md`.
+**Phase 14 evidence:** `tests/PHASE14_QUANTITY_PURCHASE_RETURNS_RESULTS.md`.
 
-The next implementation session shall begin at Phase 14 and shall not repeat or
-redesign completed Phase 0–13 work unless a regression directly requires a
+The next implementation session shall begin at Phase 15 and shall not repeat or
+redesign completed Phase 0–14 work unless a regression directly requires a
 scoped correction.
 
 ---

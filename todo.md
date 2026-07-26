@@ -40,6 +40,11 @@ high-level checklist and shall be updated from the detailed plan’s results.
 
 ### Detailed Plan Execution Status
 
+> **PHASE 14 COMPLETE (2026-07-26):** Original-source quantity purchase
+> returns now enforce eligible stock, preserve purchase cost, post exact
+> AP/Cash/Inventory reversals, support guarded correction/reversal, serialize
+> concurrency, and preserve serial behavior. Phase 15 is next.
+
 > **PHASE 13 COMPLETE (2026-07-26):** Source-linked partial quantity sale
 > returns now enforce cumulative limits, restore exact historical FIFO cost,
 > support destination warehouses, reverse accounting, guard source sales,
@@ -50,10 +55,10 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **NEXT SESSION CHECKPOINT:** Phases 0–13 are complete; owner commits are
-> pending. Start with **Phase 14 — Quantity Purchase Returns**. Do not repeat
-> Phase 13. Read the Phase 14 rollout section and SRS purchase-return
-> requirements before making changes. After completing Phase 14, provide commit
+> **NEXT SESSION CHECKPOINT:** Phases 0–14 are complete; owner commit is
+> pending. Start Phase 15 — Warehouse Transfers. Do not repeat Phase 14.
+> Read the Phase 15 rollout section and SRS transfer requirements before
+> making changes. After completing Phase 15, provide commit
 > text only; do not commit or push.
 
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
@@ -145,7 +150,15 @@ high-level checklist and shall be updated from the detailed plan’s results.
   update/reversal, navigation/summary, and a no-serial UI. Focused tests passed
   23/23 and all serial/mixed-family gates remained green. See
   `tests/PHASE13_QUANTITY_SALE_RETURNS_RESULTS.md`.
-- [ ] Phases 14–32: not started; see
+- [x] **Phase 14 — Quantity Purchase Returns:** completed 2026-07-26.
+  Added quantity schema version 10 with persistent original-source allocation
+  directives, source-aware FIFO replay, original purchase-cost valuation,
+  AP/Cash/Inventory reversal accounting, idempotency, guarded correction and
+  reversal, concurrency control, navigation/summary, and a no-serial UI.
+  Focused tests passed 22/22 and all 27 mixed-family modules plus complete
+  serial gates remained green. See
+  `tests/PHASE14_QUANTITY_PURCHASE_RETURNS_RESULTS.md`.
+- [ ] Phases 15–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

@@ -56,8 +56,8 @@ def _families():
         INVENTORY_MODE_QUANTITY: SchemaFamily(
             key=INVENTORY_MODE_QUANTITY,
             template_path=SQL_DIR / "quantity_tenant_template.sql",
-            hardening_path=SQL_DIR / "quantity_sale_returns.sql",
-            required_version=9,
+            hardening_path=SQL_DIR / "quantity_purchase_returns.sql",
+            required_version=10,
             metadata_table="tenant_schema_metadata",
             runtime_enabled=False,
             required_tables=(
@@ -89,6 +89,10 @@ def _families():
                 "sale_return_lines",
                 "sale_return_cost_restorations",
                 "sale_return_revisions",
+                "purchase_return_invoices",
+                "purchase_return_lines",
+                "purchase_return_source_allocations",
+                "purchase_return_revisions",
             ),
             required_sequences=(
                 "quantity_foundation_id_seq",
@@ -117,6 +121,10 @@ def _families():
                 "sale_return_lines_sale_return_line_id_seq",
                 "sale_return_cost_restorations_restoration_id_seq",
                 "sale_return_revisions_sale_return_revision_id_seq",
+                "purchase_return_invoices_purchase_return_id_seq",
+                "purchase_return_lines_purchase_return_line_id_seq",
+                "purchase_return_source_allocations_source_allocation_id_seq",
+                "purchase_return_revisions_purchase_return_revision_id_seq",
             ),
             required_functions=(
                 "quantity_schema_fingerprint",
@@ -168,8 +176,15 @@ def _families():
                 "quantity_sale_return_sources",
                 "quantity_sale_return_navigate",
                 "quantity_sale_return_summary",
+                "quantity_create_purchase_return",
+                "quantity_update_purchase_return",
+                "quantity_reverse_purchase_return",
+                "quantity_purchase_return_details",
+                "quantity_purchase_return_sources",
+                "quantity_purchase_return_navigate",
+                "quantity_purchase_return_summary",
             ),
-            rollout_files=("quantity_sale_returns.sql",),
+            rollout_files=("quantity_purchase_returns.sql",),
             enabled_path_prefixes=(
                 "/items/quantity/",
                 "/warehouses/quantity/",
@@ -177,6 +192,7 @@ def _families():
                 "/purchase/",
                 "/sale/",
                 "/saleReturn/",
+                "/purchaseReturn/",
             ),
             bootstrap_paths=(
                 SQL_DIR / "quantity_item_master.sql",
@@ -186,6 +202,7 @@ def _families():
                 SQL_DIR / "quantity_purchases.sql",
                 SQL_DIR / "quantity_sales.sql",
                 SQL_DIR / "quantity_sale_returns.sql",
+                SQL_DIR / "quantity_purchase_returns.sql",
             ),
         ),
     }

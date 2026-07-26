@@ -65,7 +65,7 @@ def main():
   c1=Company.objects.create(name=f"PH13 {TAG} A",inventory_mode=INVENTORY_MODE_QUANTITY,base_currency=cur,tax_environment="non_tax")
   c2=Company.objects.create(name=f"PH13 {TAG} B",inventory_mode=INVENTORY_MODE_QUANTITY,base_currency=cur,tax_environment="non_tax")
   s=c1.schema_name; sb=c2.schema_name
-  chk("fresh schema reaches return version",q(s,"SELECT version FROM tenant_schema_metadata")[0][0]==9)
+  chk("fresh schema includes sale-return version",q(s,"SELECT version FROM tenant_schema_metadata")[0][0]>=9)
   chk("fresh return schema verifies",verify_company_schema(c1,use_cache=False).ok)
   v,w=setup_scope(s,"RET","PCS")
   purchase(s,"p1",v,w,3,100,"2026-07-01");purchase(s,"p2",v,w,5,120,"2026-07-02")

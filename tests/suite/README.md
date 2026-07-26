@@ -55,6 +55,7 @@ PASS/FAIL summary. Exit code is non-zero if any real check fails.
 | `test_quantity_purchases.py` | Phase 11 domestic quantity credit/cash purchases, FIFO/AP/Cash accounting, idempotency, guarded edit/reversal, navigation, concurrency, HTTP, and isolation. |
 | `test_quantity_sales.py` | Phase 12 domestic quantity credit/cash sales, warehouse availability, FIFO COGS, AR/Cash/Revenue accounting, idempotency, guarded edit/reversal, final-stock concurrency, HTTP, and isolation. |
 | `test_quantity_sale_returns.py` | Phase 13 source-linked partial quantity sale returns, cumulative limits, exact historical FIFO-cost restoration, accounting, concurrency, reversal guards, HTTP, and isolation. |
+| `test_quantity_purchase_returns.py` | Phase 14 original-source quantity purchase returns, eligibility, original-cost accounting, concurrency, correction/reversal, HTTP, and isolation. |
 | `test_http.py` | Real Django endpoints via the test client: pages render, JSON APIs return no 5xx, auth works, a master-data write flow succeeds. |
 
 ## Invariants asserted throughout
