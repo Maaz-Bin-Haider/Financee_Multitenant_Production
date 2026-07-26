@@ -153,7 +153,7 @@ def main():
             and q(schema, """
                 SELECT count(*), count(DISTINCT seed_key)
                   FROM quantity_seed_registry
-            """)[0] == (11, 11))
+            """)[0] == (12, 12))
 
         product_id = product(schema)
         chk("product stores normalized identity",

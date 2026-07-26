@@ -1,0 +1,17 @@
+{% extends 'base/base.html' %}{% load static %}
+{% block title %}Physical Counts{% endblock %}
+{% block SeperateCssFile %}<link rel="stylesheet" href="{% static 'css/opening_stock.css' %}">{% endblock %}
+{% block body %}{% csrf_token %}
+<div class="os-titlebar"><div class="os-titlebar-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+<div><h2>Physical Counts & Adjustments</h2><p>Snapshot warehouse stock, record counted quantities, then approve audited FIFO adjustments.</p></div></div>
+<section class="os-card os-form-card"><div class="os-card-body"><input id="count-id" type="hidden">
+<div class="os-form-grid"><div class="os-field"><label>Count Date</label><input id="count-date" type="date"></div>
+<div class="os-field"><label>Cutoff Date</label><input id="cutoff-date" type="date"></div>
+<div class="os-field"><label>Warehouse</label><select id="warehouse"></select></div>
+<div class="os-field"><label>Description</label><input id="description"></div></div>
+<div class="items-section-header"><div class="items-section-title">Count Lines</div>{% if can_create %}<button id="add-line" class="custom-btn">Add Line</button>{% endif %}</div><div id="count-lines"></div></div>
+<div class="os-card-footer"><span id="document-number">New</span><div><button id="previous" class="custom-btn">Previous</button><button id="next" class="custom-btn">Next</button>
+{% if can_reverse %}<button id="reverse" class="custom-btn">Reverse</button>{% endif %}{% if can_approve %}<button id="approve" class="custom-btn">Approve & Post</button>{% endif %}{% if can_create %}<button id="save" class="save-and-update-btn">Save Count</button>{% endif %}</div></div></section>
+<section class="os-card os-list-card"><div class="os-card-head"><h3>Count Summary</h3><button id="refresh-summary" class="os-icon-btn">Refresh</button></div><div class="os-table-wrap"><table class="os-table"><thead><tr><th>Number</th><th>Date</th><th>Warehouse</th><th>Status</th><th>Gain</th><th>Loss</th></tr></thead><tbody id="summary-body"></tbody></table></div></section>
+<script>window.QCOUNT={urls:{page:"{% url 'quantity_counts:page' %}",navigate:"{% url 'quantity_counts:navigate' %}",summary:"{% url 'quantity_counts:summary' %}",warehouses:"{% url 'quantity_warehouses:list' %}",catalog:"{% url 'items:quantity_catalog' %}"}};</script>
+<script src="{% static 'js/quantity_counts.js' %}"></script>{% endblock %}

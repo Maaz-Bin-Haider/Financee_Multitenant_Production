@@ -16,15 +16,15 @@
 
 ## Execution Resume Checkpoint
 
-- **Last completed:** Phase 15 — Warehouse Transfers
+- **Last completed:** Phase 16 — Physical Counts and Adjustments
 - **Commit:** owner commit pending
-- **Next authorized phase:** Phase 16 — Physical Counts and Adjustments
-- **Quantity schema baseline:** version 11
+- **Next authorized phase:** Phase 17 — Tax and Discount Engine
+- **Quantity schema baseline:** version 12
 
-**Phase 15 evidence:** `tests/PHASE15_QUANTITY_TRANSFERS_RESULTS.md`.
+**Phase 16 evidence:** `tests/PHASE16_QUANTITY_COUNTS_ADJUSTMENTS_RESULTS.md`.
 
-The next implementation session shall begin at Phase 16 and shall not repeat or
-redesign completed Phase 0–15 work unless a regression directly requires a
+The next implementation session shall begin at Phase 17 and shall not repeat or
+redesign completed Phase 0–16 work unless a regression directly requires a
 scoped correction.
 
 ---

@@ -51,7 +51,7 @@ python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql --family s
 
 echo "[entrypoint] applying required quantity hardening SQL ..."
 python manage.py apply_sql_all_tenants \
-    tenancy/sql/quantity_warehouse_transfers.sql --family quantity
+    tenancy/sql/quantity_counts_adjustments.sql --family quantity
 
 echo "[entrypoint] starting: $*"
 exec "$@"

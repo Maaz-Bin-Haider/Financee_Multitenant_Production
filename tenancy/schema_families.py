@@ -56,8 +56,8 @@ def _families():
         INVENTORY_MODE_QUANTITY: SchemaFamily(
             key=INVENTORY_MODE_QUANTITY,
             template_path=SQL_DIR / "quantity_tenant_template.sql",
-            hardening_path=SQL_DIR / "quantity_warehouse_transfers.sql",
-            required_version=11,
+            hardening_path=SQL_DIR / "quantity_counts_adjustments.sql",
+            required_version=12,
             metadata_table="tenant_schema_metadata",
             runtime_enabled=False,
             required_tables=(
@@ -97,6 +97,10 @@ def _families():
                 "warehouse_transfer_lines",
                 "warehouse_transfer_cost_segments",
                 "warehouse_transfer_revisions",
+                "physical_counts",
+                "physical_count_lines",
+                "inventory_adjustments",
+                "inventory_adjustment_lines",
             ),
             required_sequences=(
                 "quantity_foundation_id_seq",
@@ -133,6 +137,10 @@ def _families():
                 "warehouse_transfer_lines_transfer_line_id_seq",
                 "warehouse_transfer_cost_segments_segment_id_seq",
                 "warehouse_transfer_revisions_transfer_revision_id_seq",
+                "physical_counts_count_id_seq",
+                "physical_count_lines_count_line_id_seq",
+                "inventory_adjustments_adjustment_id_seq",
+                "inventory_adjustment_lines_adjustment_line_id_seq",
             ),
             required_functions=(
                 "quantity_schema_fingerprint",
@@ -197,8 +205,14 @@ def _families():
                 "quantity_transfer_details",
                 "quantity_transfer_navigate",
                 "quantity_transfer_summary",
+                "quantity_create_physical_count",
+                "quantity_approve_physical_count",
+                "quantity_reverse_physical_count",
+                "quantity_physical_count_details",
+                "quantity_physical_count_navigate",
+                "quantity_physical_count_summary",
             ),
-            rollout_files=("quantity_warehouse_transfers.sql",),
+            rollout_files=("quantity_counts_adjustments.sql",),
             enabled_path_prefixes=(
                 "/items/quantity/",
                 "/warehouses/quantity/",
@@ -208,6 +222,7 @@ def _families():
                 "/saleReturn/",
                 "/purchaseReturn/",
                 "/transfers/",
+                "/physical-counts/",
             ),
             bootstrap_paths=(
                 SQL_DIR / "quantity_item_master.sql",
@@ -219,6 +234,7 @@ def _families():
                 SQL_DIR / "quantity_sale_returns.sql",
                 SQL_DIR / "quantity_purchase_returns.sql",
                 SQL_DIR / "quantity_warehouse_transfers.sql",
+                SQL_DIR / "quantity_counts_adjustments.sql",
             ),
         ),
     }

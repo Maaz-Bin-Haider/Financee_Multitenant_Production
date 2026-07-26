@@ -1,7 +1,7 @@
 # Financee Multitenant Accounting and Inventory System
 
-> Development resume point: Phases 0–15 of the quantity-company rollout are
-> complete. The next implementation phase is **Phase 16 — Physical Counts and Adjustments**.
+> Development resume point: Phases 0–16 of the quantity-company rollout are
+> complete. The next implementation phase is **Phase 17 — Tax and Discount Engine**.
 > Read `PROJECT_CONTEXT.md` and
 > `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md` before starting.
 

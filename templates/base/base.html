@@ -124,6 +124,11 @@
                 <i class="fa-solid fa-truck-ramp-box"></i> Warehouse Transfers
             </a>
             {% endif %}
+            {% if perms.auth.view_physical_count %}
+            <a href="{% url 'quantity_counts:page' %}" class="{% if request.resolver_match.namespace == 'quantity_counts' %}active{% endif %}">
+                <i class="fa-solid fa-clipboard-check"></i> Physical Counts
+            </a>
+            {% endif %}
             <a href="{% url 'items:itemsDash' %}" class="{% if request.resolver_match.namespace == 'items' %}active{% endif %}">
                 <i class="fa-solid fa-box"></i> Items
             </a>

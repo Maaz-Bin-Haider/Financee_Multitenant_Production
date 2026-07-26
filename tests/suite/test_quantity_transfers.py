@@ -47,7 +47,7 @@ def main():
  c1=c2=user=None
  try:
   cur=Currency.objects.get(pk="PKR");c1=Company.objects.create(name=f"PH15 {TAG} A",inventory_mode=INVENTORY_MODE_QUANTITY,base_currency=cur,tax_environment="non_tax");c2=Company.objects.create(name=f"PH15 {TAG} B",inventory_mode=INVENTORY_MODE_QUANTITY,base_currency=cur,tax_environment="non_tax")
-  s=c1.schema_name;sb=c2.schema_name;chk("fresh schema reaches transfer version",q(s,"SELECT version FROM tenant_schema_metadata")[0][0]==11);chk("schema verifies",verify_company_schema(c1,use_cache=False).ok)
+  s=c1.schema_name;sb=c2.schema_name;chk("fresh schema includes transfer version",q(s,"SELECT version FROM tenant_schema_metadata")[0][0]>=11);chk("schema verifies",verify_company_schema(c1,use_cache=False).ok)
   v,w1=setup_scope(s,"TRF","PCS");w2=wh(s,"DEST");purchase(s,"p1",v,w1,2,100,"2026-07-01");purchase(s,"p2",v,w1,3,120,"2026-07-02")
   gl=(account(s,"1000"),account(s,"1200"),account(s,"2000"),account(s,"4000"),account(s,"5000"),account(s,"1400"));value=fifo(s,v,w1)+fifo(s,v,w2)
   t=transfer(s,payload("t1",w1,w2,[{"variant_id":v,"quantity":"4"}]))

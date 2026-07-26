@@ -6,20 +6,20 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
-- **Last completed phase:** Phase 15 — Warehouse Transfers.
-- **Current worktree:** Phases 14–15 complete; owner commit pending.
-- **Next phase to start:** Phase 16 — Physical Counts and Adjustments.
-- **Quantity schema baseline:** version 11.
-- **Required Phase 16 scope:** controlled physical counts, approval, variance
-  adjustments, FIFO valuation, authorization, and accounting reconciliation.
-- **Start by reading:** the Phase 16 section of
+- **Last completed phase:** Phase 16 — Physical Counts and Adjustments.
+- **Current worktree:** Phase 16 complete; owner commit pending.
+- **Next phase to start:** Phase 17 — Tax and Discount Engine.
+- **Quantity schema baseline:** version 12.
+- **Required Phase 17 scope:** tax/non-tax configuration, inclusive/exclusive
+  calculations, discounts, historical snapshots, returns, and control accounts.
+- **Start by reading:** the Phase 17 section of
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`, requirements
-  count/adjustment requirements in `SRS_QUANTITY_BASED_COMPANY.md`, the FIFO/count
+  tax/discount requirements in `SRS_QUANTITY_BASED_COMPANY.md`, the calculation
   sections of `ARCHITECTURE_QUANTITY_COMPANY.md`, and
-  `tests/PHASE15_QUANTITY_TRANSFERS_RESULTS.md`.
+  `tests/PHASE16_QUANTITY_COUNTS_ADJUSTMENTS_RESULTS.md`.
 - **Preserve:** all serial-company behavior and the completed quantity schema
-  version 11 transfer lifecycle.
-- **Do not commit or push:** provide commit text to the owner after Phase 16;
+  version 12 count/adjustment lifecycle.
+- **Do not commit or push:** provide commit text to the owner after Phase 17;
   the owner performs the commit.
 
 ## System Identity

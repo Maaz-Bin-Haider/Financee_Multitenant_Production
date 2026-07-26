@@ -55,11 +55,10 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **NEXT SESSION CHECKPOINT:** Phases 0–14 are complete; owner commit is
-> Phase 15 is complete. Start **Phase 16 — Physical Counts and Adjustments**.
-> Do not repeat Phase 15.
-> Read the Phase 15 rollout section and SRS transfer requirements before
-> making changes. After completing Phase 15, provide commit
+> **NEXT SESSION CHECKPOINT:** Phases 0–16 are complete; owner commit is
+> pending. Start **Phase 17 — Tax and Discount Engine.** Do not repeat Phase 16.
+> Read the Phase 17 rollout section and SRS tax/discount requirements before
+> making changes. After completing Phase 17, provide commit
 > text only; do not commit or push.
 
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
@@ -166,7 +165,14 @@ high-level checklist and shall be updated from the detailed plan’s results.
   navigation/summary, and quantity UI. Focused tests passed 19/19; all 28
   modules and complete serial gates remained green. See
   `tests/PHASE15_QUANTITY_TRANSFERS_RESULTS.md`.
-- [ ] Phases 16–32: not started; see
+- [x] **Phase 16 — Physical Counts and Adjustments:** completed 2026-07-26.
+  Added quantity schema version 12 with reproducible cutoff snapshots,
+  approval-only posting, FIFO-valued shortages, entered-cost surpluses,
+  Inventory Adjustment Gain/Loss journals, guarded reversal, explicit
+  permissions, idempotency, navigation/summary, and quantity UI. Focused tests
+  passed 17/17; all 29 modules and complete serial gates remained green. See
+  `tests/PHASE16_QUANTITY_COUNTS_ADJUSTMENTS_RESULTS.md`.
+- [ ] Phases 17–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements
