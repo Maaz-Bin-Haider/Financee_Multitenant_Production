@@ -16,9 +16,9 @@
 
 ## Execution Resume Checkpoint
 
-- **Last completed:** Phase 22 — Quantity Reports and Dashboards
+- **Last completed:** Phase 23 — Complete Quantity Suite
 - **Commit:** pending owner commit
-- **Current phase:** Phase 23 — Complete Quantity Suite
+- **Current phase:** Phase 24 — Complete Serial Regression
 - **Quantity schema development baseline:** version 22
 
 **Phase 16 evidence:** `tests/PHASE16_QUANTITY_COUNTS_ADJUSTMENTS_RESULTS.md`.
@@ -34,6 +34,8 @@
 **Phase 21 evidence:** `tests/PHASE21_TYPE_AWARE_UI_RESULTS.md`.
 
 **Phase 22 evidence:** `tests/PHASE22_QUANTITY_REPORTS_DASHBOARDS_RESULTS.md`.
+
+**Phase 23 evidence:** `tests/PHASE23_COMPLETE_QUANTITY_SUITE_RESULTS.md`.
 
 Phase 18 is complete. Schema v14 includes immutable foreign/base snapshots,
 partial and final cash/bank settlement allocations, realized exchange

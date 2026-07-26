@@ -55,10 +55,10 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **CURRENT CHECKPOINT:** Phases 0–22 are complete. **Phase 23 — Complete
-> Quantity Suite is next.** Phase 22 delivered the complete quantity report
-> catalogue, reconciliation reports, quantity dashboards, filters,
-> permissions/features, and CSV/Excel exports.
+> **CURRENT CHECKPOINT:** Phases 0–23 are complete. **Phase 24 — Complete
+> Serial Regression is next.** Phase 23 certified the entire quantity system
+> across two isolated tenants, complete lifecycles, hostile inputs, reports,
+> repeated upgrades/hardening, reconciliation, and identical fingerprints.
 > Do not commit or push.
 
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
@@ -214,7 +214,16 @@ high-level checklist and shall be updated from the detailed plan’s results.
   and CSV plus Excel exports. Focused checks passed 25/25 and all 35
   mixed-family modules passed. See
   `tests/PHASE22_QUANTITY_REPORTS_DASHBOARDS_RESULTS.md`.
-- [ ] Phases 23–32: not started; see
+- [x] **Phase 23 — Complete Quantity Suite:** completed 2026-07-26.
+  Added a permanent two-tenant certification lifecycle covering quantity
+  purchase, sale, both returns, transfer, count/adjustment, shared financials,
+  all 40 reports, hostile inputs, isolation, reconciliation, repeated
+  reporting/platform rollout, monotonic registered upgrades, P0/P1 evidence,
+  identical required fingerprints, and zero release-blocking XFAIL. Focused
+  checks passed 20/20; all 36 mixed-family modules, system 111/111, and deep
+  serial lifecycle 2702/2702 passed. See
+  `tests/PHASE23_COMPLETE_QUANTITY_SUITE_RESULTS.md`.
+- [ ] Phases 24–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements
