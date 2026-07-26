@@ -63,11 +63,11 @@ def make_client():
 
 def check_registry_and_model():
     keys = all_feature_keys()
-    chk("registry has the 8 top-level groups",
+    chk("registry has shared and quantity-aware top-level groups",
         set(FEATURE_GROUPS) == {
             "accounts_reports", "stock_reports", "monthly_reports",
             "sales_reports", "opening_stock", "opening_cash",
-            "excel_export", "attachments",
+            "excel_export", "attachments", "quantity_controls",
         }, sorted(FEATURE_GROUPS))
     chk("every enforced path maps to a registered key",
         all(key in keys for _, key in FEATURE_PATH_PREFIXES),

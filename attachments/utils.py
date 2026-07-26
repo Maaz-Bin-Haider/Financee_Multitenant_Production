@@ -52,6 +52,17 @@ DOCUMENT_CONFIG = {
     },
 }
 
+QUANTITY_DOCUMENT_CONFIG = {
+    "sale": {"table": "sale_invoices", "column": "sale_invoice_id"},
+    "purchase": {"table": "purchase_invoices", "column": "purchase_invoice_id"},
+    "sale_return": {
+        "table": "sale_return_invoices", "column": "sale_return_id",
+    },
+    "purchase_return": {
+        "table": "purchase_return_invoices", "column": "purchase_return_id",
+    },
+}
+
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 PDF_EXTENSIONS = {".pdf"}
 MAX_IMAGE_SIZE = 10 * 1024 * 1024
@@ -94,6 +105,12 @@ def user_can_view_document(user, document_type):
 
 def document_exists(document_type, document_id):
     config = check_document_type(document_type)
+    quantity = QUANTITY_DOCUMENT_CONFIG.get(document_type)
+    if quantity:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT to_regclass(%s)", [quantity["table"]])
+            if cursor.fetchone()[0]:
+                config = {**config, **quantity}
     query = f"SELECT 1 FROM {config['table']} WHERE {config['column']} = %s LIMIT 1"
     with connection.cursor() as cursor:
         cursor.execute(query, [document_id])
@@ -132,6 +149,14 @@ def validate_request_attachments(request):
         return
     if not attachments_feature_enabled(request):
         raise ValidationError("Document attachments are not enabled for your company.")
+    company = getattr(request, "tenant_company", None)
+    if (
+        company is not None
+        and getattr(company, "inventory_mode", None) == "quantity"
+        and not request.user.is_superuser
+        and not request.user.has_perm("auth.manage_quantity_attachments")
+    ):
+        raise ValidationError("You do not have permission to manage attachments.")
     if len(request.FILES.getlist("attachment_image")) > 1:
         raise ValidationError("Only one image attachment is allowed.")
     if len(request.FILES.getlist("attachment_pdf")) > 1:

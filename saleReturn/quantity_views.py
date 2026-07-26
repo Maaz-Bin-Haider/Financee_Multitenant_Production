@@ -6,6 +6,11 @@ import uuid
 from django.db import DatabaseError, connection, transaction
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.core.exceptions import ValidationError
+from attachments.utils import (
+    delete_document_attachments, parse_json_or_multipart_payload,
+    save_document_attachments, validate_request_attachments,
+)
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
 from tenancy.quantity_tax import (
@@ -24,7 +29,7 @@ def _json(value):
 
 def _payload(request):
     try:
-        data = json.loads(request.body or "{}")
+        data = parse_json_or_multipart_payload(request)
     except (TypeError, ValueError):
         raise ValueError("A valid JSON object is required.")
     if not isinstance(data, dict):
@@ -61,9 +66,14 @@ def sale_returns(request):
                     getattr(request, "tenant_company", None),
                     "base_currency", None,
                 ),
+                "can_manage_attachments": (
+                    request.user.is_superuser
+                    or request.user.has_perm("auth.manage_quantity_attachments")
+                ),
             },
         )
     try:
+        validate_request_attachments(request)
         data = _payload(request)
         action = (data.get("action") or "submit").lower()
         sale_return_id = data.get("sale_return_id")
@@ -85,6 +95,9 @@ def sale_returns(request):
                 result.update(finalize_return(
                     "sale_return", int(sale_return_id), request.user.pk
                 ))
+            save_document_attachments(
+                request, "sale_return", int(sale_return_id)
+            )
             return JsonResponse({"success": True, **result})
         if action == "submit":
             if not _can(request, "auth.create_sale_return"):
@@ -103,6 +116,9 @@ def sale_returns(request):
                         "sale_return", result["sale_return_id"],
                         request.user.pk,
                     ))
+            save_document_attachments(
+                request, "sale_return", result["sale_return_id"]
+            )
             return JsonResponse({"success": True, **result})
         if action in ("delete", "reverse"):
             if not _can(request, "auth.delete_sale_return"):
@@ -120,10 +136,12 @@ def sale_returns(request):
                 result["reversal_tax_journal_id"] = reverse_return(
                     "sale_return", int(sale_return_id), None, request.user.pk
                 )
+            delete_document_attachments("sale_return", int(sale_return_id))
             return JsonResponse({"success": True, **result})
         return _error("Unknown sale-return action.")
-    except (ValueError, TypeError):
-        return _error("Sale return request is invalid.")
+    except (ValueError, TypeError, ValidationError) as exc:
+        return _error(str(exc) if isinstance(exc, ValidationError)
+                      else "Sale return request is invalid.")
     except DatabaseError:
         return _error(
             "Sale return data is invalid or its stock dependencies prevent this "

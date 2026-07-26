@@ -55,9 +55,10 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **CURRENT CHECKPOINT:** Phases 0–19 are complete. **Phase 20 — Attachments,
-> Descriptions, Audit, Permissions, and Features is next.** Phase 19 delivered
-> schema v15 shared financial modules and universal closed-period enforcement.
+> **CURRENT CHECKPOINT:** Phases 0–20 are complete. **Phase 21 — Type-Aware
+> Backend and Quantity UI is next.** Phase 20 delivered schema v20 quantity
+> attachments, smart descriptions, immutable audit, permissions, type-aware
+> feature controls, and subscription/direct-route enforcement.
 > Do not commit or push.
 
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
@@ -193,7 +194,13 @@ high-level checklist and shall be updated from the detailed plan’s results.
   financial mutations. Focused tests passed 27/27; all 32 mixed-family modules,
   HTTP 70/70, system 111/111, and deep serial 2702/2702 passed. See
   `tests/PHASE19_QUANTITY_FINANCIAL_MODULES_RESULTS.md`.
-- [ ] Phases 20–32: not started; see
+- [x] **Phase 20 — Attachments, Descriptions, Audit, Permissions, and
+  Features:** completed 2026-07-26. Added quantity document attachments and
+  cleanup, smart descriptions, immutable mutation audit, permission-gated
+  audit UI/API, type-aware features, and shared subscription enforcement.
+  Focused tests passed 19/19 and all 33 mixed-family modules passed. See
+  `tests/PHASE20_QUANTITY_PLATFORM_CONTROLS_RESULTS.md`.
+- [ ] Phases 21–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

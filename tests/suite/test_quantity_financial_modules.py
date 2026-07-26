@@ -41,7 +41,7 @@ def main():
  try:
   c=Company.objects.create(name=f"PH19 {TAG}",inventory_mode=INVENTORY_MODE_QUANTITY,
    base_currency=Currency.objects.get(pk="PKR"),tax_environment="non_tax");s=c.schema_name
-  chk("fresh schema reaches financial version",q(s,"SELECT version FROM tenant_schema_metadata")[0][0]==15)
+  chk("fresh schema reaches current platform version",q(s,"SELECT version FROM tenant_schema_metadata")[0][0]==20)
   chk("financial schema verifies",verify_company_schema(c,use_cache=False).ok)
   call(s,"add_party_from_json",{"party_name":"CUSTOMER","party_type":"Customer","opening_balance":"1000","balance_type":"Debit","created_by_id":1})
   call(s,"add_party_from_json",{"party_name":"VENDOR","party_type":"Vendor","opening_balance":"800","balance_type":"Credit","created_by_id":1})

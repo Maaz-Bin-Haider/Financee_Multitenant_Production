@@ -5,6 +5,11 @@ import uuid
 from django.db import DatabaseError, connection, transaction
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.core.exceptions import ValidationError
+from attachments.utils import (
+    delete_document_attachments, parse_json_or_multipart_payload,
+    save_document_attachments, validate_request_attachments,
+)
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
 from tenancy.quantity_tax import (
@@ -40,9 +45,14 @@ def purchase_returns(request):
             {"can_create": _can(request, "auth.create_purchase_return"),
              "can_update": _can(request, "auth.update_purchase_return"),
              "can_delete": _can(request, "auth.delete_purchase_return"),
+             "can_manage_attachments": (
+                 request.user.is_superuser
+                 or request.user.has_perm("auth.manage_quantity_attachments")
+             ),
              "base_currency": getattr(request.tenant_company, "base_currency", None)})
     try:
-        data = json.loads(request.body or "{}")
+        validate_request_attachments(request)
+        data = parse_json_or_multipart_payload(request)
         if not isinstance(data, dict):
             raise ValueError
         data["created_by_id"] = request.user.pk
@@ -74,6 +84,8 @@ def purchase_returns(request):
                         else result["purchase_return_id"],
                         request.user.pk,
                     ))
+            attachment_id = int(return_id) if return_id else result["purchase_return_id"]
+            save_document_attachments(request, "purchase_return", attachment_id)
             return JsonResponse({"success": True, **result})
         if action in ("delete", "reverse"):
             if not _can(request, "auth.delete_purchase_return"):
@@ -86,10 +98,12 @@ def purchase_returns(request):
                 result["reversal_tax_journal_id"] = reverse_return(
                     "purchase_return", int(return_id), None, request.user.pk
                 )
+            delete_document_attachments("purchase_return", int(return_id))
             return JsonResponse({"success": True, **result})
         return _error("Unknown purchase-return action.")
-    except (ValueError, TypeError):
-        return _error("Purchase return request is invalid.")
+    except (ValueError, TypeError, ValidationError) as exc:
+        return _error(str(exc) if isinstance(exc, ValidationError)
+                      else "Purchase return request is invalid.")
     except DatabaseError:
         return _error("Purchase return is invalid or its source stock is unavailable.")
 

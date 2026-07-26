@@ -35,6 +35,7 @@
     document.getElementById("customer-name").value=d.customer_name;
     document.getElementById("description").value=d.description||"";
     box.innerHTML=""; (d.lines||[]).forEach(addLine);
+    if(window.DocumentAttachments)DocumentAttachments.load(d.sale_return_id);
   }
   async function navigate(action){
     const id=document.getElementById("return-id").value;
@@ -54,7 +55,8 @@
     const payload={action:"submit",sale_return_id:document.getElementById("return-id").value||null,
       return_date:document.getElementById("return-date").value,customer_name:document.getElementById("customer-name").value,
       description:document.getElementById("description").value,idempotency_key:crypto.randomUUID(),items:lines()};
-    const r=await get(cfg.urls.create,{method:"POST",headers:{"Content-Type":"application/json","X-CSRFToken":csrf()},body:JSON.stringify(payload)});
+    const options=window.DocumentAttachments?DocumentAttachments.requestOptions(payload,csrf()):{method:"POST",headers:{"Content-Type":"application/json","X-CSRFToken":csrf()},body:JSON.stringify(payload)};
+    const r=await get(cfg.urls.create,options);
     if(!r.ok)return alert(r.data.message||"Return failed."); document.getElementById("return-id").value=r.data.sale_return_id; await summary(); await navigate("current");
   });
   document.getElementById("reverse")?.addEventListener("click",async()=>{
@@ -63,5 +65,6 @@
     if(!r.ok)return alert(r.data.message||"Reversal failed.");await summary();await navigate("current");
   });
   Promise.all([get(cfg.urls.sources),get(cfg.urls.warehouses)]).then(([a,b])=>{sources=a.data.sources||[];warehouses=b.data.warehouses||[];addLine();});
+  if(window.DocumentAttachments)DocumentAttachments.init("sale_return",()=>document.getElementById("return-id").value||"");
   summary();
 })();

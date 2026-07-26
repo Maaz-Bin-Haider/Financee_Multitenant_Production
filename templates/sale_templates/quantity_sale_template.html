@@ -4,6 +4,8 @@
 {% block SeperateCssFile %}
 <link rel="stylesheet" href="{% static 'css/purchasing_styling.css' %}">
 <link rel="stylesheet" href="{% static 'css/opening_stock.css' %}">
+<link rel="stylesheet" href="{% static 'css/smart_description.css' %}">
+{% if financee_features.attachments.enabled and can_manage_attachments %}<link rel="stylesheet" href="{% static 'css/document_attachments.css' %}">{% endif %}
 {% endblock SeperateCssFile %}
 {% block body %}
 {% csrf_token %}
@@ -21,7 +23,7 @@
       <div class="sale-field"><label class="sale-field-label">Sale Type</label><select id="sale-type" class="sale-input"><option value="credit">Credit Sale</option><option value="cash">Cash Sale</option></select></div>
       <div class="sale-field"><label class="sale-field-label">Payment Account</label><select id="payment-account" class="sale-input" disabled><option value="1000">Cash</option><option value="1100">Bank</option></select></div>
     </div>
-    <div class="sale-field" style="margin-top:12px;"><label class="sale-field-label">Description</label><input id="description" class="sale-input" maxlength="500" placeholder="Optional sale description"></div>
+    <div class="sale-field" style="margin-top:12px;"><label class="sale-field-label">Description</label><textarea id="description" class="sale-input" data-smart-description maxlength="1000" placeholder="Optional sale description"></textarea></div>
     <div class="sale-meta-grid" style="display:grid;grid-template-columns:180px 180px;gap:12px;margin-top:12px;">
       <div class="sale-field"><label class="sale-field-label">Transaction Currency</label><select id="transaction-currency" class="sale-input">{% for currency in currencies %}<option value="{{ currency.code }}" {% if currency.code == base_currency.code %}selected{% endif %}>{{ currency.code }} — {{ currency.name }}</option>{% endfor %}</select></div>
       <div class="sale-field"><label class="sale-field-label">Exchange Rate ({{ base_currency.code }} per unit)</label><input id="exchange-rate" class="sale-input" type="number" min="0.0000000001" step="0.0000000001" disabled></div>
@@ -41,6 +43,7 @@
       {% if tax_environment == "tax" %}<span class="col-header">Tax Class</span><span class="col-header">Tax Code / Ref</span>{% endif %}<span class="col-header">Actions</span>
     </div>
     <div id="sale-lines"></div>
+    {% if financee_features.attachments.enabled and can_manage_attachments %}{% include "components/document_attachments.html" %}{% endif %}
   </div>
   <div class="sale-card-footer">
     <div class="sale-totals-group">
@@ -81,5 +84,7 @@ window.QSAL = {
 };
 </script>
 {{ tax_codes|json_script:"quantity-tax-codes" }}
+<script src="{% static 'js/smart_description.js' %}"></script>
+{% if financee_features.attachments.enabled and can_manage_attachments %}<script src="{% static 'js/document_attachments.js' %}"></script>{% endif %}
 <script src="{% static 'js/quantity_sales.js' %}"></script>
 {% endblock body %}

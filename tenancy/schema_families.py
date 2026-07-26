@@ -56,8 +56,8 @@ def _families():
         INVENTORY_MODE_QUANTITY: SchemaFamily(
             key=INVENTORY_MODE_QUANTITY,
             template_path=SQL_DIR / "quantity_tenant_template.sql",
-            hardening_path=SQL_DIR / "quantity_financial_modules.sql",
-            required_version=15,
+            hardening_path=SQL_DIR / "quantity_platform_controls.sql",
+            required_version=20,
             metadata_table="tenant_schema_metadata",
             runtime_enabled=False,
             required_tables=(
@@ -113,6 +113,8 @@ def _families():
                 "opening_cash",
                 "owner_equity_transactions",
                 "period_closes",
+                "document_attachments",
+                "quantity_audit_events",
             ),
             required_sequences=(
                 "quantity_foundation_id_seq",
@@ -165,6 +167,8 @@ def _families():
                 "opening_cash_opening_cash_id_seq",
                 "owner_equity_transactions_txn_id_seq",
                 "period_closes_period_close_id_seq",
+                "document_attachments_attachment_id_seq",
+                "quantity_audit_events_event_id_seq",
             ),
             required_functions=(
                 "quantity_schema_fingerprint",
@@ -261,8 +265,9 @@ def _families():
                 "preview_period_close",
                 "close_period_from_json",
                 "reverse_period_close",
+                "quantity_audit_log",
             ),
-            rollout_files=("quantity_financial_modules.sql",),
+            rollout_files=("quantity_platform_controls.sql",),
             enabled_path_prefixes=(
                 "/items/quantity/",
                 "/warehouses/quantity/",
@@ -295,6 +300,7 @@ def _families():
                 SQL_DIR / "quantity_tax_discounts.sql",
                 SQL_DIR / "quantity_currency_settlements.sql",
                 SQL_DIR / "quantity_financial_modules.sql",
+                SQL_DIR / "quantity_platform_controls.sql",
             ),
         ),
     }

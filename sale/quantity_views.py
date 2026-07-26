@@ -7,6 +7,11 @@ import uuid
 from django.db import DatabaseError, connection, transaction
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.core.exceptions import ValidationError
+from attachments.utils import (
+    delete_document_attachments, parse_json_or_multipart_payload,
+    save_document_attachments, validate_request_attachments,
+)
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
 from tenancy.models import Currency
@@ -29,7 +34,7 @@ def _json(value):
 
 def _payload(request):
     try:
-        data = json.loads(request.body or "{}")
+        data = parse_json_or_multipart_payload(request)
     except (TypeError, ValueError):
         raise ValueError("A valid JSON object is required.")
     if not isinstance(data, dict):
@@ -70,9 +75,14 @@ def sales(request):
                 "tax_codes": catalog(),
                 "currencies": list(Currency.objects.filter(is_active=True)
                                    .values("code", "name", "minor_units")),
+                "can_manage_attachments": (
+                    request.user.is_superuser
+                    or request.user.has_perm("auth.manage_quantity_attachments")
+                ),
             },
         )
     try:
+        validate_request_attachments(request)
         data = _payload(request)
         action = (data.get("action") or "submit").lower()
         sale_id = data.get("sale_id")
@@ -113,6 +123,7 @@ def sales(request):
                     "sale", int(sale_id), foreign, currency, rate,
                     request.user.pk,
                 ))
+            save_document_attachments(request, "sale", result["sale_invoice_id"])
             return JsonResponse({"success": True, **result})
         if action == "submit":
             if not _can(request, "auth.create_sale"):
@@ -141,6 +152,7 @@ def sales(request):
                         "sale", result["sale_invoice_id"], foreign, currency,
                         rate, request.user.pk,
                     ))
+            save_document_attachments(request, "sale", result["sale_invoice_id"])
             return JsonResponse({"success": True, **result})
         if action in ("delete", "reverse"):
             if not _can(request, "auth.delete_sale"):
@@ -158,10 +170,12 @@ def sales(request):
                 result["reversal_tax_journal_id"] = reverse(
                     "sale", int(sale_id), None, request.user.pk
                 )
+            delete_document_attachments("sale", int(sale_id))
             return JsonResponse({"success": True, **result})
         return _error("Unknown sale action.")
-    except (ValueError, TypeError):
-        return _error("Sale request is invalid.")
+    except (ValueError, TypeError, ValidationError) as exc:
+        return _error(str(exc) if isinstance(exc, ValidationError)
+                      else "Sale request is invalid.")
     except DatabaseError:
         logger.exception("Quantity sale posting failed")
         return _error(

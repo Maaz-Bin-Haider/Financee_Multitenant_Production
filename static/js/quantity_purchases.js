@@ -71,6 +71,7 @@
     document.getElementById("exchange-rate").value = "";
     document.getElementById("exchange-rate").disabled = true;
     container.innerHTML = ""; addLine();
+    if (window.DocumentAttachments) DocumentAttachments.reset();
   }
   function display(doc) {
     document.getElementById("purchase-id").value = doc.purchase_invoice_id;
@@ -91,6 +92,7 @@
     const balance = document.getElementById("foreign-balance");
     if (balance) balance.textContent = `${doc.remaining_foreign || 0} ${doc.transaction_currency_code || cfg.currency} remains unsettled.`;
     container.innerHTML = ""; (doc.lines || []).forEach(addLine); total();
+    if (window.DocumentAttachments) DocumentAttachments.load(doc.purchase_invoice_id);
   }
   async function navigate(action) {
     const id = document.getElementById("purchase-id").value;
@@ -133,10 +135,10 @@
       exchange_rate: document.getElementById("exchange-rate").value || null,
       idempotency_key: crypto.randomUUID(), items: lines()
     };
-    const { ok, data } = await fetchJSON(cfg.urls.purchase, {
-      method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
-      body: JSON.stringify(payload)
-    });
+    const options = window.DocumentAttachments
+      ? DocumentAttachments.requestOptions(payload, csrf())
+      : { method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() }, body: JSON.stringify(payload) };
+    const { ok, data } = await fetchJSON(cfg.urls.purchase, options);
     if (!ok) return notify("error", data.message || "Purchase failed.");
     notify("success", `Purchase ${data.document_number} saved.`);
     document.getElementById("purchase-id").value = data.purchase_invoice_id;
@@ -187,5 +189,8 @@
   });
   Promise.all([fetchJSON(cfg.urls.catalog), fetchJSON(cfg.urls.warehouses)])
     .then(([a, b]) => { items = a.data.items || []; warehouses = b.data.warehouses || []; reset(); });
+  if (window.DocumentAttachments) {
+    DocumentAttachments.init("purchase", () => document.getElementById("purchase-id").value || "");
+  }
   summary();
 })();

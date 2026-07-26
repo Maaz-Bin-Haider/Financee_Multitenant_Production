@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 
 from .utils import (
+    attachments_feature_enabled,
     build_metadata,
     document_exists,
     get_attachment,
@@ -14,6 +15,8 @@ from .utils import (
 
 
 def _ensure_access(request, document_type, document_id):
+    if not attachments_feature_enabled(request):
+        raise PermissionDenied
     if not user_can_view_document(request.user, document_type):
         raise PermissionDenied
     if not document_exists(document_type, document_id):

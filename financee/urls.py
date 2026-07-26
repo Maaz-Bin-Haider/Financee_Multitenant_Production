@@ -38,7 +38,7 @@ from sales_reports import urls as sales_reports_urls
 from contra import urls as contra_urls
 from opening_stock import urls as opening_stock_urls
 from attachments import urls as attachments_urls
-from tenancy import warehouse_urls, transfer_urls, count_urls
+from tenancy import warehouse_urls, transfer_urls, count_urls, audit_urls
 
 
 def redirect_to_home(request):
@@ -71,4 +71,5 @@ urlpatterns = [
     path('warehouses/', include(warehouse_urls, namespace='quantity_warehouses')),
     path('transfers/', include(transfer_urls, namespace='quantity_transfers')),
     path('physical-counts/', include(count_urls, namespace='quantity_counts')),
+    path('quantity-audit/', include(audit_urls, namespace='quantity_audit')),
 ]

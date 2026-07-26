@@ -8,6 +8,11 @@ from django.db import DatabaseError, connection, transaction
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from attachments.utils import (
+    delete_document_attachments, parse_json_or_multipart_payload,
+    save_document_attachments, validate_request_attachments,
+)
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
 from tenancy.models import Currency
@@ -30,7 +35,7 @@ def _json(value):
 
 def _payload(request):
     try:
-        data = json.loads(request.body or "{}")
+        data = parse_json_or_multipart_payload(request)
     except (TypeError, ValueError):
         raise ValueError("A valid JSON object is required.")
     if not isinstance(data, dict):
@@ -70,11 +75,16 @@ def purchasing(request):
                 "tax_environment": request.tenant_company.tax_environment,
                 "tax_codes": catalog(),
                 "can_manage_tax": request.user.is_superuser,
+                "can_manage_attachments": (
+                    request.user.is_superuser
+                    or request.user.has_perm("auth.manage_quantity_attachments")
+                ),
                 "currencies": list(Currency.objects.filter(is_active=True)
                                    .values("code", "name", "minor_units")),
             },
         )
     try:
+        validate_request_attachments(request)
         data = _payload(request)
         action = (data.get("action") or "submit").lower()
         purchase_id = data.get("purchase_id")
@@ -116,6 +126,9 @@ def purchasing(request):
                     "purchase", int(purchase_id), foreign, currency, rate,
                     request.user.pk,
                 ))
+            save_document_attachments(
+                request, "purchase", result["purchase_invoice_id"]
+            )
             return JsonResponse({"success": True, **result})
         if action == "submit":
             if not _can(request, "auth.create_purchase"):
@@ -144,6 +157,9 @@ def purchasing(request):
                         "purchase", result["purchase_invoice_id"], foreign,
                         currency, rate, request.user.pk,
                     ))
+            save_document_attachments(
+                request, "purchase", result["purchase_invoice_id"]
+            )
             return JsonResponse({"success": True, **result})
         if action in ("delete", "reverse"):
             if not _can(request, "auth.delete_purchase"):
@@ -161,10 +177,12 @@ def purchasing(request):
                 result["reversal_tax_journal_id"] = reverse(
                     "purchase", int(purchase_id), None, request.user.pk
                 )
+            delete_document_attachments("purchase", int(purchase_id))
             return JsonResponse({"success": True, **result})
         return _error("Unknown purchase action.")
-    except (ValueError, TypeError):
-        return _error("Purchase request is invalid.")
+    except (ValueError, TypeError, ValidationError) as exc:
+        return _error(str(exc) if isinstance(exc, ValidationError)
+                      else "Purchase request is invalid.")
     except DatabaseError:
         logger.exception("Quantity purchase posting failed")
         return _error(

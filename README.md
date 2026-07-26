@@ -1,7 +1,7 @@
 # Financee Multitenant Accounting and Inventory System
 
-> Development resume point: Phases 0–19 are complete. **Phase 20 —
-> Attachments, Descriptions, Audit, Permissions, and Features** is next.
+> Development resume point: Phases 0–20 are complete. **Phase 21 —
+> Type-Aware Backend and Quantity UI** is next.
 > Read `PROJECT_CONTEXT.md` and
 > `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md` before starting.
 

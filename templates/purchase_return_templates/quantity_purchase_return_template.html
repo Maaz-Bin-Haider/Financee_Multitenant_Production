@@ -4,6 +4,8 @@
 {% block SeperateCssFile %}
 <link rel="stylesheet" href="{% static 'css/purchase_return_styling.css' %}">
 <link rel="stylesheet" href="{% static 'css/opening_stock.css' %}">
+<link rel="stylesheet" href="{% static 'css/smart_description.css' %}">
+{% if financee_features.attachments.enabled and can_manage_attachments %}<link rel="stylesheet" href="{% static 'css/document_attachments.css' %}">{% endif %}
 {% endblock SeperateCssFile %}
 {% block body %}
 {% csrf_token %}
@@ -17,10 +19,11 @@
   <div class="sale-field"><label class="sale-field-label">Vendor</label><input id="vendor-name" class="sale-input" maxlength="200"></div>
   <div class="sale-field"><label class="sale-field-label">Return Date</label><input id="return-date" type="date" class="sale-input"></div>
  </div>
- <div class="sale-field" style="margin-top:12px;"><label class="sale-field-label">Description</label><input id="description" class="sale-input" maxlength="500"></div>
+    <div class="sale-field" style="margin-top:12px;"><label class="sale-field-label">Description</label><textarea id="description" class="sale-input" data-smart-description maxlength="1000"></textarea></div>
  <div class="items-section-header" style="margin-top:16px;"><div class="items-section-title">Original Purchase Lines</div>
  {% if can_create %}<button id="add-line" type="button" class="custom-btn">Add Line</button>{% endif %}</div>
- <div id="return-lines"></div>
+    <div id="return-lines"></div>
+    {% if financee_features.attachments.enabled and can_manage_attachments %}{% include "components/document_attachments.html" %}{% endif %}
 </div><div class="sale-card-footer">
  <div class="sale-totals-group"><div class="total-chip"><span class="total-chip-label">Document</span><span id="document-number" class="total-chip-value">New</span></div></div>
  <div class="sale-actions"><button id="previous" type="button" class="custom-btn">Previous</button><button id="next" type="button" class="custom-btn">Next</button>
@@ -35,5 +38,7 @@
  summary:"{% url 'purchaseReturn:get_purchase_return_summary' %}",
  sources:"{% url 'purchaseReturn:quantity_sources' %}"
 }};</script>
+<script src="{% static 'js/smart_description.js' %}"></script>
+{% if financee_features.attachments.enabled and can_manage_attachments %}<script src="{% static 'js/document_attachments.js' %}"></script>{% endif %}
 <script src="{% static 'js/quantity_purchase_returns.js' %}"></script>
 {% endblock body %}

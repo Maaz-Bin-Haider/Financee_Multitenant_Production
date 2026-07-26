@@ -71,6 +71,7 @@
     document.getElementById("exchange-rate").value = "";
     document.getElementById("exchange-rate").disabled = true;
     container.innerHTML = ""; addLine();
+    if (window.DocumentAttachments) DocumentAttachments.reset();
   }
   function display(doc) {
     document.getElementById("sale-id").value = doc.sale_invoice_id;
@@ -91,6 +92,7 @@
     const balance = document.getElementById("foreign-balance");
     if (balance) balance.textContent = `${doc.remaining_foreign || 0} ${doc.transaction_currency_code || cfg.currency} remains unsettled.`;
     container.innerHTML = ""; (doc.lines || []).forEach(addLine); total();
+    if (window.DocumentAttachments) DocumentAttachments.load(doc.sale_invoice_id);
   }
   async function navigate(action) {
     const id = document.getElementById("sale-id").value;
@@ -133,10 +135,10 @@
       exchange_rate: document.getElementById("exchange-rate").value || null,
       idempotency_key: crypto.randomUUID(), items: lines()
     };
-    const { ok, data } = await fetchJSON(cfg.urls.sale, {
-      method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
-      body: JSON.stringify(payload)
-    });
+    const options = window.DocumentAttachments
+      ? DocumentAttachments.requestOptions(payload, csrf())
+      : { method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() }, body: JSON.stringify(payload) };
+    const { ok, data } = await fetchJSON(cfg.urls.sale, options);
     if (!ok) return notify("error", data.message || "Sale failed.");
     notify("success", `Sale ${data.document_number} saved.`);
     document.getElementById("sale-id").value = data.sale_invoice_id;
@@ -169,5 +171,8 @@
   });
   Promise.all([fetchJSON(cfg.urls.catalog), fetchJSON(cfg.urls.warehouses)])
     .then(([a, b]) => { items = a.data.items || []; warehouses = b.data.warehouses || []; reset(); });
+  if (window.DocumentAttachments) {
+    DocumentAttachments.init("sale", () => document.getElementById("sale-id").value || "");
+  }
   summary();
 })();

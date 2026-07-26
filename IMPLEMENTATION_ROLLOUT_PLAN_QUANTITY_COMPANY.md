@@ -16,10 +16,10 @@
 
 ## Execution Resume Checkpoint
 
-- **Last completed:** Phase 19 — Shared Financial Modules and Month Close
-- **Commit:** `9ea6262`
-- **Current phase:** Phase 20 — Attachments, Descriptions, Audit, Permissions, and Features
-- **Quantity schema development baseline:** version 15
+- **Last completed:** Phase 20 — Attachments, Descriptions, Audit, Permissions, and Features
+- **Commit:** pending owner commit
+- **Current phase:** Phase 21 — Type-Aware Backend and Quantity UI
+- **Quantity schema development baseline:** version 20
 
 **Phase 16 evidence:** `tests/PHASE16_QUANTITY_COUNTS_ADJUSTMENTS_RESULTS.md`.
 
@@ -28,6 +28,8 @@
 **Phase 18 evidence:** `tests/PHASE18_QUANTITY_CURRENCY_RESULTS.md`.
 
 **Phase 19 evidence:** `tests/PHASE19_QUANTITY_FINANCIAL_MODULES_RESULTS.md`.
+
+**Phase 20 evidence:** `tests/PHASE20_QUANTITY_PLATFORM_CONTROLS_RESULTS.md`.
 
 Phase 18 is complete. Schema v14 includes immutable foreign/base snapshots,
 partial and final cash/bank settlement allocations, realized exchange

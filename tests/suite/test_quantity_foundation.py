@@ -90,7 +90,7 @@ def main():
     chk("families use separate templates", serial.template_path != quantity.template_path)
     chk("families use separate hardening", serial.hardening_path != quantity.hardening_path)
     chk("quantity required version includes tax and discounts",
-        quantity.required_version == 15)
+        quantity.required_version == 20)
     chk("quantity runtime remains gated after foundation",
         quantity.runtime_enabled is False)
     chk("SQL ownership resolves serial hardening",
@@ -127,7 +127,7 @@ def main():
             for c in companies
         ]
         chk("metadata family/version/currency matches public company",
-            all(row == ("quantity", 15, "PKR", "non_tax") for row in metadata),
+            all(row == ("quantity", 20, "PKR", "non_tax") for row in metadata),
             metadata)
         chk("quantity verifier accepts both schemas",
             all(verify_company_schema(c, use_cache=False).ok for c in companies))
