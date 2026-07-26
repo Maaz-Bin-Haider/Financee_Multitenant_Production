@@ -55,9 +55,11 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **NEXT SESSION CHECKPOINT:** Phases 0–17 are complete. Phase 17 is awaiting
-> the owner's commit. Start **Phase 18 — Multi-Currency and Realized
-> Gain/Loss** next. Do not repeat Phase 17 and do not commit or push.
+> **CURRENT CHECKPOINT:** Phases 0–18 are complete. **Phase 19 — Shared
+> Financial Modules and Month Close is next.** Phase 18 delivered schema v14
+> foreign posting, allocation-based settlement, realized gain/loss, returns,
+> reporting, UI, and complete release evidence.
+> Do not commit or push.
 
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
 - [x] **Phase 1 — Baseline Capture and Test Stabilization:** completed
@@ -178,7 +180,14 @@ high-level checklist and shall be updated from the detailed plan’s results.
   and administration/UI are integrated. Focused tests passed 26/26; all 30
   mixed-family modules, HTTP 70/70, system 111/111, and deep serial 2702/2702
   passed. See `tests/PHASE17_QUANTITY_TAX_DISCOUNTS_RESULTS.md`.
-- [ ] Phases 18–32: not started; see
+- [x] **Phase 18 — Multi-Currency and Realized Gain/Loss:** completed
+  2026-07-26. Added schema v14 immutable transaction/base snapshots, foreign
+  purchase and sale posting, cash/bank payment and receipt allocations,
+  partial/final settlements, realized gain/loss journals and reporting,
+  return/settlement guards, and UI. Focused tests passed 23/23; all 31
+  mixed-family modules, HTTP 70/70, system 111/111, and deep serial 2702/2702
+  passed. See `tests/PHASE18_QUANTITY_CURRENCY_RESULTS.md`.
+- [ ] Phases 19–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

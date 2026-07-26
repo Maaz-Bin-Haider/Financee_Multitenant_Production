@@ -6,10 +6,14 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
-- **Last completed phase:** Phase 17 — Tax and Discount Engine.
-- **Current worktree:** Phase 17 complete; owner commit pending.
-- **Next phase:** Phase 18 — Multi-Currency and Realized Gain/Loss.
-- **Quantity schema baseline:** version 13.
+- **Last completed phase:** Phase 18 — Multi-Currency and Realized Gain/Loss.
+- **Next phase:** Phase 19 — Shared Financial Modules and Month Close.
+- **Quantity schema development baseline:** version 14.
+- **Phase 18 delivered:** foreign/base invoice and line snapshots, durable
+  payment/receipt allocations, partial/final cash or bank settlement, realized
+  exchange gain/loss journals and reporting, unsettled-balance-aware foreign
+  returns, and purchase/sale currency and settlement UI.
+- **Phase 18 evidence:** `tests/PHASE18_QUANTITY_CURRENCY_RESULTS.md`.
 - **Required Phase 17 scope:** tax/non-tax configuration, inclusive/exclusive
   calculations, discounts, historical snapshots, returns, and control accounts.
 - **Phase 17 delivered:** tenant tax-environment snapshots,
@@ -19,7 +23,7 @@ This file is the persistent engineering context for Financee. Update it on every
 - **Phase 17 evidence:** `tests/PHASE17_QUANTITY_TAX_DISCOUNTS_RESULTS.md`.
 - **Preserve:** all serial-company behavior and the completed quantity schema
   version 12 count/adjustment lifecycle.
-- **Do not commit or push:** provide commit text to the owner after Phase 17;
+- **Do not commit or push:** provide commit text to the owner after Phase 18;
   the owner performs the commit.
 
 ## System Identity

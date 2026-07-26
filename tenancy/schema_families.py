@@ -56,8 +56,8 @@ def _families():
         INVENTORY_MODE_QUANTITY: SchemaFamily(
             key=INVENTORY_MODE_QUANTITY,
             template_path=SQL_DIR / "quantity_tenant_template.sql",
-            hardening_path=SQL_DIR / "quantity_tax_discounts.sql",
-            required_version=13,
+            hardening_path=SQL_DIR / "quantity_currency_settlements.sql",
+            required_version=14,
             metadata_table="tenant_schema_metadata",
             runtime_enabled=False,
             required_tables=(
@@ -102,6 +102,10 @@ def _families():
                 "inventory_adjustments",
                 "inventory_adjustment_lines",
                 "tax_codes",
+                "foreign_payments",
+                "payment_allocations",
+                "foreign_receipts",
+                "receipt_allocations",
             ),
             required_sequences=(
                 "quantity_foundation_id_seq",
@@ -143,6 +147,10 @@ def _families():
                 "inventory_adjustments_adjustment_id_seq",
                 "inventory_adjustment_lines_adjustment_line_id_seq",
                 "tax_codes_tax_code_id_seq",
+                "foreign_payments_payment_id_seq",
+                "payment_allocations_allocation_id_seq",
+                "foreign_receipts_receipt_id_seq",
+                "receipt_allocations_allocation_id_seq",
             ),
             required_functions=(
                 "quantity_schema_fingerprint",
@@ -222,8 +230,14 @@ def _families():
                 "quantity_finalize_tax_return",
                 "quantity_prepare_tax_return_revision",
                 "quantity_reverse_tax_return",
+                "quantity_default_document_currency",
+                "quantity_finalize_currency_document",
+                "quantity_settle_foreign_purchase",
+                "quantity_settle_foreign_sale",
+                "quantity_apply_foreign_return",
+                "quantity_currency_report",
             ),
-            rollout_files=("quantity_tax_discounts.sql",),
+            rollout_files=("quantity_currency_settlements.sql",),
             enabled_path_prefixes=(
                 "/items/quantity/",
                 "/warehouses/quantity/",
@@ -247,6 +261,7 @@ def _families():
                 SQL_DIR / "quantity_warehouse_transfers.sql",
                 SQL_DIR / "quantity_counts_adjustments.sql",
                 SQL_DIR / "quantity_tax_discounts.sql",
+                SQL_DIR / "quantity_currency_settlements.sql",
             ),
         ),
     }

@@ -16,18 +16,21 @@
 
 ## Execution Resume Checkpoint
 
-- **Last completed:** Phase 17 — Tax and Discount Engine
-- **Commit:** owner commit pending
-- **Next authorized phase:** Phase 18 — Multi-Currency and Realized Gain/Loss
-- **Quantity schema baseline:** version 13
+- **Last completed:** Phase 18 — Multi-Currency and Realized Gain/Loss
+- **Commit:** `9ea6262`
+- **Current phase:** Phase 19 — Shared Financial Modules and Month Close
+- **Quantity schema development baseline:** version 14
 
 **Phase 16 evidence:** `tests/PHASE16_QUANTITY_COUNTS_ADJUSTMENTS_RESULTS.md`.
 
 **Phase 17 evidence:** `tests/PHASE17_QUANTITY_TAX_DISCOUNTS_RESULTS.md`.
 
-The next implementation session shall begin at Phase 18 and shall not repeat or
-redesign completed Phase 0–17 work unless a regression directly requires a
-scoped correction.
+**Phase 18 evidence:** `tests/PHASE18_QUANTITY_CURRENCY_RESULTS.md`.
+
+Phase 18 is complete. Schema v14 includes immutable foreign/base snapshots,
+partial and final cash/bank settlement allocations, realized exchange
+gain/loss journals and reporting, return/settlement guards, and transaction
+currency administration UI. No unrealized revaluation was introduced.
 
 ---
 
@@ -816,6 +819,8 @@ Add approved pricing calculations to purchases, sales, and returns.
 
 ## Phase 18 — Multi-Currency and Realized Gain/Loss
 
+**Status: COMPLETE — 2026-07-26**
+
 ### Objectives
 
 Implement foreign invoices and settlement without unrealized revaluation.
@@ -846,6 +851,10 @@ Implement foreign invoices and settlement without unrealized revaluation.
 
 - Foreign party balance, base ledger, cash/bank, and realized gain/loss all
   reconcile after partial and full settlement.
+
+Completion evidence: focused Phase 18 integration passed 23/23; all 31
+mixed-family modules, HTTP 70/70, system 111/111, and deep serial lifecycle
+2702/2702 passed. See `tests/PHASE18_QUANTITY_CURRENCY_RESULTS.md`.
 
 ---
 

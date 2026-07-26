@@ -22,6 +22,10 @@
       <div class="sale-field"><label class="sale-field-label">Payment Account</label><select id="payment-account" class="sale-input" disabled><option value="1000">Cash</option><option value="1100">Bank</option></select></div>
     </div>
     <div class="sale-field" style="margin-top:12px;"><label class="sale-field-label">Description</label><input id="description" class="sale-input" maxlength="500" placeholder="Optional sale description"></div>
+    <div class="sale-meta-grid" style="display:grid;grid-template-columns:180px 180px;gap:12px;margin-top:12px;">
+      <div class="sale-field"><label class="sale-field-label">Transaction Currency</label><select id="transaction-currency" class="sale-input">{% for currency in currencies %}<option value="{{ currency.code }}" {% if currency.code == base_currency.code %}selected{% endif %}>{{ currency.code }} — {{ currency.name }}</option>{% endfor %}</select></div>
+      <div class="sale-field"><label class="sale-field-label">Exchange Rate ({{ base_currency.code }} per unit)</label><input id="exchange-rate" class="sale-input" type="number" min="0.0000000001" step="0.0000000001" disabled></div>
+    </div>
     <div class="sale-meta-grid" style="display:grid;grid-template-columns:160px 160px 160px;gap:12px;margin-top:12px;">
       {% if tax_environment == "tax" %}<div class="sale-field"><label class="sale-field-label">Tax Mode</label><select id="tax-mode" class="sale-input"><option value="exclusive">Tax Exclusive</option><option value="inclusive">Tax Inclusive</option></select></div>{% else %}<input id="tax-mode" type="hidden" value="exclusive">{% endif %}
       <div class="sale-field"><label class="sale-field-label">Invoice Discount</label><select id="invoice-discount-type" class="sale-input"><option value="none">None</option><option value="percent">Percentage</option><option value="fixed">Fixed Amount</option></select></div>
@@ -53,6 +57,9 @@
     </div>
   </div>
 </section>
+{% if can_update %}
+<section class="os-card os-list-card" style="margin-top:18px;"><div class="os-card-head"><h3>Foreign Customer Settlement</h3></div><div class="sale-card-body"><div class="sale-meta-grid" style="display:grid;grid-template-columns:150px 150px 170px 140px 130px;gap:12px;"><input id="settlement-date" type="date" class="sale-input"><input id="settlement-amount" type="number" min="0.000001" step="0.000001" class="sale-input" placeholder="Foreign amount"><input id="settlement-rate" type="number" min="0.0000000001" step="0.0000000001" class="sale-input" placeholder="Settlement rate"><select id="settlement-account" class="sale-input"><option value="1100">Bank</option><option value="1000">Cash</option></select><button id="settle" class="save-and-update-btn" type="button">Post Receipt</button></div><p id="foreign-balance" class="text-muted" style="margin-top:8px;">Select an open foreign credit sale.</p></div></section>
+{% endif %}
 
 <section class="os-card os-list-card" style="margin-top:18px;">
   <div class="os-card-head"><h3>Sale Summary</h3><button class="os-icon-btn" id="refresh-summary"><i class="fa-solid fa-rotate"></i></button></div>

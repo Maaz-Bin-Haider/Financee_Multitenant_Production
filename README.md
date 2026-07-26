@@ -1,8 +1,7 @@
 # Financee Multitenant Accounting and Inventory System
 
-> Development resume point: Phases 0–17 of the quantity-company rollout are
-> complete. The next phase is **Phase 18 — Multi-Currency and Realized
-> Gain/Loss**.
+> Development resume point: Phases 0–18 are complete. **Phase 19 —
+> Shared Financial Modules and Month Close** is next.
 > Read `PROJECT_CONTEXT.md` and
 > `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md` before starting.
 

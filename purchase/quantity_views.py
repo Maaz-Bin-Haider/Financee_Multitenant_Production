@@ -10,8 +10,10 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
+from tenancy.models import Currency
 from tenancy.quantity_tax import (
-    calculate_and_transform, catalog, finalize, prepare_revision, reverse,
+    calculate_and_transform, catalog, finalize, finalize_currency,
+    prepare_revision, reverse,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,19 +70,33 @@ def purchasing(request):
                 "tax_environment": request.tenant_company.tax_environment,
                 "tax_codes": catalog(),
                 "can_manage_tax": request.user.is_superuser,
+                "currencies": list(Currency.objects.filter(is_active=True)
+                                   .values("code", "name", "minor_units")),
             },
         )
     try:
         data = _payload(request)
         action = (data.get("action") or "submit").lower()
         purchase_id = data.get("purchase_id")
+        if action == "settle":
+            if not _can(request, "auth.update_purchase"):
+                return _error("You do not have permission to settle purchases.", 403)
+            data.setdefault("idempotency_key", str(uuid.uuid4()))
+            with transaction.atomic(), connection.cursor() as cur:
+                cur.execute("SELECT quantity_settle_foreign_purchase(%s::jsonb)",
+                            [json.dumps(data)])
+                result = _json(cur.fetchone()[0])
+            return JsonResponse({"success": True, **result})
         if action == "submit" and purchase_id:
             if not _can(request, "auth.update_purchase"):
                 return _error("You do not have permission to update purchases.",
                               403)
             with transaction.atomic():
-                calculation, transformed = calculate_and_transform(
-                    data, price_key="unit_cost_base"
+                calculation, transformed, foreign, currency, rate = (
+                    calculate_and_transform(
+                    data, price_key="unit_cost_base",
+                    company=request.tenant_company,
+                )
                 )
                 prepare_revision(
                     "purchase", int(purchase_id), data.get("invoice_date"),
@@ -96,6 +112,10 @@ def purchasing(request):
                     "purchase", int(purchase_id), data, calculation,
                     request.user.pk,
                 ))
+                result.update(finalize_currency(
+                    "purchase", int(purchase_id), foreign, currency, rate,
+                    request.user.pk,
+                ))
             return JsonResponse({"success": True, **result})
         if action == "submit":
             if not _can(request, "auth.create_purchase"):
@@ -103,8 +123,11 @@ def purchasing(request):
                               403)
             data.setdefault("idempotency_key", str(uuid.uuid4()))
             with transaction.atomic():
-                calculation, transformed = calculate_and_transform(
-                    data, price_key="unit_cost_base"
+                calculation, transformed, foreign, currency, rate = (
+                    calculate_and_transform(
+                    data, price_key="unit_cost_base",
+                    company=request.tenant_company,
+                )
                 )
                 with connection.cursor() as cur:
                     cur.execute(
@@ -116,6 +139,10 @@ def purchasing(request):
                     result.update(finalize(
                         "purchase", result["purchase_invoice_id"], data,
                         calculation, request.user.pk,
+                    ))
+                    result.update(finalize_currency(
+                        "purchase", result["purchase_invoice_id"], foreign,
+                        currency, rate, request.user.pk,
                     ))
             return JsonResponse({"success": True, **result})
         if action in ("delete", "reverse"):

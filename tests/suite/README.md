@@ -58,6 +58,8 @@ PASS/FAIL summary. Exit code is non-zero if any real check fails.
 | `test_quantity_purchase_returns.py` | Phase 14 original-source quantity purchase returns, eligibility, original-cost accounting, concurrency, correction/reversal, HTTP, and isolation. |
 | `test_quantity_transfers.py` | Phase 15 atomic multi-warehouse FIFO transfers, value neutrality, concurrency, guarded correction/reversal, HTTP, permissions, and isolation. |
 | `test_quantity_counts_adjustments.py` | Phase 16 reproducible cutoff counts, approval, FIFO-valued gain/loss adjustments, reversal, concurrency, HTTP, permissions, and isolation. |
+| `test_quantity_tax_discounts.py` | Phase 17 quantity tax modes, discounts, immutable calculations, return tax journals, administration, and regression. |
+| `test_quantity_currency_settlements.py` | Phase 18 foreign documents, immutable rates, settlements, realized gain/loss, return eligibility, reporting, validation, and reconciliation. |
 | `test_http.py` | Real Django endpoints via the test client: pages render, JSON APIs return no 5xx, auth works, a master-data write flow succeeds. |
 
 ## Invariants asserted throughout

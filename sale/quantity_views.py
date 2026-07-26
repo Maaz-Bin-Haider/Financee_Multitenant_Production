@@ -9,8 +9,10 @@ from django.http import JsonResponse
 from django.shortcuts import render
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
+from tenancy.models import Currency
 from tenancy.quantity_tax import (
-    calculate_and_transform, catalog, finalize, prepare_revision, reverse,
+    calculate_and_transform, catalog, finalize, finalize_currency,
+    prepare_revision, reverse,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,19 +68,33 @@ def sales(request):
                 ),
                 "tax_environment": request.tenant_company.tax_environment,
                 "tax_codes": catalog(),
+                "currencies": list(Currency.objects.filter(is_active=True)
+                                   .values("code", "name", "minor_units")),
             },
         )
     try:
         data = _payload(request)
         action = (data.get("action") or "submit").lower()
         sale_id = data.get("sale_id")
+        if action == "settle":
+            if not _can(request, "auth.update_sale"):
+                return _error("You do not have permission to settle sales.", 403)
+            data.setdefault("idempotency_key", str(uuid.uuid4()))
+            with transaction.atomic(), connection.cursor() as cur:
+                cur.execute("SELECT quantity_settle_foreign_sale(%s::jsonb)",
+                            [json.dumps(data)])
+                result = _json(cur.fetchone()[0])
+            return JsonResponse({"success": True, **result})
         if action == "submit" and sale_id:
             if not _can(request, "auth.update_sale"):
                 return _error("You do not have permission to update sales.",
                               403)
             with transaction.atomic():
-                calculation, transformed = calculate_and_transform(
-                    data, price_key="unit_price_base"
+                calculation, transformed, foreign, currency, rate = (
+                    calculate_and_transform(
+                    data, price_key="unit_price_base",
+                    company=request.tenant_company,
+                )
                 )
                 prepare_revision(
                     "sale", int(sale_id), data.get("invoice_date"),
@@ -93,6 +109,10 @@ def sales(request):
                 result.update(finalize(
                     "sale", int(sale_id), data, calculation, request.user.pk,
                 ))
+                result.update(finalize_currency(
+                    "sale", int(sale_id), foreign, currency, rate,
+                    request.user.pk,
+                ))
             return JsonResponse({"success": True, **result})
         if action == "submit":
             if not _can(request, "auth.create_sale"):
@@ -100,8 +120,11 @@ def sales(request):
                               403)
             data.setdefault("idempotency_key", str(uuid.uuid4()))
             with transaction.atomic():
-                calculation, transformed = calculate_and_transform(
-                    data, price_key="unit_price_base"
+                calculation, transformed, foreign, currency, rate = (
+                    calculate_and_transform(
+                    data, price_key="unit_price_base",
+                    company=request.tenant_company,
+                )
                 )
                 with connection.cursor() as cur:
                     cur.execute(
@@ -113,6 +136,10 @@ def sales(request):
                     result.update(finalize(
                         "sale", result["sale_invoice_id"], data, calculation,
                         request.user.pk,
+                    ))
+                    result.update(finalize_currency(
+                        "sale", result["sale_invoice_id"], foreign, currency,
+                        rate, request.user.pk,
                     ))
             return JsonResponse({"success": True, **result})
         if action in ("delete", "reverse"):

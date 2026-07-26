@@ -88,7 +88,7 @@ def main():
         )
         schema = taxable.schema_name
         check("fresh schema reaches tax version",
-              query(schema, "SELECT version FROM tenant_schema_metadata")[0][0] == 13)
+              query(schema, "SELECT version FROM tenant_schema_metadata")[0][0] >= 13)
         check("tax environment is provisioned",
               query(schema, "SELECT tax_environment FROM tenant_schema_metadata")[0][0] == "tax")
         check("schema verifies", verify_company_schema(taxable, use_cache=False).ok)

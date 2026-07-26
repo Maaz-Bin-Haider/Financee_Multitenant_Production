@@ -67,6 +67,9 @@
     document.getElementById("description").value = "";
     document.getElementById("invoice-discount-type").value = "none";
     document.getElementById("invoice-discount-value").value = "0";
+    document.getElementById("transaction-currency").value = cfg.currency;
+    document.getElementById("exchange-rate").value = "";
+    document.getElementById("exchange-rate").disabled = true;
     container.innerHTML = ""; addLine();
   }
   function display(doc) {
@@ -82,6 +85,11 @@
     document.getElementById("invoice-discount-type").value = doc.invoice_discount_type || "none";
     document.getElementById("invoice-discount-value").value = doc.invoice_discount_value || "0";
     document.getElementById("total-tax").textContent = fmt(doc.tax_total_base);
+    document.getElementById("transaction-currency").value = doc.transaction_currency_code || cfg.currency;
+    document.getElementById("exchange-rate").value = doc.exchange_rate || "";
+    document.getElementById("exchange-rate").disabled = (doc.transaction_currency_code || cfg.currency) === cfg.currency;
+    const balance = document.getElementById("foreign-balance");
+    if (balance) balance.textContent = `${doc.remaining_foreign || 0} ${doc.transaction_currency_code || cfg.currency} remains unsettled.`;
     container.innerHTML = ""; (doc.lines || []).forEach(addLine); total();
   }
   async function navigate(action) {
@@ -101,6 +109,11 @@
   document.getElementById("purchase-type").addEventListener("change", (e) => {
     document.getElementById("payment-account").disabled = e.target.value !== "cash";
   });
+  document.getElementById("transaction-currency").addEventListener("change", (e) => {
+    const domestic = e.target.value === cfg.currency;
+    document.getElementById("exchange-rate").disabled = domestic;
+    if (domestic) document.getElementById("exchange-rate").value = "";
+  });
   document.getElementById("add-line")?.addEventListener("click", () => addLine());
   document.getElementById("previous").addEventListener("click", () => navigate("previous"));
   document.getElementById("next").addEventListener("click", () => navigate("next"));
@@ -116,6 +129,8 @@
       tax_mode: document.getElementById("tax-mode").value,
       invoice_discount_type: document.getElementById("invoice-discount-type").value,
       invoice_discount_value: document.getElementById("invoice-discount-value").value,
+      transaction_currency_code: document.getElementById("transaction-currency").value,
+      exchange_rate: document.getElementById("exchange-rate").value || null,
       idempotency_key: crypto.randomUUID(), items: lines()
     };
     const { ok, data } = await fetchJSON(cfg.urls.purchase, {
@@ -126,6 +141,21 @@
     notify("success", `Purchase ${data.document_number} saved.`);
     document.getElementById("purchase-id").value = data.purchase_invoice_id;
     await summary(); await navigate("current");
+  });
+  document.getElementById("settle")?.addEventListener("click", async () => {
+    const id = document.getElementById("purchase-id").value;
+    if (!id) return notify("warning", "Select a foreign credit purchase.");
+    const payload = { action: "settle", purchase_invoice_id: Number(id),
+      settlement_date: document.getElementById("settlement-date").value,
+      foreign_amount: document.getElementById("settlement-amount").value,
+      settlement_rate: document.getElementById("settlement-rate").value,
+      payment_account_code: document.getElementById("settlement-account").value,
+      idempotency_key: crypto.randomUUID() };
+    const { ok, data } = await fetchJSON(cfg.urls.purchase, { method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
+      body: JSON.stringify(payload) });
+    if (!ok) return notify("error", data.message || "Settlement failed.");
+    notify("success", `Payment ${data.document_number} posted.`); await navigate("current");
   });
   document.getElementById("reverse")?.addEventListener("click", async () => {
     const id = document.getElementById("purchase-id").value;
