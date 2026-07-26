@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 PROTECTED_PREFIX_PERMS = (
+    ("/quantity-reports/", (
+        "auth.view_accounts_reports_page", "auth.view_stock_reports_page",
+        "auth.can_view_sales_summary", "auth.view_purchase",
+    )),
     ("/sale/", ("auth.view_sale",)),
     ("/purchase/", ("auth.view_purchase",)),
     ("/payments/", ("auth.view_payment",)),
@@ -122,6 +126,8 @@ def feature_disabled_response(request, company, feature_key):
 
 
 def required_permissions_for_path(path):
+    if path.startswith("/quantity-reports/"):
+        return PROTECTED_PREFIX_PERMS[0][1], "any"
     if path.startswith("/sales-reports/"):
         return SALES_REPORT_PERMS, "any"
     for prefix, perms in PROTECTED_PREFIX_PERMS:

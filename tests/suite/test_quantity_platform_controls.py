@@ -31,10 +31,10 @@ def chk(name, ok, detail=""):
 
 def static_checks():
     family = schema_family(INVENTORY_MODE_QUANTITY)
-    chk("schema family is Phase 20", family.required_version == 20)
+    chk("schema family includes Phase 20", family.required_version >= 20)
     chk("platform rollout registered",
         family.hardening_path.name == "quantity_platform_controls.sql"
-        and family.bootstrap_paths[-1].name == "quantity_platform_controls.sql")
+        and family.hardening_path in family.bootstrap_paths)
     chk("attachment and audit tables fingerprinted",
         {"document_attachments", "quantity_audit_events"}.issubset(
             family.required_tables))

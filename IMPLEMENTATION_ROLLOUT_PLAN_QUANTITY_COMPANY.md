@@ -16,10 +16,10 @@
 
 ## Execution Resume Checkpoint
 
-- **Last completed:** Phase 21 — Type-Aware Backend and Quantity UI
+- **Last completed:** Phase 22 — Quantity Reports and Dashboards
 - **Commit:** pending owner commit
-- **Current phase:** Phase 22 — Quantity Reports and Dashboards
-- **Quantity schema development baseline:** version 20
+- **Current phase:** Phase 23 — Complete Quantity Suite
+- **Quantity schema development baseline:** version 22
 
 **Phase 16 evidence:** `tests/PHASE16_QUANTITY_COUNTS_ADJUSTMENTS_RESULTS.md`.
 
@@ -32,6 +32,8 @@
 **Phase 20 evidence:** `tests/PHASE20_QUANTITY_PLATFORM_CONTROLS_RESULTS.md`.
 
 **Phase 21 evidence:** `tests/PHASE21_TYPE_AWARE_UI_RESULTS.md`.
+
+**Phase 22 evidence:** `tests/PHASE22_QUANTITY_REPORTS_DASHBOARDS_RESULTS.md`.
 
 Phase 18 is complete. Schema v14 includes immutable foreign/base snapshots,
 partial and final cash/bank settlement allocations, realized exchange

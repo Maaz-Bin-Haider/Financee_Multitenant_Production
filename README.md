@@ -1,7 +1,7 @@
 # Financee Multitenant Accounting and Inventory System
 
-> Development resume point: Phases 0–21 are complete. **Phase 22 —
-> Quantity Reports and Dashboards** is next.
+> Development resume point: Phases 0–22 are complete. **Phase 23 —
+> Complete Quantity Suite** is next.
 > Read `PROJECT_CONTEXT.md` and
 > `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md` before starting.
 

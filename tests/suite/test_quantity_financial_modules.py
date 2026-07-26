@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.db import DatabaseError,connection,transaction
 from django.test import Client
 from tenancy.models import Company,Currency,Membership,INVENTORY_MODE_QUANTITY
+from tenancy.schema_families import schema_family
 from tenancy.schema_verification import verify_company_schema
 from tests.suite.test_quantity_purchases import setup_scope
 from tests.suite.test_quantity_sales import purchase
@@ -41,7 +42,9 @@ def main():
  try:
   c=Company.objects.create(name=f"PH19 {TAG}",inventory_mode=INVENTORY_MODE_QUANTITY,
    base_currency=Currency.objects.get(pk="PKR"),tax_environment="non_tax");s=c.schema_name
-  chk("fresh schema reaches current platform version",q(s,"SELECT version FROM tenant_schema_metadata")[0][0]==20)
+  chk("fresh schema reaches current platform version",
+      q(s,"SELECT version FROM tenant_schema_metadata")[0][0]
+      == schema_family(INVENTORY_MODE_QUANTITY).required_version)
   chk("financial schema verifies",verify_company_schema(c,use_cache=False).ok)
   call(s,"add_party_from_json",{"party_name":"CUSTOMER","party_type":"Customer","opening_balance":"1000","balance_type":"Debit","created_by_id":1})
   call(s,"add_party_from_json",{"party_name":"VENDOR","party_type":"Vendor","opening_balance":"800","balance_type":"Credit","created_by_id":1})

@@ -165,5 +165,5 @@ INSERT INTO tenant_schema_metadata (id, family, version)
 VALUES (TRUE, 'quantity', 20)
 ON CONFLICT (id) DO UPDATE
 SET family = EXCLUDED.family,
-    version = EXCLUDED.version,
+    version = GREATEST(tenant_schema_metadata.version, EXCLUDED.version),
     applied_at = now();

@@ -55,11 +55,10 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **CURRENT CHECKPOINT:** Phases 0–21 are complete. **Phase 22 — Quantity
-> Reports and Dashboards is next.** Phase 21 delivered central trusted mode
-> dispatch, cross-family payload rejection, authoritative calculation previews,
-> a warehouse UI, mode-aware navigation, and shared responsive/accessible
-> quantity interaction controls.
+> **CURRENT CHECKPOINT:** Phases 0–22 are complete. **Phase 23 — Complete
+> Quantity Suite is next.** Phase 22 delivered the complete quantity report
+> catalogue, reconciliation reports, quantity dashboards, filters,
+> permissions/features, and CSV/Excel exports.
 > Do not commit or push.
 
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
@@ -208,7 +207,14 @@ high-level checklist and shall be updated from the detailed plan’s results.
   keyboard, responsive, and accessibility behavior. Focused checks passed
   14/14 and all 34 mixed-family modules passed. See
   `tests/PHASE21_TYPE_AWARE_UI_RESULTS.md`.
-- [ ] Phases 22–32: not started; see
+- [x] **Phase 22 — Quantity Reports and Dashboards:** completed 2026-07-26.
+  Added schema v22 reporting/filter/dashboard contracts, a central 40-report
+  availability catalogue, accounts/stock/FIFO/sales/purchase/return and
+  reconciliation coverage, permission/feature enforcement, responsive UI,
+  and CSV plus Excel exports. Focused checks passed 25/25 and all 35
+  mixed-family modules passed. See
+  `tests/PHASE22_QUANTITY_REPORTS_DASHBOARDS_RESULTS.md`.
+- [ ] Phases 23–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

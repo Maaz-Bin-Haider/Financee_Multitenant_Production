@@ -17,7 +17,8 @@ CAPABILITY_CATALOG = {
     INVENTORY_MODE_QUANTITY: frozenset({
         "quantity_inventory", "quantity_documents", "warehouses", "fifo",
         "transfers", "physical_counts", "adjustments", "tax", "currency",
-        "shared_financials", "attachments", "audit", "subscriptions",
+        "quantity_reports", "quantity_dashboards", "shared_financials",
+        "attachments", "audit", "subscriptions",
     }),
 }
 

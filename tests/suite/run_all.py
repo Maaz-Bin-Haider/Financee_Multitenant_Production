@@ -48,6 +48,7 @@ MODULES = [
     "test_quantity_financial_modules.py",
     "test_quantity_platform_controls.py",
     "test_quantity_type_aware_ui.py",
+    "test_quantity_reports_dashboards.py",
     "test_http.py",
 ]
 

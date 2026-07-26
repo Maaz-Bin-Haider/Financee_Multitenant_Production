@@ -68,6 +68,7 @@ def check_registry_and_model():
             "accounts_reports", "stock_reports", "monthly_reports",
             "sales_reports", "opening_stock", "opening_cash",
             "excel_export", "attachments", "quantity_controls",
+            "purchase_reports",
         }, sorted(FEATURE_GROUPS))
     chk("every enforced path maps to a registered key",
         all(key in keys for _, key in FEATURE_PATH_PREFIXES),

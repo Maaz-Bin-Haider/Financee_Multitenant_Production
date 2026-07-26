@@ -6,9 +6,14 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
-- **Last completed phase:** Phase 21 — Type-Aware Backend and Quantity UI.
-- **Next phase:** Phase 22 — Quantity Reports and Dashboards.
-- **Quantity schema development baseline:** version 20.
+- **Last completed phase:** Phase 22 — Quantity Reports and Dashboards.
+- **Next phase:** Phase 23 — Complete Quantity Suite.
+- **Quantity schema development baseline:** version 22.
+- **Phase 22 delivered:** central mode-aware 40-report catalogue, validated
+  report-filter contract, accounting/stock/FIFO/sales/purchase/return and
+  reconciliation SQL, quantity dashboard dispatch, permission and feature
+  enforcement, responsive report UI, and CSV plus native Excel exports.
+- **Phase 22 evidence:** `tests/PHASE22_QUANTITY_REPORTS_DASHBOARDS_RESULTS.md`.
 - **Phase 20 delivered:** quantity attachments and lifecycle cleanup, smart
   descriptions, immutable cross-module audit events, new platform permissions,
   a permission-gated audit UI/API, type-aware feature catalogue/route guards,
@@ -39,7 +44,7 @@ This file is the persistent engineering context for Financee. Update it on every
 - **Phase 17 evidence:** `tests/PHASE17_QUANTITY_TAX_DISCOUNTS_RESULTS.md`.
 - **Preserve:** all serial-company behavior and the completed quantity schema
   version 12 count/adjustment lifecycle.
-- **Do not commit or push:** provide commit text to the owner after Phase 21;
+- **Do not commit or push:** provide commit text to the owner after Phase 22;
   the owner performs the commit.
 
 ## System Identity

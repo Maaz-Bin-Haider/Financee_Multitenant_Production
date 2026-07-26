@@ -57,7 +57,7 @@ def _families():
             key=INVENTORY_MODE_QUANTITY,
             template_path=SQL_DIR / "quantity_tenant_template.sql",
             hardening_path=SQL_DIR / "quantity_platform_controls.sql",
-            required_version=20,
+            required_version=22,
             metadata_table="tenant_schema_metadata",
             runtime_enabled=False,
             required_tables=(
@@ -254,6 +254,9 @@ def _families():
                 "quantity_settle_foreign_sale",
                 "quantity_apply_foreign_return",
                 "quantity_currency_report",
+                "quantity_report_filters",
+                "quantity_run_report",
+                "quantity_dashboard",
                 "quantity_assert_open_date",
                 "add_party_from_json",
                 "get_party_balance_by_name",
@@ -267,7 +270,10 @@ def _families():
                 "reverse_period_close",
                 "quantity_audit_log",
             ),
-            rollout_files=("quantity_platform_controls.sql",),
+            rollout_files=(
+                "quantity_platform_controls.sql",
+                "quantity_reports_dashboards.sql",
+            ),
             enabled_path_prefixes=(
                 "/items/quantity/",
                 "/warehouses/quantity/",
@@ -285,6 +291,7 @@ def _families():
                 "/set-opening/",
                 "/owner-equity/",
                 "/month-close/",
+                "/quantity-reports/",
             ),
             bootstrap_paths=(
                 SQL_DIR / "quantity_item_master.sql",
@@ -301,6 +308,7 @@ def _families():
                 SQL_DIR / "quantity_currency_settlements.sql",
                 SQL_DIR / "quantity_financial_modules.sql",
                 SQL_DIR / "quantity_platform_controls.sql",
+                SQL_DIR / "quantity_reports_dashboards.sql",
             ),
         ),
     }

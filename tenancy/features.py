@@ -76,6 +76,11 @@ FEATURE_GROUPS = {
             "invoice_register": "Invoice Register",
         },
     },
+    "purchase_reports": {
+        "label": "Purchase Reports",
+        "modes": ("quantity",),
+        "subs": {},
+    },
     "opening_stock": {"label": "Opening Stock", "subs": {}},
     "opening_cash": {"label": "Opening Cash (Set Opening)", "subs": {}},
     "excel_export": {"label": "CSV / Excel export buttons", "subs": {}},
