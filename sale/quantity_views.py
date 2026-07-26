@@ -9,12 +9,13 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.core.exceptions import ValidationError
 from attachments.utils import (
-    delete_document_attachments, parse_json_or_multipart_payload,
+    delete_document_attachments,
     save_document_attachments, validate_request_attachments,
 )
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
 from tenancy.models import Currency
+from tenancy.capabilities import parse_quantity_payload
 from tenancy.quantity_tax import (
     calculate_and_transform, catalog, finalize, finalize_currency,
     prepare_revision, reverse,
@@ -33,14 +34,7 @@ def _json(value):
 
 
 def _payload(request):
-    try:
-        data = parse_json_or_multipart_payload(request)
-    except (TypeError, ValueError):
-        raise ValueError("A valid JSON object is required.")
-    if not isinstance(data, dict):
-        raise ValueError("A valid JSON object is required.")
-    data["created_by_id"] = request.user.pk
-    return data
+    return parse_quantity_payload(request)
 
 
 def _can(request, permission):
@@ -86,6 +80,16 @@ def sales(request):
         data = _payload(request)
         action = (data.get("action") or "submit").lower()
         sale_id = data.get("sale_id")
+        if action == "preview":
+            calculation, _, foreign, currency, rate = calculate_and_transform(
+                data, price_key="unit_price_base",
+                company=request.tenant_company,
+            )
+            return JsonResponse({
+                "success": True, "calculation": calculation,
+                "foreign_calculation": foreign, "currency": currency,
+                "exchange_rate": str(rate),
+            })
         if action == "settle":
             if not _can(request, "auth.update_sale"):
                 return _error("You do not have permission to settle sales.", 403)
@@ -174,8 +178,10 @@ def sales(request):
             return JsonResponse({"success": True, **result})
         return _error("Unknown sale action.")
     except (ValueError, TypeError, ValidationError) as exc:
-        return _error(str(exc) if isinstance(exc, ValidationError)
-                      else "Sale request is invalid.")
+        return _error(
+            str(exc) if isinstance(exc, (ValueError, ValidationError))
+            else "Sale request is invalid."
+        )
     except DatabaseError:
         logger.exception("Quantity sale posting failed")
         return _error(

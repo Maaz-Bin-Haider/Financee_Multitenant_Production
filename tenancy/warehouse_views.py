@@ -5,9 +5,11 @@ import json
 from django.contrib.auth.decorators import login_required
 from django.db import DatabaseError, connection
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .models import INVENTORY_MODE_QUANTITY
+from .capabilities import reject_serial_payload
 
 
 def _error(message, status=400):
@@ -36,8 +38,21 @@ def _payload(request):
         raise ValueError("A valid JSON object is required.")
     if not isinstance(value, dict):
         raise ValueError("A valid JSON object is required.")
+    reject_serial_payload(value)
     value["user_id"] = request.user.pk
     return value
+
+
+@login_required
+@require_GET
+def warehouse_page(request):
+    if not _available(request):
+        return _error("Quantity warehouse management is unavailable.", 404)
+    return render(request, "tenancy_templates/quantity_warehouses.html", {
+        "can_create": _can(request, "auth.create_warehouse"),
+        "can_update": _can(request, "auth.update_warehouse"),
+        "can_delete": _can(request, "auth.delete_warehouse"),
+    })
 
 
 @login_required

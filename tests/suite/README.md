@@ -62,6 +62,7 @@ PASS/FAIL summary. Exit code is non-zero if any real check fails.
 | `test_quantity_currency_settlements.py` | Phase 18 foreign documents, immutable rates, settlements, realized gain/loss, return eligibility, reporting, validation, and reconciliation. |
 | `test_quantity_financial_modules.py` | Phase 19 quantity parties, cash movements, opening cash, owner equity, month close, universal closed-period guards, accounting, UI, and isolation. |
 | `test_quantity_platform_controls.py` | Phase 20 quantity attachment mappings, immutable audit deployment, type-aware features, permissions, and schema-family gates. |
+| `test_quantity_type_aware_ui.py` | Phase 21 central company-type dispatch, payload-family rejection, shared quantity interaction, responsive, keyboard, accessibility, and authoritative preview contracts. |
 | `test_http.py` | Real Django endpoints via the test client: pages render, JSON APIs return no 5xx, auth works, a master-data write flow succeeds. |
 
 ## Invariants asserted throughout

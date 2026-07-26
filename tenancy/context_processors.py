@@ -13,6 +13,7 @@ because the middleware short-circuits them to the suspension page.
 from datetime import date, timedelta
 
 from .features import features_map
+from .capabilities import CAPABILITY_CATALOG
 from .models import SUBSCRIPTION_EXPIRING, SUBSCRIPTION_GRACE
 
 
@@ -27,7 +28,14 @@ def company_features(request):
     get an all-enabled map so shared pages render unchanged.
     """
     company = getattr(request, "tenant_company", None)
-    return {"features": features_map(company)}
+    mode = getattr(company, "inventory_mode", None)
+    return {
+        "features": features_map(company),
+        "inventory_mode": mode,
+        "inventory_capabilities": CAPABILITY_CATALOG.get(mode, frozenset()),
+        "is_quantity_company": mode == "quantity",
+        "is_serial_company": mode == "serial",
+    }
 
 
 def subscription_notice(request):

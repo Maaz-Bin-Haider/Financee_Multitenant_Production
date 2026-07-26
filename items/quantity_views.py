@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
+from tenancy.capabilities import reject_serial_payload
 
 
 def _error(message, status=400):
@@ -26,6 +27,7 @@ def _payload(request):
         raise ValueError("A valid JSON object is required.")
     if not isinstance(value, dict):
         raise ValueError("A valid JSON object is required.")
+    reject_serial_payload(value)
     value["user_id"] = request.user.pk
     return value
 

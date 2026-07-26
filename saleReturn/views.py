@@ -731,8 +731,13 @@ def _sale_return_payload_matches_current(return_id, data, return_date):
 @login_required
 def createSaleReturn(request):
     from . import quantity_views
-    if quantity_views.is_quantity(request):
-        return quantity_views.sale_returns(request)
+    from tenancy.capabilities import dispatch_inventory_view
+    return dispatch_inventory_view(
+        request, _serial_create_sale_return, quantity_views.sale_returns
+    )
+
+
+def _serial_create_sale_return(request):
     if not request.user.has_perm("auth.view_sale_return"):
         messages.error(request, "You do not have permission to View Sale Return")
         return redirect("home:home")
@@ -954,8 +959,13 @@ def sale_return_lookup(request,serial:str):
 @login_required  
 def get_sale_return(request):
     from . import quantity_views
-    if quantity_views.is_quantity(request):
-        return quantity_views.get_sale_return(request)
+    from tenancy.capabilities import dispatch_inventory_view
+    return dispatch_inventory_view(
+        request, _serial_get_sale_return, quantity_views.get_sale_return
+    )
+
+
+def _serial_get_sale_return(request):
     action = request.GET.get("action")
     current_id = request.GET.get("current_id")
     try:
@@ -1057,8 +1067,14 @@ def get_sale_return(request):
 @login_required
 def get_sale_return_summary(request):
     from . import quantity_views
-    if quantity_views.is_quantity(request):
-        return quantity_views.get_sale_return_summary(request)
+    from tenancy.capabilities import dispatch_inventory_view
+    return dispatch_inventory_view(
+        request, _serial_get_sale_return_summary,
+        quantity_views.get_sale_return_summary,
+    )
+
+
+def _serial_get_sale_return_summary(request):
     try:
         from_date_str = request.GET.get("from")
         to_date_str = request.GET.get("to")

@@ -51,18 +51,18 @@
   document.getElementById("previous").onclick=()=>navigate("previous");
   document.getElementById("next").onclick=()=>navigate("next");
   document.getElementById("refresh-summary").onclick=summary;
-  document.getElementById("save")?.addEventListener("click",async()=>{
+  document.getElementById("save")?.addEventListener("click",event=>QuantityUI.run(event.currentTarget,async()=>{
     const payload={action:"submit",sale_return_id:document.getElementById("return-id").value||null,
       return_date:document.getElementById("return-date").value,customer_name:document.getElementById("customer-name").value,
       description:document.getElementById("description").value,idempotency_key:crypto.randomUUID(),items:lines()};
     const options=window.DocumentAttachments?DocumentAttachments.requestOptions(payload,csrf()):{method:"POST",headers:{"Content-Type":"application/json","X-CSRFToken":csrf()},body:JSON.stringify(payload)};
     const r=await get(cfg.urls.create,options);
-    if(!r.ok)return alert(r.data.message||"Return failed."); document.getElementById("return-id").value=r.data.sale_return_id; await summary(); await navigate("current");
-  });
+    if(!r.ok)return QuantityUI.notify("error",r.data.message||"Return failed."); document.getElementById("return-id").value=r.data.sale_return_id;QuantityUI.notify("success","Sale return saved."); await summary(); await navigate("current");
+  }));
   document.getElementById("reverse")?.addEventListener("click",async()=>{
     const id=document.getElementById("return-id").value;if(!id)return;
     const r=await get(cfg.urls.create,{method:"POST",headers:{"Content-Type":"application/json","X-CSRFToken":csrf()},body:JSON.stringify({action:"reverse",sale_return_id:Number(id)})});
-    if(!r.ok)return alert(r.data.message||"Reversal failed.");await summary();await navigate("current");
+    if(!r.ok)return QuantityUI.notify("error",r.data.message||"Reversal failed.");QuantityUI.notify("success","Sale return reversed.");await summary();await navigate("current");
   });
   Promise.all([get(cfg.urls.sources),get(cfg.urls.warehouses)]).then(([a,b])=>{sources=a.data.sources||[];warehouses=b.data.warehouses||[];addLine();});
   if(window.DocumentAttachments)DocumentAttachments.init("sale_return",()=>document.getElementById("return-id").value||"");

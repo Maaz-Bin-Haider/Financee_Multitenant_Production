@@ -55,10 +55,11 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **CURRENT CHECKPOINT:** Phases 0–20 are complete. **Phase 21 — Type-Aware
-> Backend and Quantity UI is next.** Phase 20 delivered schema v20 quantity
-> attachments, smart descriptions, immutable audit, permissions, type-aware
-> feature controls, and subscription/direct-route enforcement.
+> **CURRENT CHECKPOINT:** Phases 0–21 are complete. **Phase 22 — Quantity
+> Reports and Dashboards is next.** Phase 21 delivered central trusted mode
+> dispatch, cross-family payload rejection, authoritative calculation previews,
+> a warehouse UI, mode-aware navigation, and shared responsive/accessible
+> quantity interaction controls.
 > Do not commit or push.
 
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
@@ -200,7 +201,14 @@ high-level checklist and shall be updated from the detailed plan’s results.
   audit UI/API, type-aware features, and shared subscription enforcement.
   Focused tests passed 19/19 and all 33 mixed-family modules passed. See
   `tests/PHASE20_QUANTITY_PLATFORM_CONTROLS_RESULTS.md`.
-- [ ] Phases 21–32: not started; see
+- [x] **Phase 21 — Type-Aware Backend and Quantity UI:** completed
+  2026-07-26. Centralized company-mode capabilities and route dispatch, blocked
+  cross-family payload bypasses, added authoritative previews and warehouse
+  management, and standardized loading, duplicate submission, Alerts,
+  keyboard, responsive, and accessibility behavior. Focused checks passed
+  14/14 and all 34 mixed-family modules passed. See
+  `tests/PHASE21_TYPE_AWARE_UI_RESULTS.md`.
+- [ ] Phases 22–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

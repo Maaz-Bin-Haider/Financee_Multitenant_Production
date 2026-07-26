@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from tenancy.models import INVENTORY_MODE_QUANTITY
+from tenancy.capabilities import reject_serial_payload
 
 VIEW_PERM      = "auth.view_opening_stock"
 CREATE_PERM    = "auth.create_opening_stock"
@@ -81,6 +82,12 @@ def create_opening_stock(request):
         "items":         items,
     }
     if _is_quantity(request):
+        try:
+            reject_serial_payload(body)
+        except ValueError as exc:
+            return JsonResponse(
+                {"status": "error", "message": str(exc)}, status=400
+            )
         payload_data["description"] = body.get("description") or body.get("notes")
     payload = json.dumps(payload_data)
     try:

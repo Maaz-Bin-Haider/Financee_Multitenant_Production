@@ -7,11 +7,12 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.core.exceptions import ValidationError
 from attachments.utils import (
-    delete_document_attachments, parse_json_or_multipart_payload,
+    delete_document_attachments,
     save_document_attachments, validate_request_attachments,
 )
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
+from tenancy.capabilities import parse_quantity_payload
 from tenancy.quantity_tax import (
     finalize_return, prepare_return_revision, reverse_return,
 )
@@ -52,10 +53,7 @@ def purchase_returns(request):
              "base_currency": getattr(request.tenant_company, "base_currency", None)})
     try:
         validate_request_attachments(request)
-        data = parse_json_or_multipart_payload(request)
-        if not isinstance(data, dict):
-            raise ValueError
-        data["created_by_id"] = request.user.pk
+        data = parse_quantity_payload(request)
         action = (data.get("action") or "submit").lower()
         return_id = data.get("purchase_return_id") or data.get("return_id")
         if action == "submit":
@@ -102,8 +100,10 @@ def purchase_returns(request):
             return JsonResponse({"success": True, **result})
         return _error("Unknown purchase-return action.")
     except (ValueError, TypeError, ValidationError) as exc:
-        return _error(str(exc) if isinstance(exc, ValidationError)
-                      else "Purchase return request is invalid.")
+        return _error(
+            str(exc) if isinstance(exc, (ValueError, ValidationError))
+            else "Purchase return request is invalid."
+        )
     except DatabaseError:
         return _error("Purchase return is invalid or its source stock is unavailable.")
 

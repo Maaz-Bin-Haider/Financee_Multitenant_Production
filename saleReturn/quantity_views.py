@@ -8,11 +8,12 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.core.exceptions import ValidationError
 from attachments.utils import (
-    delete_document_attachments, parse_json_or_multipart_payload,
+    delete_document_attachments,
     save_document_attachments, validate_request_attachments,
 )
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
+from tenancy.capabilities import parse_quantity_payload
 from tenancy.quantity_tax import (
     finalize_return, prepare_return_revision, reverse_return,
 )
@@ -28,14 +29,7 @@ def _json(value):
 
 
 def _payload(request):
-    try:
-        data = parse_json_or_multipart_payload(request)
-    except (TypeError, ValueError):
-        raise ValueError("A valid JSON object is required.")
-    if not isinstance(data, dict):
-        raise ValueError("A valid JSON object is required.")
-    data["created_by_id"] = request.user.pk
-    return data
+    return parse_quantity_payload(request)
 
 
 def _can(request, permission):
@@ -140,8 +134,10 @@ def sale_returns(request):
             return JsonResponse({"success": True, **result})
         return _error("Unknown sale-return action.")
     except (ValueError, TypeError, ValidationError) as exc:
-        return _error(str(exc) if isinstance(exc, ValidationError)
-                      else "Sale return request is invalid.")
+        return _error(
+            str(exc) if isinstance(exc, (ValueError, ValidationError))
+            else "Sale return request is invalid."
+        )
     except DatabaseError:
         return _error(
             "Sale return data is invalid or its stock dependencies prevent this "

@@ -4,8 +4,9 @@
 {% block SeperateCssFile %}
 <link rel="stylesheet" href="{% static 'css/purchasing_styling.css' %}">
 <link rel="stylesheet" href="{% static 'css/opening_stock.css' %}">
+<link rel="stylesheet" href="{% static 'css/quantity_workflow.css' %}">
 <link rel="stylesheet" href="{% static 'css/smart_description.css' %}">
-{% if financee_features.attachments.enabled and can_manage_attachments %}<link rel="stylesheet" href="{% static 'css/document_attachments.css' %}">{% endif %}
+{% if features.attachments.enabled and can_manage_attachments %}<link rel="stylesheet" href="{% static 'css/document_attachments.css' %}">{% endif %}
 {% endblock SeperateCssFile %}
 {% block body %}
 {% csrf_token %}
@@ -43,7 +44,7 @@
       {% if tax_environment == "tax" %}<span class="col-header">Tax Class</span><span class="col-header">Tax Code / Ref</span>{% endif %}<span class="col-header">Actions</span>
     </div>
     <div id="sale-lines"></div>
-    {% if financee_features.attachments.enabled and can_manage_attachments %}{% include "components/document_attachments.html" %}{% endif %}
+    {% if features.attachments.enabled and can_manage_attachments %}{% include "components/document_attachments.html" %}{% endif %}
   </div>
   <div class="sale-card-footer">
     <div class="sale-totals-group">
@@ -55,6 +56,7 @@
     <div class="sale-actions">
       <button class="custom-btn" id="previous" type="button"><i class="fa-solid fa-chevron-left"></i></button>
       <button class="custom-btn" id="next" type="button"><i class="fa-solid fa-chevron-right"></i></button>
+      <button class="custom-btn" id="preview" type="button"><i class="fa-solid fa-calculator"></i> Calculate</button>
       {% if can_delete %}<button class="custom-btn" id="reverse" type="button"><i class="fa-solid fa-rotate-left"></i> Reverse</button>{% endif %}
       {% if can_create or can_update %}<button class="save-and-update-btn" id="save" type="button"><i class="fa-solid fa-floppy-disk"></i> Save Sale</button>{% endif %}
     </div>
@@ -85,6 +87,7 @@ window.QSAL = {
 </script>
 {{ tax_codes|json_script:"quantity-tax-codes" }}
 <script src="{% static 'js/smart_description.js' %}"></script>
-{% if financee_features.attachments.enabled and can_manage_attachments %}<script src="{% static 'js/document_attachments.js' %}"></script>{% endif %}
+<script src="{% static 'js/quantity_workflow.js' %}"></script>
+{% if features.attachments.enabled and can_manage_attachments %}<script src="{% static 'js/document_attachments.js' %}"></script>{% endif %}
 <script src="{% static 'js/quantity_sales.js' %}"></script>
 {% endblock body %}

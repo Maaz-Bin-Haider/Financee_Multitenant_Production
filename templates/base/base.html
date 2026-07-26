@@ -119,12 +119,17 @@
             <a href="{% url 'purchaseReturn:create_purchase_return' %}" class="{% if request.resolver_match.url_name == 'create_purchase_return' %}active{% endif %}">
                 <i class="fa-solid fa-rotate-right"></i> Purchase Return
             </a>
-            {% if perms.auth.view_warehouse_transfer %}
+            {% if is_quantity_company and features.quantity_controls.enabled and features.quantity_controls.subs.transfers and perms.auth.view_warehouse_transfer %}
             <a href="{% url 'quantity_transfers:page' %}" class="{% if request.resolver_match.namespace == 'quantity_transfers' %}active{% endif %}">
                 <i class="fa-solid fa-truck-ramp-box"></i> Warehouse Transfers
             </a>
             {% endif %}
-            {% if perms.auth.view_physical_count %}
+            {% if is_quantity_company and features.quantity_controls.enabled and features.quantity_controls.subs.warehouses and perms.auth.view_warehouse %}
+            <a href="{% url 'quantity_warehouses:page' %}" class="{% if request.resolver_match.url_name == 'page' and request.resolver_match.namespace == 'quantity_warehouses' %}active{% endif %}">
+                <i class="fa-solid fa-warehouse"></i> Warehouses
+            </a>
+            {% endif %}
+            {% if is_quantity_company and features.quantity_controls.enabled and features.quantity_controls.subs.counts and perms.auth.view_physical_count %}
             <a href="{% url 'quantity_counts:page' %}" class="{% if request.resolver_match.namespace == 'quantity_counts' %}active{% endif %}">
                 <i class="fa-solid fa-clipboard-check"></i> Physical Counts
             </a>
@@ -185,6 +190,10 @@
             <div class="user_name"><i class="fa-solid fa-user"></i>  <span id="username">-</span></div>
             {% if request.tenant_company %}
             <div class="user_name company_name"><i class="fa-solid fa-building"></i>  <span id="companyname">{{ request.tenant_company.name }}</span></div>
+            <div class="user_name company-mode" aria-label="Inventory mode">
+              <i class="fa-solid {% if is_quantity_company %}fa-layer-group{% else %}fa-barcode{% endif %}"></i>
+              <span>{{ request.tenant_company.get_inventory_mode_display }}</span>
+            </div>
             {% endif %}
             <hr>
 

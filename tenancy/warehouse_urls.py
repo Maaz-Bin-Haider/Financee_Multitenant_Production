@@ -5,6 +5,7 @@ from . import warehouse_views
 app_name = "quantity_warehouses"
 
 urlpatterns = [
+    path("quantity/manage/", warehouse_views.warehouse_page, name="page"),
     path("quantity/", warehouse_views.warehouse_list, name="list"),
     path("quantity/default/", warehouse_views.default_warehouse, name="default"),
     path("quantity/create/", warehouse_views.create_warehouse, name="create"),

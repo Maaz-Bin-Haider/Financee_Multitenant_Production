@@ -1,0 +1,40 @@
+{% extends "base/base.html" %}{% load static %}
+{% block title %}Warehouses{% endblock %}
+{% block SeperateCssFile %}
+<link rel="stylesheet" href="{% static 'css/opening_stock.css' %}">
+<link rel="stylesheet" href="{% static 'css/quantity_workflow.css' %}">
+{% endblock %}
+{% block body %}
+{% csrf_token %}
+<div class="os-titlebar">
+  <div class="os-titlebar-icon"><i class="fa-solid fa-warehouse"></i></div>
+  <div><h2>Quantity Warehouses</h2><p>Manage active stock locations and the default posting warehouse.</p></div>
+</div>
+<section class="os-card os-form-card">
+  <div class="os-card-body">
+    <input id="warehouse-id" type="hidden">
+    <div class="os-form-grid">
+      <div class="os-field"><label for="warehouse-code">Code</label><input id="warehouse-code" maxlength="20" autocomplete="off"></div>
+      <div class="os-field"><label for="warehouse-name">Name</label><input id="warehouse-name" maxlength="120"></div>
+      <div class="os-field"><label for="warehouse-address">Address</label><input id="warehouse-address" maxlength="300"></div>
+      <div class="os-field"><label><input id="warehouse-default" type="checkbox"> Default warehouse</label></div>
+      <div class="os-field"><label><input id="warehouse-active" type="checkbox" checked> Active</label></div>
+    </div>
+  </div>
+  <div class="os-card-footer">
+    <div id="warehouse-status" class="quantity-workflow-status" role="status" aria-live="polite"></div>
+    <div>
+      <button id="new" type="button" class="custom-btn">New</button>
+      {% if can_delete %}<button id="delete" type="button" class="custom-btn">Delete</button>{% endif %}
+      {% if can_create or can_update %}<button id="save" type="button" class="save-and-update-btn">Save Warehouse</button>{% endif %}
+    </div>
+  </div>
+</section>
+<section class="os-card os-list-card">
+  <div class="os-card-head"><h3>Warehouse Catalogue</h3><button id="refresh" type="button" class="os-icon-btn" aria-label="Refresh warehouses"><i class="fa-solid fa-rotate"></i></button></div>
+  <div class="os-table-wrap"><table class="os-table"><thead><tr><th>Code</th><th>Name</th><th>Address</th><th>Default</th><th>Status</th></tr></thead><tbody id="warehouse-list"></tbody></table></div>
+</section>
+<script>window.QWAREHOUSE={urls:{list:"{% url 'quantity_warehouses:list' %}",create:"{% url 'quantity_warehouses:create' %}",update:"{% url 'quantity_warehouses:update' 0 %}",remove:"{% url 'quantity_warehouses:delete' 0 %}"},canUpdate:{{ can_update|yesno:"true,false" }}};</script>
+<script src="{% static 'js/quantity_workflow.js' %}"></script>
+<script src="{% static 'js/quantity_warehouses.js' %}"></script>
+{% endblock %}

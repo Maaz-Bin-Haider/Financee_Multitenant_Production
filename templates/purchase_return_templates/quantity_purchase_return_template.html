@@ -4,8 +4,9 @@
 {% block SeperateCssFile %}
 <link rel="stylesheet" href="{% static 'css/purchase_return_styling.css' %}">
 <link rel="stylesheet" href="{% static 'css/opening_stock.css' %}">
+<link rel="stylesheet" href="{% static 'css/quantity_workflow.css' %}">
 <link rel="stylesheet" href="{% static 'css/smart_description.css' %}">
-{% if financee_features.attachments.enabled and can_manage_attachments %}<link rel="stylesheet" href="{% static 'css/document_attachments.css' %}">{% endif %}
+{% if features.attachments.enabled and can_manage_attachments %}<link rel="stylesheet" href="{% static 'css/document_attachments.css' %}">{% endif %}
 {% endblock SeperateCssFile %}
 {% block body %}
 {% csrf_token %}
@@ -23,7 +24,7 @@
  <div class="items-section-header" style="margin-top:16px;"><div class="items-section-title">Original Purchase Lines</div>
  {% if can_create %}<button id="add-line" type="button" class="custom-btn">Add Line</button>{% endif %}</div>
     <div id="return-lines"></div>
-    {% if financee_features.attachments.enabled and can_manage_attachments %}{% include "components/document_attachments.html" %}{% endif %}
+    {% if features.attachments.enabled and can_manage_attachments %}{% include "components/document_attachments.html" %}{% endif %}
 </div><div class="sale-card-footer">
  <div class="sale-totals-group"><div class="total-chip"><span class="total-chip-label">Document</span><span id="document-number" class="total-chip-value">New</span></div></div>
  <div class="sale-actions"><button id="previous" type="button" class="custom-btn">Previous</button><button id="next" type="button" class="custom-btn">Next</button>
@@ -39,6 +40,7 @@
  sources:"{% url 'purchaseReturn:quantity_sources' %}"
 }};</script>
 <script src="{% static 'js/smart_description.js' %}"></script>
-{% if financee_features.attachments.enabled and can_manage_attachments %}<script src="{% static 'js/document_attachments.js' %}"></script>{% endif %}
+<script src="{% static 'js/quantity_workflow.js' %}"></script>
+{% if features.attachments.enabled and can_manage_attachments %}<script src="{% static 'js/document_attachments.js' %}"></script>{% endif %}
 <script src="{% static 'js/quantity_purchase_returns.js' %}"></script>
 {% endblock body %}

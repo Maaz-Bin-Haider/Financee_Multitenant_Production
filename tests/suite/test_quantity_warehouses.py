@@ -298,6 +298,12 @@ def main():
         Membership.objects.create(user=admin_user, company=company)
         client = Client(SERVER_NAME="localhost")
         client.force_login(admin_user)
+        page_response = client.get("/warehouses/quantity/manage/")
+        chk("quantity warehouse management page renders",
+            page_response.status_code == 200
+            and b"Quantity Warehouses" in page_response.content
+            and b"quantity_warehouses" in page_response.content,
+            page_response.status_code)
         list_response = client.get("/warehouses/quantity/", {"active": "false"})
         chk("warehouse HTTP list works",
             list_response.status_code == 200
@@ -373,6 +379,8 @@ def main():
         Membership.objects.create(user=serial_user, company=serial_company)
         serial_client = Client(SERVER_NAME="localhost")
         serial_client.force_login(serial_user)
+        chk("serial tenant cannot render quantity warehouse form",
+            serial_client.get("/warehouses/quantity/manage/").status_code == 404)
         chk("serial tenant cannot invoke quantity warehouse SQL",
             serial_client.get("/warehouses/quantity/").status_code == 404)
         chk("unimplemented quantity home remains gated",

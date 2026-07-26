@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.shortcuts import render
 
 from .models import INVENTORY_MODE_QUANTITY
+from .capabilities import reject_serial_payload
 
 
 def _error(message, status=400):
@@ -45,6 +46,7 @@ def counts(request):
         data = json.loads(request.body or "{}")
         if not isinstance(data, dict):
             raise ValueError
+        reject_serial_payload(data)
         data["created_by_id"] = request.user.pk
         action = (data.get("action") or "create").lower()
         count_id = int(data.get("count_id")) if data.get("count_id") else None

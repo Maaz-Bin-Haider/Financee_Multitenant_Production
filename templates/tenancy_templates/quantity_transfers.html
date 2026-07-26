@@ -1,6 +1,6 @@
 {% extends 'base/base.html' %}{% load static %}
 {% block title %}Warehouse Transfers{% endblock %}
-{% block SeperateCssFile %}<link rel="stylesheet" href="{% static 'css/opening_stock.css' %}">{% endblock %}
+{% block SeperateCssFile %}<link rel="stylesheet" href="{% static 'css/opening_stock.css' %}"><link rel="stylesheet" href="{% static 'css/quantity_workflow.css' %}">{% endblock %}
 {% block body %}
 {% csrf_token %}
 <div class="os-titlebar"><div class="os-titlebar-icon"><i class="fa-solid fa-truck-ramp-box"></i></div>
@@ -21,5 +21,6 @@
 <section class="os-card os-list-card"><div class="os-card-head"><h3>Transfer Summary</h3><button id="refresh-summary" class="os-icon-btn">Refresh</button></div>
 <div class="os-table-wrap"><table class="os-table"><thead><tr><th>Number</th><th>Date</th><th>Source</th><th>Destination</th><th>Status</th><th>Quantity</th><th>Value</th></tr></thead><tbody id="summary-body"></tbody></table></div></section>
 <script>window.QTRF={urls:{page:"{% url 'quantity_transfers:page' %}",navigate:"{% url 'quantity_transfers:navigate' %}",summary:"{% url 'quantity_transfers:summary' %}",warehouses:"{% url 'quantity_warehouses:list' %}",catalog:"{% url 'items:quantity_catalog' %}"}};</script>
+<script src="{% static 'js/quantity_workflow.js' %}"></script>
 <script src="{% static 'js/quantity_transfers.js' %}"></script>
 {% endblock %}

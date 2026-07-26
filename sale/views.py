@@ -65,8 +65,11 @@ def _sale_payload_matches_current(sale_id, data, sale_date):
 @login_required
 def sales(request):
     from . import quantity_views
-    if quantity_views.is_quantity(request):
-        return quantity_views.sales(request)
+    from tenancy.capabilities import dispatch_inventory_view
+    return dispatch_inventory_view(request, _serial_sales, quantity_views.sales)
+
+
+def _serial_sales(request):
     if not request.user.has_perm("auth.view_sale"):
         messages.error(request, "You do not have permission to View Sale Invoices.")
         return redirect("home:home")
@@ -463,8 +466,13 @@ def sales(request):
 @login_required
 def get_sale(request):
     from . import quantity_views
-    if quantity_views.is_quantity(request):
-        return quantity_views.get_sale(request)
+    from tenancy.capabilities import dispatch_inventory_view
+    return dispatch_inventory_view(
+        request, _serial_get_sale, quantity_views.get_sale
+    )
+
+
+def _serial_get_sale(request):
     action = request.GET.get("action")
     current_id = request.GET.get("current_id")
     try:
@@ -782,8 +790,13 @@ def sale_bulk_serial_lookup(request):
 @login_required
 def get_sale_summary(request):
     from . import quantity_views
-    if quantity_views.is_quantity(request):
-        return quantity_views.get_sale_summary(request)
+    from tenancy.capabilities import dispatch_inventory_view
+    return dispatch_inventory_view(
+        request, _serial_get_sale_summary, quantity_views.get_sale_summary
+    )
+
+
+def _serial_get_sale_summary(request):
     try:
         from_date_str = request.GET.get("from")
         to_date_str = request.GET.get("to")

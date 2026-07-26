@@ -6,6 +6,7 @@
 {% block SeperateCssFile %}
 <link rel="stylesheet" href="{% static 'css/purchasing_styling.css' %}">
 <link rel="stylesheet" href="{% static 'css/opening_stock.css' %}">
+<link rel="stylesheet" href="{% static 'css/quantity_workflow.css' %}">
 {% endblock SeperateCssFile %}
 
 {% block body %}
@@ -111,5 +112,6 @@ window.QOS = {
   currency: "{{ base_currency.code|default:''|escapejs }}"
 };
 </script>
+<script src="{% static 'js/quantity_workflow.js' %}"></script>
 <script src="{% static 'js/quantity_opening_stock.js' %}"></script>
 {% endblock body %}

@@ -60,6 +60,20 @@
     tax_code_id: taxable ? (row.querySelector(".tax-code").value || null) : null,
     exemption_reference: taxable ? row.querySelector(".exemption-reference").value : ""
   }));
+  const payload = (action = "submit") => ({
+    action, sale_id: document.getElementById("sale-id").value || null,
+    invoice_date: document.getElementById("invoice-date").value,
+    customer_name: document.getElementById("customer-name").value,
+    sale_type: document.getElementById("sale-type").value,
+    payment_account_code: document.getElementById("payment-account").value,
+    description: document.getElementById("description").value,
+    tax_mode: document.getElementById("tax-mode").value,
+    invoice_discount_type: document.getElementById("invoice-discount-type").value,
+    invoice_discount_value: document.getElementById("invoice-discount-value").value,
+    transaction_currency_code: document.getElementById("transaction-currency").value,
+    exchange_rate: document.getElementById("exchange-rate").value || null,
+    idempotency_key: crypto.randomUUID(), items: lines()
+  });
   function reset() {
     document.getElementById("sale-id").value = "";
     document.getElementById("document-number").textContent = "New";
@@ -120,30 +134,27 @@
   document.getElementById("previous").addEventListener("click", () => navigate("previous"));
   document.getElementById("next").addEventListener("click", () => navigate("next"));
   document.getElementById("refresh-summary").addEventListener("click", summary);
-  document.getElementById("save")?.addEventListener("click", async () => {
-    const payload = {
-      action: "submit", sale_id: document.getElementById("sale-id").value || null,
-      invoice_date: document.getElementById("invoice-date").value,
-      customer_name: document.getElementById("customer-name").value,
-      sale_type: document.getElementById("sale-type").value,
-      payment_account_code: document.getElementById("payment-account").value,
-      description: document.getElementById("description").value,
-      tax_mode: document.getElementById("tax-mode").value,
-      invoice_discount_type: document.getElementById("invoice-discount-type").value,
-      invoice_discount_value: document.getElementById("invoice-discount-value").value,
-      transaction_currency_code: document.getElementById("transaction-currency").value,
-      exchange_rate: document.getElementById("exchange-rate").value || null,
-      idempotency_key: crypto.randomUUID(), items: lines()
-    };
+  document.getElementById("preview")?.addEventListener("click", event => QuantityUI.run(event.currentTarget, async () => {
+    const { ok, data } = await fetchJSON(cfg.urls.sale, {
+      method: "POST", headers: {"Content-Type":"application/json","X-CSRFToken":csrf()},
+      body: JSON.stringify(payload("preview"))
+    });
+    if (!ok) return notify("error", data.message || "Calculation failed.");
+    document.getElementById("total-tax").textContent = fmt(data.calculation.tax_total_base);
+    document.getElementById("total-price").textContent = fmt(data.calculation.total_base);
+    notify("success", "Totals verified by the accounting engine.");
+  }));
+  document.getElementById("save")?.addEventListener("click", event => QuantityUI.run(event.currentTarget, async () => {
+    const requestPayload = payload();
     const options = window.DocumentAttachments
-      ? DocumentAttachments.requestOptions(payload, csrf())
-      : { method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() }, body: JSON.stringify(payload) };
+      ? DocumentAttachments.requestOptions(requestPayload, csrf())
+      : { method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() }, body: JSON.stringify(requestPayload) };
     const { ok, data } = await fetchJSON(cfg.urls.sale, options);
     if (!ok) return notify("error", data.message || "Sale failed.");
     notify("success", `Sale ${data.document_number} saved.`);
     document.getElementById("sale-id").value = data.sale_invoice_id;
     await summary(); await navigate("current");
-  });
+  }));
   document.getElementById("settle")?.addEventListener("click", async () => {
     const id = document.getElementById("sale-id").value;
     if (!id) return notify("warning", "Select a foreign credit sale.");

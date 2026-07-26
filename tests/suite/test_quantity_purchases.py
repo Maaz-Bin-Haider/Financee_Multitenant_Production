@@ -420,7 +420,36 @@ def main():
         page = client.get("/purchase/purchasing/")
         chk("quantity purchase page contains no serial entry",
             page.status_code == 200 and b"Quantity Purchases" in page.content
-            and b"Serial Numbers" not in page.content)
+            and b"Serial Numbers" not in page.content
+            and b'id="preview"' in page.content)
+        preview = client.post(
+            "/purchase/purchasing/",
+            data=json.dumps({
+                "action": "preview", "invoice_date": "2026-07-12",
+                "vendor_name": "Preview Vendor", "purchase_type": "credit",
+                "items": [{
+                    "variant_id": tenant_b_variant,
+                    "warehouse_id": tenant_b_wh,
+                    "quantity": "2", "unit_cost_base": "30",
+                }],
+            }), content_type="application/json",
+        )
+        chk("browser purchase preview matches authoritative SQL",
+            preview.status_code == 200
+            and Decimal(preview.json()["calculation"]["total_base"])
+            == Decimal("60.00"), preview.content)
+        serial_bypass = client.post(
+            "/purchase/purchasing/",
+            data=json.dumps({
+                "action": "submit", "serials": ["BYPASS-1"],
+                "invoice_date": "2026-07-12", "vendor_name": "Blocked",
+                "purchase_type": "credit", "items": [],
+            }), content_type="application/json",
+        )
+        chk("serial-shaped payload rejected in quantity mode",
+            serial_bypass.status_code == 400
+            and "Serial-number" in serial_bypass.json()["message"],
+            serial_bypass.content)
         http_create = client.post(
             "/purchase/purchasing/",
             data=json.dumps({
