@@ -1,7 +1,8 @@
 # Financee Multitenant Accounting and Inventory System
 
-> Development resume point: Phases 0–16 of the quantity-company rollout are
-> complete. The next implementation phase is **Phase 17 — Tax and Discount Engine**.
+> Development resume point: Phases 0–17 of the quantity-company rollout are
+> complete. The next phase is **Phase 18 — Multi-Currency and Realized
+> Gain/Loss**.
 > Read `PROJECT_CONTEXT.md` and
 > `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md` before starting.
 
@@ -576,6 +577,14 @@ Accounts Receivable or Cash/Bank, COGS, and Inventory atomically. Idempotent
 create, guarded edit/replay and reversal, navigation, and summaries are
 available. Sale returns, tax, discounts, foreign currency, attachments, and
 the full quantity party master remain scheduled for later phases.
+
+Quantity schema version 13 adds tax and discounts across purchases, sales, and
+both source-linked return flows. Tax companies support administered tax codes,
+inclusive/exclusive pricing, taxable/zero-rated/exempt lines, and
+percentage/fixed discounts at line and invoice levels. Posted inputs and
+results are immutable snapshots; partial returns reverse historical tax
+proportionally. Non-tax companies retain zero-tax behavior and cannot post tax
+control entries.
 
 ### Tenant Login Redirect Loop
 

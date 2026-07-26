@@ -1,13 +1,20 @@
 """Guarded HTTP adapter for Phase 11 quantity purchases."""
 
 import json
+import logging
 import uuid
 
-from django.db import DatabaseError, connection
+from django.db import DatabaseError, connection, transaction
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
+from tenancy.quantity_tax import (
+    calculate_and_transform, catalog, finalize, prepare_revision, reverse,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def is_quantity(request):
@@ -58,6 +65,9 @@ def purchasing(request):
                     getattr(request, "tenant_company", None),
                     "base_currency", None,
                 ),
+                "tax_environment": request.tenant_company.tax_environment,
+                "tax_codes": catalog(),
+                "can_manage_tax": request.user.is_superuser,
             },
         )
     try:
@@ -68,24 +78,45 @@ def purchasing(request):
             if not _can(request, "auth.update_purchase"):
                 return _error("You do not have permission to update purchases.",
                               403)
-            with connection.cursor() as cur:
-                cur.execute(
-                    "SELECT quantity_update_purchase(%s,%s::jsonb)",
-                    [int(purchase_id), json.dumps(data)],
+            with transaction.atomic():
+                calculation, transformed = calculate_and_transform(
+                    data, price_key="unit_cost_base"
                 )
-                result = _json(cur.fetchone()[0])
+                prepare_revision(
+                    "purchase", int(purchase_id), data.get("invoice_date"),
+                    request.user.pk,
+                )
+                with connection.cursor() as cur:
+                    cur.execute(
+                        "SELECT quantity_update_purchase(%s,%s::jsonb)",
+                        [int(purchase_id), json.dumps(transformed)],
+                    )
+                    result = _json(cur.fetchone()[0])
+                result.update(finalize(
+                    "purchase", int(purchase_id), data, calculation,
+                    request.user.pk,
+                ))
             return JsonResponse({"success": True, **result})
         if action == "submit":
             if not _can(request, "auth.create_purchase"):
                 return _error("You do not have permission to create purchases.",
                               403)
             data.setdefault("idempotency_key", str(uuid.uuid4()))
-            with connection.cursor() as cur:
-                cur.execute(
-                    "SELECT quantity_create_purchase(%s::jsonb)",
-                    [json.dumps(data)],
+            with transaction.atomic():
+                calculation, transformed = calculate_and_transform(
+                    data, price_key="unit_cost_base"
                 )
-                result = _json(cur.fetchone()[0])
+                with connection.cursor() as cur:
+                    cur.execute(
+                        "SELECT quantity_create_purchase(%s::jsonb)",
+                        [json.dumps(transformed)],
+                    )
+                    result = _json(cur.fetchone()[0])
+                if not result.get("idempotent"):
+                    result.update(finalize(
+                        "purchase", result["purchase_invoice_id"], data,
+                        calculation, request.user.pk,
+                    ))
             return JsonResponse({"success": True, **result})
         if action in ("delete", "reverse"):
             if not _can(request, "auth.delete_purchase"):
@@ -93,20 +124,25 @@ def purchasing(request):
                               403)
             if not purchase_id:
                 return _error("Select a purchase first.")
-            with connection.cursor() as cur:
-                cur.execute(
-                    "SELECT quantity_reverse_purchase(%s,CURRENT_DATE,%s)",
-                    [int(purchase_id), request.user.pk],
+            with transaction.atomic():
+                with connection.cursor() as cur:
+                    cur.execute(
+                        "SELECT quantity_reverse_purchase(%s,CURRENT_DATE,%s)",
+                        [int(purchase_id), request.user.pk],
+                    )
+                    result = _json(cur.fetchone()[0])
+                result["reversal_tax_journal_id"] = reverse(
+                    "purchase", int(purchase_id), None, request.user.pk
                 )
-                result = _json(cur.fetchone()[0])
             return JsonResponse({"success": True, **result})
         return _error("Unknown purchase action.")
     except (ValueError, TypeError):
         return _error("Purchase request is invalid.")
     except DatabaseError:
+        logger.exception("Quantity purchase posting failed")
         return _error(
-            "Purchase data is invalid or its stock dependencies prevent this "
-            "change."
+            "Purchase data, tax, or discounts are invalid, or stock "
+            "dependencies prevent this change."
         )
 
 
@@ -146,3 +182,24 @@ def get_purchase_summary(request):
 def serial_check(_request):
     return _error("Serial validation is unavailable for quantity purchases.",
                   404)
+
+
+@login_required
+def tax_codes(request):
+    if not is_quantity(request):
+        return _error("Tax codes are only available to quantity companies.", 404)
+    if request.method == "GET":
+        return JsonResponse({"tax_codes": catalog()})
+    if not request.user.is_superuser:
+        return _error("Only tenant administrators may manage tax codes.", 403)
+    try:
+        data = _payload(request)
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT quantity_upsert_tax_code(%s::jsonb)",
+                [json.dumps(data)],
+            )
+            result = _json(cursor.fetchone()[0])
+        return JsonResponse({"success": True, **result})
+    except (DatabaseError, TypeError, ValueError):
+        return _error("Tax code configuration is invalid.")

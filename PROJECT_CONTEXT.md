@@ -6,17 +6,17 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
-- **Last completed phase:** Phase 16 — Physical Counts and Adjustments.
-- **Current worktree:** Phase 16 complete; owner commit pending.
-- **Next phase to start:** Phase 17 — Tax and Discount Engine.
-- **Quantity schema baseline:** version 12.
+- **Last completed phase:** Phase 17 — Tax and Discount Engine.
+- **Current worktree:** Phase 17 complete; owner commit pending.
+- **Next phase:** Phase 18 — Multi-Currency and Realized Gain/Loss.
+- **Quantity schema baseline:** version 13.
 - **Required Phase 17 scope:** tax/non-tax configuration, inclusive/exclusive
   calculations, discounts, historical snapshots, returns, and control accounts.
-- **Start by reading:** the Phase 17 section of
-  `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`, requirements
-  tax/discount requirements in `SRS_QUANTITY_BASED_COMPANY.md`, the calculation
-  sections of `ARCHITECTURE_QUANTITY_COMPANY.md`, and
-  `tests/PHASE16_QUANTITY_COUNTS_ADJUSTMENTS_RESULTS.md`.
+- **Phase 17 delivered:** tenant tax-environment snapshots,
+  tax-code/control-account administration functions, immutable document
+  calculation columns, and the canonical inclusive/exclusive discount-before-
+  tax calculator with deterministic invoice-discount allocation.
+- **Phase 17 evidence:** `tests/PHASE17_QUANTITY_TAX_DISCOUNTS_RESULTS.md`.
 - **Preserve:** all serial-company behavior and the completed quantity schema
   version 12 count/adjustment lifecycle.
 - **Do not commit or push:** provide commit text to the owner after Phase 17;

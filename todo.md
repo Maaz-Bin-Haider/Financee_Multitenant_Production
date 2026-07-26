@@ -55,11 +55,9 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **NEXT SESSION CHECKPOINT:** Phases 0–16 are complete; owner commit is
-> pending. Start **Phase 17 — Tax and Discount Engine.** Do not repeat Phase 16.
-> Read the Phase 17 rollout section and SRS tax/discount requirements before
-> making changes. After completing Phase 17, provide commit
-> text only; do not commit or push.
+> **NEXT SESSION CHECKPOINT:** Phases 0–17 are complete. Phase 17 is awaiting
+> the owner's commit. Start **Phase 18 — Multi-Currency and Realized
+> Gain/Loss** next. Do not repeat Phase 17 and do not commit or push.
 
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
 - [x] **Phase 1 — Baseline Capture and Test Stabilization:** completed
@@ -172,7 +170,15 @@ high-level checklist and shall be updated from the detailed plan’s results.
   permissions, idempotency, navigation/summary, and quantity UI. Focused tests
   passed 17/17; all 29 modules and complete serial gates remained green. See
   `tests/PHASE16_QUANTITY_COUNTS_ADJUSTMENTS_RESULTS.md`.
-- [ ] Phases 17–32: not started; see
+- [x] **Phase 17 — Tax and Discount Engine:** completed 2026-07-26.
+  Added quantity schema version 13 tax-environment metadata, validated tenant
+  tax codes/control accounts, immutable calculation snapshot fields, and the
+  canonical line/invoice discount plus inclusive/exclusive tax calculator.
+  Purchases, sales, both returns, control journals, guarded revisions/reversals,
+  and administration/UI are integrated. Focused tests passed 26/26; all 30
+  mixed-family modules, HTTP 70/70, system 111/111, and deep serial 2702/2702
+  passed. See `tests/PHASE17_QUANTITY_TAX_DISCOUNTS_RESULTS.md`.
+- [ ] Phases 18–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

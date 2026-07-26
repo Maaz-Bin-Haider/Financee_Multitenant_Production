@@ -62,6 +62,7 @@ def verify_company_schema(company: Company, *, use_cache=True) -> SchemaVerifica
     cache_key = (
         f"tenant_schema_compatible:{company.pk}:{schema_name}:"
         f"{company.inventory_mode}:{company.base_currency_id}:"
+        f"{company.tax_environment}:"
         f"{definition.required_version}"
     )
     if use_cache:
@@ -75,7 +76,7 @@ def verify_company_schema(company: Company, *, use_cache=True) -> SchemaVerifica
             if company.inventory_mode == INVENTORY_MODE_QUANTITY:
                 cur.execute(
                     f"""
-                    SELECT family, version, base_currency_code
+                    SELECT family, version, base_currency_code, tax_environment
                       FROM {quoted}.tenant_schema_metadata
                      WHERE id = true
                     """
@@ -87,6 +88,8 @@ def verify_company_schema(company: Company, *, use_cache=True) -> SchemaVerifica
                     result = SchemaVerification(False, "family_mismatch", row[0], row[1])
                 elif row[2] != company.base_currency_id:
                     result = SchemaVerification(False, "base_currency_mismatch", row[0], row[1])
+                elif row[3] != company.tax_environment:
+                    result = SchemaVerification(False, "tax_environment_mismatch", row[0], row[1])
                 elif int(row[1]) < definition.required_version:
                     result = SchemaVerification(False, "version_outdated", row[0], row[1])
                 else:

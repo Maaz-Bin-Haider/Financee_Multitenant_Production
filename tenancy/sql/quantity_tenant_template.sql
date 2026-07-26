@@ -7,6 +7,7 @@ CREATE TABLE tenant_schema_metadata (
     family text NOT NULL DEFAULT 'quantity',
     version integer NOT NULL DEFAULT 1,
     base_currency_code char(3) NOT NULL DEFAULT 'PKR',
+    tax_environment text NOT NULL DEFAULT 'non_tax',
     created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     applied_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT tenant_schema_metadata_singleton CHECK (id),
@@ -14,6 +15,9 @@ CREATE TABLE tenant_schema_metadata (
     CONSTRAINT tenant_schema_metadata_positive_version CHECK (version >= 1),
     CONSTRAINT tenant_schema_metadata_currency_code CHECK (
         base_currency_code ~ '^[A-Z]{3}$'
+    ),
+    CONSTRAINT tenant_schema_metadata_tax_environment CHECK (
+        tax_environment IN ('tax','non_tax')
     )
 );
 

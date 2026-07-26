@@ -3,11 +3,14 @@
 import json
 import uuid
 
-from django.db import DatabaseError, connection
+from django.db import DatabaseError, connection, transaction
 from django.http import JsonResponse
 from django.shortcuts import render
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
+from tenancy.quantity_tax import (
+    finalize_return, prepare_return_revision, reverse_return,
+)
 
 
 def is_quantity(request):
@@ -68,24 +71,38 @@ def sale_returns(request):
             if not _can(request, "auth.update_sale_return"):
                 return _error("You do not have permission to update sale returns.",
                               403)
-            with connection.cursor() as cur:
-                cur.execute(
-                    "SELECT quantity_update_sale_return(%s,%s::jsonb)",
-                    [int(sale_return_id), json.dumps(data)],
+            with transaction.atomic():
+                prepare_return_revision(
+                    "sale_return", int(sale_return_id),
+                    data.get("return_date"), request.user.pk,
                 )
-                result = _json(cur.fetchone()[0])
+                with connection.cursor() as cur:
+                    cur.execute(
+                        "SELECT quantity_update_sale_return(%s,%s::jsonb)",
+                        [int(sale_return_id), json.dumps(data)],
+                    )
+                    result = _json(cur.fetchone()[0])
+                result.update(finalize_return(
+                    "sale_return", int(sale_return_id), request.user.pk
+                ))
             return JsonResponse({"success": True, **result})
         if action == "submit":
             if not _can(request, "auth.create_sale_return"):
                 return _error("You do not have permission to create sale returns.",
                               403)
             data.setdefault("idempotency_key", str(uuid.uuid4()))
-            with connection.cursor() as cur:
-                cur.execute(
-                    "SELECT quantity_create_sale_return(%s::jsonb)",
-                    [json.dumps(data)],
-                )
-                result = _json(cur.fetchone()[0])
+            with transaction.atomic():
+                with connection.cursor() as cur:
+                    cur.execute(
+                        "SELECT quantity_create_sale_return(%s::jsonb)",
+                        [json.dumps(data)],
+                    )
+                    result = _json(cur.fetchone()[0])
+                if not result.get("idempotent"):
+                    result.update(finalize_return(
+                        "sale_return", result["sale_return_id"],
+                        request.user.pk,
+                    ))
             return JsonResponse({"success": True, **result})
         if action in ("delete", "reverse"):
             if not _can(request, "auth.delete_sale_return"):
@@ -93,12 +110,16 @@ def sale_returns(request):
                               403)
             if not sale_return_id:
                 return _error("Select a sale return first.")
-            with connection.cursor() as cur:
-                cur.execute(
-                    "SELECT quantity_reverse_sale_return(%s,CURRENT_DATE,%s)",
-                    [int(sale_return_id), request.user.pk],
+            with transaction.atomic():
+                with connection.cursor() as cur:
+                    cur.execute(
+                        "SELECT quantity_reverse_sale_return(%s,CURRENT_DATE,%s)",
+                        [int(sale_return_id), request.user.pk],
+                    )
+                    result = _json(cur.fetchone()[0])
+                result["reversal_tax_journal_id"] = reverse_return(
+                    "sale_return", int(sale_return_id), None, request.user.pk
                 )
-                result = _json(cur.fetchone()[0])
             return JsonResponse({"success": True, **result})
         return _error("Unknown sale-return action.")
     except (ValueError, TypeError):

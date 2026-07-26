@@ -39,7 +39,7 @@ def main():
  c1=c2=admin=viewer=None
  try:
   cur=Currency.objects.get(pk="PKR");c1=Company.objects.create(name=f"PH16 {TAG} A",inventory_mode=INVENTORY_MODE_QUANTITY,base_currency=cur,tax_environment="non_tax");c2=Company.objects.create(name=f"PH16 {TAG} B",inventory_mode=INVENTORY_MODE_QUANTITY,base_currency=cur,tax_environment="non_tax")
-  s=c1.schema_name;sb=c2.schema_name;chk("fresh schema reaches count version",q(s,"SELECT version FROM tenant_schema_metadata")[0][0]==12);chk("schema verifies",verify_company_schema(c1,use_cache=False).ok)
+  s=c1.schema_name;sb=c2.schema_name;chk("fresh schema includes count version",q(s,"SELECT version FROM tenant_schema_metadata")[0][0]>=12);chk("schema verifies",verify_company_schema(c1,use_cache=False).ok)
   v,w=setup_scope(s,"COUNT","PCS");purchase(s,"p",v,w,5,100,"2026-07-01")
   exact=create(s,payload("exact",w,[{"variant_id":v,"counted_quantity":"5","reason":"Cycle count"}]));ep=approve(s,exact["count_id"])
   chk("exact count posts no movement or journal",ep["journal_id"] is None and stock(s,v,w)==5)

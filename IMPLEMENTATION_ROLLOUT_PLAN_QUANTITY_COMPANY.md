@@ -16,15 +16,17 @@
 
 ## Execution Resume Checkpoint
 
-- **Last completed:** Phase 16 — Physical Counts and Adjustments
+- **Last completed:** Phase 17 — Tax and Discount Engine
 - **Commit:** owner commit pending
-- **Next authorized phase:** Phase 17 — Tax and Discount Engine
-- **Quantity schema baseline:** version 12
+- **Next authorized phase:** Phase 18 — Multi-Currency and Realized Gain/Loss
+- **Quantity schema baseline:** version 13
 
 **Phase 16 evidence:** `tests/PHASE16_QUANTITY_COUNTS_ADJUSTMENTS_RESULTS.md`.
 
-The next implementation session shall begin at Phase 17 and shall not repeat or
-redesign completed Phase 0–16 work unless a regression directly requires a
+**Phase 17 evidence:** `tests/PHASE17_QUANTITY_TAX_DISCOUNTS_RESULTS.md`.
+
+The next implementation session shall begin at Phase 18 and shall not repeat or
+redesign completed Phase 0–17 work unless a regression directly requires a
 scoped correction.
 
 ---

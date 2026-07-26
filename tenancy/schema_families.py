@@ -56,8 +56,8 @@ def _families():
         INVENTORY_MODE_QUANTITY: SchemaFamily(
             key=INVENTORY_MODE_QUANTITY,
             template_path=SQL_DIR / "quantity_tenant_template.sql",
-            hardening_path=SQL_DIR / "quantity_counts_adjustments.sql",
-            required_version=12,
+            hardening_path=SQL_DIR / "quantity_tax_discounts.sql",
+            required_version=13,
             metadata_table="tenant_schema_metadata",
             runtime_enabled=False,
             required_tables=(
@@ -101,6 +101,7 @@ def _families():
                 "physical_count_lines",
                 "inventory_adjustments",
                 "inventory_adjustment_lines",
+                "tax_codes",
             ),
             required_sequences=(
                 "quantity_foundation_id_seq",
@@ -141,6 +142,7 @@ def _families():
                 "physical_count_lines_count_line_id_seq",
                 "inventory_adjustments_adjustment_id_seq",
                 "inventory_adjustment_lines_adjustment_line_id_seq",
+                "tax_codes_tax_code_id_seq",
             ),
             required_functions=(
                 "quantity_schema_fingerprint",
@@ -211,8 +213,17 @@ def _families():
                 "quantity_physical_count_details",
                 "quantity_physical_count_navigate",
                 "quantity_physical_count_summary",
+                "quantity_upsert_tax_code",
+                "quantity_tax_code_catalog",
+                "quantity_calculate_document",
+                "quantity_finalize_tax_document",
+                "quantity_prepare_tax_revision",
+                "quantity_reverse_tax_document",
+                "quantity_finalize_tax_return",
+                "quantity_prepare_tax_return_revision",
+                "quantity_reverse_tax_return",
             ),
-            rollout_files=("quantity_counts_adjustments.sql",),
+            rollout_files=("quantity_tax_discounts.sql",),
             enabled_path_prefixes=(
                 "/items/quantity/",
                 "/warehouses/quantity/",
@@ -235,6 +246,7 @@ def _families():
                 SQL_DIR / "quantity_purchase_returns.sql",
                 SQL_DIR / "quantity_warehouse_transfers.sql",
                 SQL_DIR / "quantity_counts_adjustments.sql",
+                SQL_DIR / "quantity_tax_discounts.sql",
             ),
         ),
     }

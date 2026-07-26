@@ -2,11 +2,14 @@
 import json
 import uuid
 
-from django.db import DatabaseError, connection
+from django.db import DatabaseError, connection, transaction
 from django.http import JsonResponse
 from django.shortcuts import render
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
+from tenancy.quantity_tax import (
+    finalize_return, prepare_return_revision, reverse_return,
+)
 
 
 def is_quantity(request):
@@ -55,17 +58,34 @@ def purchase_returns(request):
                         else "quantity_create_purchase_return")
             args = [int(return_id), json.dumps(data)] if return_id else [json.dumps(data)]
             placeholders = "%s,%s::jsonb" if return_id else "%s::jsonb"
-            with connection.cursor() as cur:
-                cur.execute(f"SELECT {function}({placeholders})", args)
-                result = _json(cur.fetchone()[0])
+            with transaction.atomic():
+                if return_id:
+                    prepare_return_revision(
+                        "purchase_return", int(return_id),
+                        data.get("return_date"), request.user.pk,
+                    )
+                with connection.cursor() as cur:
+                    cur.execute(f"SELECT {function}({placeholders})", args)
+                    result = _json(cur.fetchone()[0])
+                if not result.get("idempotent"):
+                    result.update(finalize_return(
+                        "purchase_return",
+                        int(return_id) if return_id
+                        else result["purchase_return_id"],
+                        request.user.pk,
+                    ))
             return JsonResponse({"success": True, **result})
         if action in ("delete", "reverse"):
             if not _can(request, "auth.delete_purchase_return"):
                 return _error("You do not have permission to reverse purchase returns.", 403)
-            with connection.cursor() as cur:
-                cur.execute("SELECT quantity_reverse_purchase_return(%s,CURRENT_DATE,%s)",
-                            [int(return_id), request.user.pk])
-                result = _json(cur.fetchone()[0])
+            with transaction.atomic():
+                with connection.cursor() as cur:
+                    cur.execute("SELECT quantity_reverse_purchase_return(%s,CURRENT_DATE,%s)",
+                                [int(return_id), request.user.pk])
+                    result = _json(cur.fetchone()[0])
+                result["reversal_tax_journal_id"] = reverse_return(
+                    "purchase_return", int(return_id), None, request.user.pk
+                )
             return JsonResponse({"success": True, **result})
         return _error("Unknown purchase-return action.")
     except (ValueError, TypeError):

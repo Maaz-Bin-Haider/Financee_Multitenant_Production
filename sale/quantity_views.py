@@ -1,13 +1,19 @@
 """Guarded HTTP adapter for Phase 12 quantity sales."""
 
 import json
+import logging
 import uuid
 
-from django.db import DatabaseError, connection
+from django.db import DatabaseError, connection, transaction
 from django.http import JsonResponse
 from django.shortcuts import render
 
 from tenancy.models import INVENTORY_MODE_QUANTITY
+from tenancy.quantity_tax import (
+    calculate_and_transform, catalog, finalize, prepare_revision, reverse,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def is_quantity(request):
@@ -58,6 +64,8 @@ def sales(request):
                     getattr(request, "tenant_company", None),
                     "base_currency", None,
                 ),
+                "tax_environment": request.tenant_company.tax_environment,
+                "tax_codes": catalog(),
             },
         )
     try:
@@ -68,24 +76,44 @@ def sales(request):
             if not _can(request, "auth.update_sale"):
                 return _error("You do not have permission to update sales.",
                               403)
-            with connection.cursor() as cur:
-                cur.execute(
-                    "SELECT quantity_update_sale(%s,%s::jsonb)",
-                    [int(sale_id), json.dumps(data)],
+            with transaction.atomic():
+                calculation, transformed = calculate_and_transform(
+                    data, price_key="unit_price_base"
                 )
-                result = _json(cur.fetchone()[0])
+                prepare_revision(
+                    "sale", int(sale_id), data.get("invoice_date"),
+                    request.user.pk,
+                )
+                with connection.cursor() as cur:
+                    cur.execute(
+                        "SELECT quantity_update_sale(%s,%s::jsonb)",
+                        [int(sale_id), json.dumps(transformed)],
+                    )
+                    result = _json(cur.fetchone()[0])
+                result.update(finalize(
+                    "sale", int(sale_id), data, calculation, request.user.pk,
+                ))
             return JsonResponse({"success": True, **result})
         if action == "submit":
             if not _can(request, "auth.create_sale"):
                 return _error("You do not have permission to create sales.",
                               403)
             data.setdefault("idempotency_key", str(uuid.uuid4()))
-            with connection.cursor() as cur:
-                cur.execute(
-                    "SELECT quantity_create_sale(%s::jsonb)",
-                    [json.dumps(data)],
+            with transaction.atomic():
+                calculation, transformed = calculate_and_transform(
+                    data, price_key="unit_price_base"
                 )
-                result = _json(cur.fetchone()[0])
+                with connection.cursor() as cur:
+                    cur.execute(
+                        "SELECT quantity_create_sale(%s::jsonb)",
+                        [json.dumps(transformed)],
+                    )
+                    result = _json(cur.fetchone()[0])
+                if not result.get("idempotent"):
+                    result.update(finalize(
+                        "sale", result["sale_invoice_id"], data, calculation,
+                        request.user.pk,
+                    ))
             return JsonResponse({"success": True, **result})
         if action in ("delete", "reverse"):
             if not _can(request, "auth.delete_sale"):
@@ -93,20 +121,25 @@ def sales(request):
                               403)
             if not sale_id:
                 return _error("Select a sale first.")
-            with connection.cursor() as cur:
-                cur.execute(
-                    "SELECT quantity_reverse_sale(%s,CURRENT_DATE,%s)",
-                    [int(sale_id), request.user.pk],
+            with transaction.atomic():
+                with connection.cursor() as cur:
+                    cur.execute(
+                        "SELECT quantity_reverse_sale(%s,CURRENT_DATE,%s)",
+                        [int(sale_id), request.user.pk],
+                    )
+                    result = _json(cur.fetchone()[0])
+                result["reversal_tax_journal_id"] = reverse(
+                    "sale", int(sale_id), None, request.user.pk
                 )
-                result = _json(cur.fetchone()[0])
             return JsonResponse({"success": True, **result})
         return _error("Unknown sale action.")
     except (ValueError, TypeError):
         return _error("Sale request is invalid.")
     except DatabaseError:
+        logger.exception("Quantity sale posting failed")
         return _error(
-            "Sale data is invalid or its stock dependencies prevent this "
-            "change."
+            "Sale data, tax, or discounts are invalid, or stock dependencies "
+            "prevent this change."
         )
 
 

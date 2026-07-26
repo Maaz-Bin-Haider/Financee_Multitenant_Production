@@ -4,6 +4,8 @@
   const container = document.getElementById("sale-lines");
   if (!container) return;
   let items = [], warehouses = [];
+  const taxCodes = JSON.parse((document.getElementById("quantity-tax-codes") || {}).textContent || "[]");
+  const taxable = cfg.taxEnvironment === "tax";
   const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
   }[c]));
@@ -28,13 +30,21 @@
     data = data || {};
     const row = document.createElement("div");
     row.className = "item-row";
-    row.style.gridTemplateColumns = "2fr 1.4fr 100px 120px 110px";
+    row.style.gridTemplateColumns = taxable ? "1.8fr 1.2fr 85px 105px 110px 90px 120px 130px 90px" : "1.8fr 1.2fr 85px 105px 110px 90px 90px";
     row.innerHTML = `
       <select class="sale-input variant"><option value="">Select SKU</option>${items.map((x) => `<option value="${x.variant_id}" ${String(x.variant_id) === String(data.variant_id) ? "selected" : ""}>${esc(x.sku)} — ${esc(x.product_name)} (${esc(x.unit_code)})</option>`).join("")}</select>
       <select class="sale-input warehouse"><option value="">Select warehouse</option>${warehouses.map((x) => `<option value="${x.warehouse_id}" ${String(x.warehouse_id) === String(data.warehouse_id) ? "selected" : ""}>${esc(x.warehouse_code)} — ${esc(x.warehouse_name)}</option>`).join("")}</select>
       <input class="sale-input quantity" type="number" min="0" step="0.001" value="${esc(data.quantity || "")}">
       <input class="sale-input unit-price" type="number" min="0" step="0.000001" value="${esc(data.unit_price_base || "")}">
+      <select class="sale-input discount-type"><option value="none">None</option><option value="percent">%</option><option value="fixed">Fixed</option></select>
+      <input class="sale-input discount-value" type="number" min="0" step="0.01" value="${esc(data.line_discount_value || data.discount_value || "0")}">
+      ${taxable ? `<select class="sale-input tax-classification"><option value="taxable">Taxable</option><option value="zero_rated">Zero-rated</option><option value="exempt">Exempt</option></select><div><select class="sale-input tax-code"><option value="">Tax code</option>${taxCodes.map((x) => `<option value="${x.tax_code_id}">${esc(x.code)} (${esc(x.rate_percent)}%)</option>`).join("")}</select><input class="sale-input exemption-reference" placeholder="Exemption ref" value="${esc(data.exemption_reference || "")}"></div>` : ""}
       <button type="button" class="custom-btn remove"><i class="fa-solid fa-trash"></i> Remove</button>`;
+    row.querySelector(".discount-type").value = data.line_discount_type || data.discount_type || "none";
+    if (taxable) {
+      row.querySelector(".tax-classification").value = data.tax_classification || "taxable";
+      row.querySelector(".tax-code").value = data.tax_code_id || "";
+    }
     row.querySelector(".remove").addEventListener("click", () => { row.remove(); total(); });
     row.querySelectorAll("input").forEach((el) => el.addEventListener("input", total));
     container.appendChild(row); total();
@@ -43,13 +53,20 @@
     variant_id: row.querySelector(".variant").value,
     warehouse_id: row.querySelector(".warehouse").value,
     quantity: row.querySelector(".quantity").value,
-    unit_price_base: row.querySelector(".unit-price").value
+    unit_price_base: row.querySelector(".unit-price").value,
+    discount_type: row.querySelector(".discount-type").value,
+    discount_value: row.querySelector(".discount-value").value,
+    tax_classification: taxable ? row.querySelector(".tax-classification").value : "none",
+    tax_code_id: taxable ? (row.querySelector(".tax-code").value || null) : null,
+    exemption_reference: taxable ? row.querySelector(".exemption-reference").value : ""
   }));
   function reset() {
     document.getElementById("sale-id").value = "";
     document.getElementById("document-number").textContent = "New";
     document.getElementById("customer-name").value = "";
     document.getElementById("description").value = "";
+    document.getElementById("invoice-discount-type").value = "none";
+    document.getElementById("invoice-discount-value").value = "0";
     container.innerHTML = ""; addLine();
   }
   function display(doc) {
@@ -61,6 +78,10 @@
     document.getElementById("payment-account").value = doc.payment_account_code || "1000";
     document.getElementById("payment-account").disabled = doc.sale_type !== "cash";
     document.getElementById("description").value = doc.description || "";
+    document.getElementById("tax-mode").value = doc.tax_mode || "exclusive";
+    document.getElementById("invoice-discount-type").value = doc.invoice_discount_type || "none";
+    document.getElementById("invoice-discount-value").value = doc.invoice_discount_value || "0";
+    document.getElementById("total-tax").textContent = fmt(doc.tax_total_base);
     container.innerHTML = ""; (doc.lines || []).forEach(addLine); total();
   }
   async function navigate(action) {
@@ -92,6 +113,9 @@
       sale_type: document.getElementById("sale-type").value,
       payment_account_code: document.getElementById("payment-account").value,
       description: document.getElementById("description").value,
+      tax_mode: document.getElementById("tax-mode").value,
+      invoice_discount_type: document.getElementById("invoice-discount-type").value,
+      invoice_discount_value: document.getElementById("invoice-discount-value").value,
       idempotency_key: crypto.randomUUID(), items: lines()
     };
     const { ok, data } = await fetchJSON(cfg.urls.sale, {

@@ -22,13 +22,19 @@
       <div class="sale-field"><label class="sale-field-label">Payment Account</label><select id="payment-account" class="sale-input" disabled><option value="1000">Cash</option><option value="1100">Bank</option></select></div>
     </div>
     <div class="sale-field" style="margin-top:12px;"><label class="sale-field-label">Description</label><input id="description" class="sale-input" maxlength="500" placeholder="Optional sale description"></div>
+    <div class="sale-meta-grid" style="display:grid;grid-template-columns:160px 160px 160px;gap:12px;margin-top:12px;">
+      {% if tax_environment == "tax" %}<div class="sale-field"><label class="sale-field-label">Tax Mode</label><select id="tax-mode" class="sale-input"><option value="exclusive">Tax Exclusive</option><option value="inclusive">Tax Inclusive</option></select></div>{% else %}<input id="tax-mode" type="hidden" value="exclusive">{% endif %}
+      <div class="sale-field"><label class="sale-field-label">Invoice Discount</label><select id="invoice-discount-type" class="sale-input"><option value="none">None</option><option value="percent">Percentage</option><option value="fixed">Fixed Amount</option></select></div>
+      <div class="sale-field"><label class="sale-field-label">Discount Value</label><input id="invoice-discount-value" class="sale-input" type="number" min="0" step="0.01" value="0"></div>
+    </div>
     <div class="items-section-header" style="margin-top:16px;">
       <div class="items-section-title"><i class="fa-solid fa-layer-group"></i> Sale Lines</div>
       {% if can_create %}<button type="button" class="custom-btn btn-add-item" id="add-line"><i class="fa-solid fa-plus"></i> Add Line</button>{% endif %}
     </div>
-    <div class="items-col-headers" style="grid-template-columns:2fr 1.4fr 100px 120px 110px;">
+    <div class="items-col-headers" style="grid-template-columns:1.8fr 1.2fr 85px 105px 110px 90px {% if tax_environment == 'tax' %}120px 130px{% endif %} 90px;">
       <span class="col-header">SKU / Variant</span><span class="col-header">Warehouse</span>
-      <span class="col-header">Quantity</span><span class="col-header">Unit Price</span><span class="col-header">Actions</span>
+      <span class="col-header">Quantity</span><span class="col-header">Unit Price</span><span class="col-header">Line Discount</span><span class="col-header">Value</span>
+      {% if tax_environment == "tax" %}<span class="col-header">Tax Class</span><span class="col-header">Tax Code / Ref</span>{% endif %}<span class="col-header">Actions</span>
     </div>
     <div id="sale-lines"></div>
   </div>
@@ -36,6 +42,7 @@
     <div class="sale-totals-group">
       <div class="total-chip"><span class="total-chip-label">Document</span><span class="total-chip-value" id="document-number">New</span></div>
       <div class="total-chip"><span class="total-chip-label">Quantity</span><span class="total-chip-value" id="total-quantity">0</span></div>
+      <div class="total-chip"><span class="total-chip-label">Tax</span><span class="total-chip-value" id="total-tax">0.00</span></div>
       <div class="total-chip"><span class="total-chip-label">Total</span><span class="total-chip-value amount-value">{{ base_currency.code|default:"" }} <span id="total-price">0.00</span></span></div>
     </div>
     <div class="sale-actions">
@@ -62,8 +69,10 @@ window.QSAL = {
     warehouses: "{% url 'quantity_warehouses:list' %}"
   },
   canUpdate: {{ can_update|yesno:"true,false" }},
+  taxEnvironment: "{{ tax_environment|escapejs }}",
   currency: "{{ base_currency.code|default:''|escapejs }}"
 };
 </script>
+{{ tax_codes|json_script:"quantity-tax-codes" }}
 <script src="{% static 'js/quantity_sales.js' %}"></script>
 {% endblock body %}

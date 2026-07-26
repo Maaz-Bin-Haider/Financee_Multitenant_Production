@@ -33,7 +33,9 @@ import os
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 
-from tenancy.models import Company, INVENTORY_MODE_CHOICES
+from tenancy.models import (
+    Company, INVENTORY_MODE_CHOICES, INVENTORY_MODE_QUANTITY,
+)
 from tenancy.schema_families import family_for_sql_file, schema_family
 from tenancy.schema_verification import verify_company_schema
 from tenancy.utils import (
@@ -134,6 +136,24 @@ class Command(BaseCommand):
                     cur.execute(f"SET search_path TO {search_path_for(schema)}")
                     try:
                         cur.execute(sql_text)
+                        if (
+                            schema != PUBLIC_SCHEMA
+                            and requested_family == INVENTORY_MODE_QUANTITY
+                        ):
+                            company = companies_by_schema[schema]
+                            cur.execute(
+                                """
+                                UPDATE tenant_schema_metadata
+                                   SET base_currency_code = %s,
+                                       tax_environment = %s,
+                                       applied_at = CURRENT_TIMESTAMP
+                                 WHERE id = true
+                                """,
+                                [
+                                    company.base_currency_id,
+                                    company.tax_environment,
+                                ],
+                            )
                     finally:
                         cur.execute(f"SET search_path TO {previous}")
                 if schema != PUBLIC_SCHEMA:

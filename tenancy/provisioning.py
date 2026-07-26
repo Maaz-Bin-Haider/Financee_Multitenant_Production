@@ -29,7 +29,9 @@ def _read_template(family_key: str) -> str:
     return sql
 
 
-def _assert_provisioned(cur, definition, base_currency_code):
+def _assert_provisioned(
+    cur, definition, base_currency_code, tax_environment="non_tax"
+):
     """Raise inside the provisioning transaction if the family is incomplete."""
     for table in definition.required_tables:
         cur.execute("SELECT to_regclass(%s)", [table])
@@ -55,7 +57,7 @@ def _assert_provisioned(cur, definition, base_currency_code):
     if definition.key == INVENTORY_MODE_QUANTITY:
         cur.execute(
             """
-            SELECT family, version, base_currency_code
+            SELECT family, version, base_currency_code, tax_environment
               FROM tenant_schema_metadata
              WHERE id = true
             """
@@ -66,6 +68,7 @@ def _assert_provisioned(cur, definition, base_currency_code):
             or row[0] != definition.key
             or int(row[1]) < definition.required_version
             or row[2] != base_currency_code
+            or row[3] != tax_environment
         ):
             raise RuntimeError("metadata_verification_failed")
     else:
@@ -81,6 +84,7 @@ def provision_schema(
     *,
     family: str = "serial",
     base_currency_code: str = "PKR",
+    tax_environment: str = "non_tax",
 ) -> bool:
     """Create one physical tenant schema from its registered family template."""
     validate_schema_name(schema_name)
@@ -105,12 +109,15 @@ def provision_schema(
                         """
                         UPDATE tenant_schema_metadata
                            SET base_currency_code = %s,
+                               tax_environment = %s,
                                applied_at = CURRENT_TIMESTAMP
                          WHERE id = true
                         """,
-                        [base_currency_code],
+                        [base_currency_code, tax_environment],
                     )
-                _assert_provisioned(cur, definition, base_currency_code)
+                _assert_provisioned(
+                    cur, definition, base_currency_code, tax_environment
+                )
             finally:
                 cur.execute(f"SET search_path TO {PUBLIC_SCHEMA}")
     return True
@@ -129,6 +136,7 @@ def provision_company(company: Company) -> bool:
             company.schema_name,
             family=company.inventory_mode,
             base_currency_code=company.base_currency_id,
+            tax_environment=company.tax_environment,
         )
     except Exception:
         Company.objects.filter(pk=company.pk).update(

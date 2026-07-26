@@ -89,8 +89,8 @@ def main():
     quantity = schema_family(INVENTORY_MODE_QUANTITY)
     chk("families use separate templates", serial.template_path != quantity.template_path)
     chk("families use separate hardening", serial.hardening_path != quantity.hardening_path)
-    chk("quantity required version includes purchase returns",
-        quantity.required_version == 12)
+    chk("quantity required version includes tax and discounts",
+        quantity.required_version == 13)
     chk("quantity runtime remains gated after foundation",
         quantity.runtime_enabled is False)
     chk("SQL ownership resolves serial hardening",
@@ -121,13 +121,14 @@ def main():
 
         metadata = [
             q(c.schema_name, """
-                SELECT family, version, base_currency_code
+                SELECT family, version, base_currency_code, tax_environment
                 FROM tenant_schema_metadata WHERE id = true
             """)[0]
             for c in companies
         ]
         chk("metadata family/version/currency matches public company",
-            all(row == ("quantity", 12, "PKR") for row in metadata), metadata)
+            all(row == ("quantity", 13, "PKR", "non_tax") for row in metadata),
+            metadata)
         chk("quantity verifier accepts both schemas",
             all(verify_company_schema(c, use_cache=False).ok for c in companies))
 
@@ -158,11 +159,11 @@ def main():
         chk("document sequences seeded exactly once",
             all(q(c.schema_name, "SELECT count(*) FROM document_sequences")[0][0] == 11
                 for c in companies))
-        chk("all eleven quantity phase seeds registered exactly once",
+        chk("all quantity phase seeds registered exactly once",
             all(q(c.schema_name, """
                 SELECT count(*), count(DISTINCT seed_key)
                   FROM quantity_seed_registry
-            """)[0] == (12, 12) for c in companies))
+            """)[0] == (13, 13) for c in companies))
 
         for _ in range(2):
             call_command(
@@ -177,7 +178,7 @@ def main():
             and all(q(c.schema_name, """
                 SELECT count(*), count(DISTINCT seed_key)
                   FROM quantity_seed_registry
-            """)[0] == (12, 12) for c in companies))
+            """)[0] == (13, 13) for c in companies))
 
         serial_output = io.StringIO()
         call_command(
@@ -247,6 +248,16 @@ def main():
             mismatch)
         q(target.schema_name,
           "UPDATE tenant_schema_metadata SET base_currency_code = 'PKR' WHERE id = true")
+
+        q(target.schema_name,
+          "UPDATE tenant_schema_metadata SET tax_environment = 'tax' WHERE id = true")
+        cache.clear()
+        mismatch = verify_company_schema(target, use_cache=False)
+        chk("quantity tax-environment mismatch denied",
+            not mismatch.ok and mismatch.reason == "tax_environment_mismatch",
+            mismatch)
+        q(target.schema_name,
+          "UPDATE tenant_schema_metadata SET tax_environment = 'non_tax' WHERE id = true")
 
         with patch("tenancy.provisioning._read_template", side_effect=RuntimeError("secret sql")):
             failed_company = Company.objects.create(
