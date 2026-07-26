@@ -1,7 +1,7 @@
 # Financee Multitenant Accounting and Inventory System
 
-> Development resume point: Phases 0–14 of the quantity-company rollout are
-> complete. The next implementation phase is **Phase 15 — Warehouse Transfers**.
+> Development resume point: Phases 0–15 of the quantity-company rollout are
+> complete. The next implementation phase is **Phase 16 — Physical Counts and Adjustments**.
 > Read `PROJECT_CONTEXT.md` and
 > `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md` before starting.
 

@@ -17,6 +17,7 @@ PROTECTED_PREFIX_PERMS = (
     ("/receipts/", ("auth.view_receipt",)),
     ("/items/", ("auth.view_item",)),
     ("/warehouses/quantity/", ("auth.view_warehouse",)),
+    ("/transfers/", ("auth.view_warehouse_transfer",)),
     ("/parties/", ("auth.view_party",)),
     ("/saleReturn/", ("auth.view_sale_return",)),
     ("/purchaseReturn/", ("auth.view_purchase_return",)),

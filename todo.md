@@ -56,7 +56,8 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
 > **NEXT SESSION CHECKPOINT:** Phases 0–14 are complete; owner commit is
-> pending. Start Phase 15 — Warehouse Transfers. Do not repeat Phase 14.
+> Phase 15 is complete. Start **Phase 16 — Physical Counts and Adjustments**.
+> Do not repeat Phase 15.
 > Read the Phase 15 rollout section and SRS transfer requirements before
 > making changes. After completing Phase 15, provide commit
 > text only; do not commit or push.
@@ -158,7 +159,14 @@ high-level checklist and shall be updated from the detailed plan’s results.
   Focused tests passed 22/22 and all 27 mixed-family modules plus complete
   serial gates remained green. See
   `tests/PHASE14_QUANTITY_PURCHASE_RETURNS_RESULTS.md`.
-- [ ] Phases 15–32: not started; see
+- [x] **Phase 15 — Warehouse Transfers:** completed 2026-07-26.
+  Added quantity schema version 11 with atomic source/destination movements,
+  preserved FIFO cost segments and lineage, company-value neutrality, explicit
+  permissions, idempotency, guarded correction/reversal, concurrency control,
+  navigation/summary, and quantity UI. Focused tests passed 19/19; all 28
+  modules and complete serial gates remained green. See
+  `tests/PHASE15_QUANTITY_TRANSFERS_RESULTS.md`.
+- [ ] Phases 16–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

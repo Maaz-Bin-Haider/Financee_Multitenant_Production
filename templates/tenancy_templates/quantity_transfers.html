@@ -1,0 +1,25 @@
+{% extends 'base/base.html' %}{% load static %}
+{% block title %}Warehouse Transfers{% endblock %}
+{% block SeperateCssFile %}<link rel="stylesheet" href="{% static 'css/opening_stock.css' %}">{% endblock %}
+{% block body %}
+{% csrf_token %}
+<div class="os-titlebar"><div class="os-titlebar-icon"><i class="fa-solid fa-truck-ramp-box"></i></div>
+<div><h2>Warehouse Transfers</h2><p>Move FIFO quantities between warehouses without changing company inventory value.</p></div></div>
+<section class="os-card os-form-card"><div class="os-card-body">
+<input type="hidden" id="transfer-id">
+<div class="os-form-grid"><div class="os-field"><label>Transfer Date</label><input id="transfer-date" type="date"></div>
+<div class="os-field"><label>Source Warehouse</label><select id="source-warehouse"></select></div>
+<div class="os-field"><label>Destination Warehouse</label><select id="destination-warehouse"></select></div>
+<div class="os-field"><label>Description</label><input id="description" maxlength="500"></div></div>
+<div class="items-section-header"><div class="items-section-title">Transfer Items</div>
+{% if can_create %}<button id="add-line" class="custom-btn" type="button">Add Line</button>{% endif %}</div>
+<div id="transfer-lines"></div></div>
+<div class="os-card-footer"><span id="document-number">New</span><div>
+<button id="previous" class="custom-btn">Previous</button><button id="next" class="custom-btn">Next</button>
+{% if can_delete %}<button id="reverse" class="custom-btn">Reverse</button>{% endif %}
+{% if can_create or can_update %}<button id="save" class="save-and-update-btn">Save Transfer</button>{% endif %}</div></div></section>
+<section class="os-card os-list-card"><div class="os-card-head"><h3>Transfer Summary</h3><button id="refresh-summary" class="os-icon-btn">Refresh</button></div>
+<div class="os-table-wrap"><table class="os-table"><thead><tr><th>Number</th><th>Date</th><th>Source</th><th>Destination</th><th>Status</th><th>Quantity</th><th>Value</th></tr></thead><tbody id="summary-body"></tbody></table></div></section>
+<script>window.QTRF={urls:{page:"{% url 'quantity_transfers:page' %}",navigate:"{% url 'quantity_transfers:navigate' %}",summary:"{% url 'quantity_transfers:summary' %}",warehouses:"{% url 'quantity_warehouses:list' %}",catalog:"{% url 'items:quantity_catalog' %}"}};</script>
+<script src="{% static 'js/quantity_transfers.js' %}"></script>
+{% endblock %}

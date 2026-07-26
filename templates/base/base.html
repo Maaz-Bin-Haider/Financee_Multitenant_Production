@@ -119,6 +119,11 @@
             <a href="{% url 'purchaseReturn:create_purchase_return' %}" class="{% if request.resolver_match.url_name == 'create_purchase_return' %}active{% endif %}">
                 <i class="fa-solid fa-rotate-right"></i> Purchase Return
             </a>
+            {% if perms.auth.view_warehouse_transfer %}
+            <a href="{% url 'quantity_transfers:page' %}" class="{% if request.resolver_match.namespace == 'quantity_transfers' %}active{% endif %}">
+                <i class="fa-solid fa-truck-ramp-box"></i> Warehouse Transfers
+            </a>
+            {% endif %}
             <a href="{% url 'items:itemsDash' %}" class="{% if request.resolver_match.namespace == 'items' %}active{% endif %}">
                 <i class="fa-solid fa-box"></i> Items
             </a>
