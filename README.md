@@ -1,7 +1,7 @@
 # Financee Multitenant Accounting and Inventory System
 
-> Development resume point: Phases 0–12 of the quantity-company rollout are
-> complete. The next implementation phase is **Phase 13 — Quantity Sale Returns**.
+> Development resume point: Phases 0–13 of the quantity-company rollout are
+> complete. The next implementation phase is **Phase 14 — Quantity Purchase Returns**.
 > Read `PROJECT_CONTEXT.md` and
 > `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md` before starting.
 

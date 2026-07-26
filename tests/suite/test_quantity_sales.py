@@ -130,8 +130,8 @@ def main():
         )
         schema, schema_b = company.schema_name, company_b.schema_name
         definition = schema_family(INVENTORY_MODE_QUANTITY)
-        chk("fresh schema reaches sales version",
-            q(schema, "SELECT version FROM tenant_schema_metadata")[0][0] == 8)
+        chk("fresh schema includes sales lifecycle",
+            q(schema, "SELECT version FROM tenant_schema_metadata")[0][0] >= 8)
         chk("fresh sales schema verifies",
             verify_company_schema(company, use_cache=False).ok)
 

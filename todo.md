@@ -40,15 +40,20 @@ high-level checklist and shall be updated from the detailed plan’s results.
 
 ### Detailed Plan Execution Status
 
+> **PHASE 13 COMPLETE (2026-07-26):** Source-linked partial quantity sale
+> returns now enforce cumulative limits, restore exact historical FIFO cost,
+> support destination warehouses, reverse accounting, guard source sales,
+> serialize concurrent returns, and preserve serial behavior. Phase 14 is next.
+
 > **PHASE 12 COMPLETE (2026-07-26):** Domestic quantity sales now provide
 > warehouse availability locking, exact FIFO COGS, cash/credit accounting,
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **NEXT SESSION CHECKPOINT:** Phases 0–12 are complete; the Phase 12 owner
-> commit is pending. Start with **Phase 13 — Quantity Sale Returns**. Do not
-> repeat Phase 12. Read the Phase 13 rollout section and SRS return requirements
-> before making changes. After completing Phase 13 and its regression gates, provide commit
+> **NEXT SESSION CHECKPOINT:** Phases 0–13 are complete; owner commits are
+> pending. Start with **Phase 14 — Quantity Purchase Returns**. Do not repeat
+> Phase 13. Read the Phase 14 rollout section and SRS purchase-return
+> requirements before making changes. After completing Phase 14, provide commit
 > text only; do not commit or push.
 
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
@@ -133,7 +138,14 @@ high-level checklist and shall be updated from the detailed plan’s results.
   navigation/summary, and a no-serial sales UI. The focused suite passed 34/34,
   all 25 mixed-family modules passed, and complete serial regressions remained
   green. See `tests/PHASE12_QUANTITY_SALES_RESULTS.md`.
-- [ ] Phases 13–32: not started; see
+- [x] **Phase 13 — Quantity Sale Returns:** completed 2026-07-26.
+  Added quantity schema version 9 with source-linked partial returns,
+  cumulative limits, exact FIFO allocation restoration, destination
+  warehouses, accounting reversal, source-sale guards, idempotency, guarded
+  update/reversal, navigation/summary, and a no-serial UI. Focused tests passed
+  23/23 and all serial/mixed-family gates remained green. See
+  `tests/PHASE13_QUANTITY_SALE_RETURNS_RESULTS.md`.
+- [ ] Phases 14–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements
