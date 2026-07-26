@@ -64,6 +64,9 @@ def _sale_payload_matches_current(sale_id, data, sale_date):
 
 @login_required
 def sales(request):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.sales(request)
     if not request.user.has_perm("auth.view_sale"):
         messages.error(request, "You do not have permission to View Sale Invoices.")
         return redirect("home:home")
@@ -459,6 +462,9 @@ def sales(request):
 
 @login_required
 def get_sale(request):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.get_sale(request)
     action = request.GET.get("action")
     current_id = request.GET.get("current_id")
     try:
@@ -629,6 +635,9 @@ def get_item_by_serial_for_sale(serial):
 
 @login_required
 def sale_lookup_serial(request, serial: str):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.serial_check(request)
     """
     AJAX endpoint: GET /sale/lookup/<serial>/
     Returns the item_name (and purchase_price) for a single serial so the
@@ -645,6 +654,9 @@ def sale_lookup_serial(request, serial: str):
 
 @login_required
 def sale_bulk_serial_lookup(request):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.serial_check(request)
     """
     AJAX endpoint: POST /sale/bulk-lookup/
     Body: {"raw": "<pasted text>"}  OR  {"serials": ["s1","s2",...]}
@@ -769,6 +781,9 @@ def sale_bulk_serial_lookup(request):
 
 @login_required
 def get_sale_summary(request):
+    from . import quantity_views
+    if quantity_views.is_quantity(request):
+        return quantity_views.get_sale_summary(request)
     try:
         from_date_str = request.GET.get("from")
         to_date_str = request.GET.get("to")

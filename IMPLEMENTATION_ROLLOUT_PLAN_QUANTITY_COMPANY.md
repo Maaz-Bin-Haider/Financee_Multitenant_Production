@@ -14,6 +14,21 @@
 
 ---
 
+## Execution Resume Checkpoint
+
+- **Last completed:** Phase 12 — Quantity Sales
+- **Commit:** owner commit pending
+- **Next authorized phase:** Phase 13 — Quantity Sale Returns
+- **Quantity schema baseline:** version 8
+
+**Phase 12 evidence:** `tests/PHASE12_QUANTITY_SALES_RESULTS.md`.
+
+The next implementation session shall begin at Phase 13 and shall not repeat or
+redesign completed Phase 0–12 work unless a regression directly requires a
+scoped correction.
+
+---
+
 ## 1. Purpose
 
 This plan converts the approved quantity-company SRS into small,

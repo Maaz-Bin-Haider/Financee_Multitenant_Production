@@ -1,5 +1,10 @@
 # Financee Multitenant Accounting and Inventory System
 
+> Development resume point: Phases 0–12 of the quantity-company rollout are
+> complete. The next implementation phase is **Phase 13 — Quantity Sale Returns**.
+> Read `PROJECT_CONTEXT.md` and
+> `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md` before starting.
+
 Financee is a Django-based accounting and inventory application for multiple companies. Each company is isolated in its own PostgreSQL schema while shared Django data, users, permissions, and tenant registry tables live in `public`.
 
 The application is intentionally SQL-centric: Django handles HTTP routing, authentication, permissions, templates, tenant activation, admin screens, and request validation; PostgreSQL stored functions, triggers, and views handle the accounting and inventory transactions.
@@ -562,6 +567,15 @@ safe edits retain revision history and replay later FIFO allocations, and
 untouched purchases can be reversed. Tax, discounts, foreign currency,
 attachments, and the full quantity party master remain scheduled later.
 Serial companies continue to use the existing serial purchase workflow.
+
+Quantity schema version 8 enables `/sale/` for quantity companies. Domestic
+credit and cash sales accept customer, date, SKU, warehouse, manual quantity,
+unit price, and description without serial numbers. PostgreSQL locks stock,
+persists FIFO allocations, rejects overselling, and posts Revenue,
+Accounts Receivable or Cash/Bank, COGS, and Inventory atomically. Idempotent
+create, guarded edit/replay and reversal, navigation, and summaries are
+available. Sale returns, tax, discounts, foreign currency, attachments, and
+the full quantity party master remain scheduled for later phases.
 
 ### Tenant Login Redirect Loop
 

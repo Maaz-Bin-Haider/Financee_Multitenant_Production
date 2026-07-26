@@ -40,6 +40,17 @@ high-level checklist and shall be updated from the detailed plan’s results.
 
 ### Detailed Plan Execution Status
 
+> **PHASE 12 COMPLETE (2026-07-26):** Domestic quantity sales now provide
+> warehouse availability locking, exact FIFO COGS, cash/credit accounting,
+> idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
+> UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
+
+> **NEXT SESSION CHECKPOINT:** Phases 0–12 are complete; the Phase 12 owner
+> commit is pending. Start with **Phase 13 — Quantity Sale Returns**. Do not
+> repeat Phase 12. Read the Phase 13 rollout section and SRS return requirements
+> before making changes. After completing Phase 13 and its regression gates, provide commit
+> text only; do not commit or push.
+
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
 - [x] **Phase 1 — Baseline Capture and Test Stabilization:** completed
   2026-07-25. All serial suites passed on two fresh isolated tenants; fixed the
@@ -114,7 +125,14 @@ high-level checklist and shall be updated from the detailed plan’s results.
   navigation/summary, and a no-serial quantity purchase UI. The focused suite
   passed 46/46 and all serial regressions remained green. See
   `tests/PHASE11_QUANTITY_PURCHASES_RESULTS.md`.
-- [ ] **Phase 12 — Quantity Sales:** not started.
+- [x] **Phase 12 — Quantity Sales:** completed 2026-07-26.
+  Added quantity schema version 8 with immutable domestic credit/cash sale
+  documents, SAL numbering, manual SKU/warehouse quantities, atomic
+  availability locking, durable FIFO allocations, exact AR/Cash/Revenue and
+  COGS/Inventory journals, idempotency, audited guarded edits, reversal,
+  navigation/summary, and a no-serial sales UI. The focused suite passed 34/34,
+  all 25 mixed-family modules passed, and complete serial regressions remained
+  green. See `tests/PHASE12_QUANTITY_SALES_RESULTS.md`.
 - [ ] Phases 13–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 

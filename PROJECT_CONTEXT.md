@@ -1,8 +1,28 @@
 # Project Context
 
-Last updated: 2026-07-08
+Last updated: 2026-07-26
 
 This file is the persistent engineering context for Financee. Update it on every meaningful project change, especially changes to architecture, routes, permissions, tenant SQL, deployment behavior, environment variables, tests, or data model assumptions.
+
+## Session Resume Checkpoint
+
+- **Last completed phase:** Phase 12 — Quantity Sales.
+- **Current worktree:** Phase 12 implementation complete; owner commit pending.
+- **Next phase to start:** Phase 13 — Quantity Sale Returns.
+- **Quantity schema baseline:** version 8.
+- **Required Phase 13 scope:** quantity sale returns tied to original sale
+  lines and FIFO allocations, cumulative return limits, exact original-cost
+  restoration, accounting reversal, guarded edit/reversal, idempotency, and
+  no serial-number UI.
+- **Start by reading:** the Phase 13 section of
+  `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`, requirements
+  `FR-SR-001` through `FR-SR-007` in `SRS_QUANTITY_BASED_COMPANY.md`, the
+  return/FIFO/replay sections of `ARCHITECTURE_QUANTITY_COMPANY.md`, and
+  `tests/PHASE12_QUANTITY_SALES_RESULTS.md`.
+- **Preserve:** all serial-company behavior and the completed quantity schema
+  version 8 sales lifecycle.
+- **Do not commit or push:** provide commit text to the owner after Phase 13;
+  the owner performs the commit.
 
 ## System Identity
 
@@ -628,6 +648,18 @@ foreign currency, settlements, and attachments remain in their assigned
 phases. Evidence from 46 focused checks, all 24 mixed-family modules, and full
 serial regressions is in `tests/PHASE11_QUANTITY_PURCHASES_RESULTS.md`. Phase
 12 adds domestic quantity sales with FIFO COGS.
+
+Phase 12 completed on 2026-07-26. Quantity schema version 8 adds domestic
+base-currency quantity sales with immutable invoices, lines, revisions,
+tenant-local `SAL-000001` numbering, warehouse-scoped availability locks,
+durable FIFO allocations, line-level COGS, credit/cash modes, idempotency,
+guarded edit/replay and reversal, navigation/summary, and a no-serial sales UI.
+Credit sales debit Accounts Receivable while cash sales debit Cash/Bank; both
+credit Sales Revenue and post exact COGS/Inventory entries. Final-stock
+concurrency permits exactly one sale and cannot oversell. Evidence from 34
+focused checks, all 25 mixed-family modules, and full serial
+system/HTTP/deep-lifecycle regressions is in
+`tests/PHASE12_QUANTITY_SALES_RESULTS.md`. Phase 13 adds quantity sale returns.
 
 ## Maintenance Checklist
 

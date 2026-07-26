@@ -56,8 +56,8 @@ def _families():
         INVENTORY_MODE_QUANTITY: SchemaFamily(
             key=INVENTORY_MODE_QUANTITY,
             template_path=SQL_DIR / "quantity_tenant_template.sql",
-            hardening_path=SQL_DIR / "quantity_purchases.sql",
-            required_version=7,
+            hardening_path=SQL_DIR / "quantity_sales.sql",
+            required_version=8,
             metadata_table="tenant_schema_metadata",
             runtime_enabled=False,
             required_tables=(
@@ -82,6 +82,9 @@ def _families():
                 "purchase_invoices",
                 "purchase_lines",
                 "purchase_revisions",
+                "sale_invoices",
+                "sale_lines",
+                "sale_revisions",
             ),
             required_sequences=(
                 "quantity_foundation_id_seq",
@@ -103,6 +106,9 @@ def _families():
                 "purchase_invoices_purchase_invoice_id_seq",
                 "purchase_lines_purchase_line_id_seq",
                 "purchase_revisions_purchase_revision_id_seq",
+                "sale_invoices_sale_invoice_id_seq",
+                "sale_lines_sale_line_id_seq",
+                "sale_revisions_sale_revision_id_seq",
             ),
             required_functions=(
                 "quantity_schema_fingerprint",
@@ -141,13 +147,20 @@ def _families():
                 "quantity_purchase_details",
                 "quantity_purchase_navigate",
                 "quantity_purchase_summary",
+                "quantity_create_sale",
+                "quantity_update_sale",
+                "quantity_reverse_sale",
+                "quantity_sale_details",
+                "quantity_sale_navigate",
+                "quantity_sale_summary",
             ),
-            rollout_files=("quantity_purchases.sql",),
+            rollout_files=("quantity_sales.sql",),
             enabled_path_prefixes=(
                 "/items/quantity/",
                 "/warehouses/quantity/",
                 "/opening-stock/",
                 "/purchase/",
+                "/sale/",
             ),
             bootstrap_paths=(
                 SQL_DIR / "quantity_item_master.sql",
@@ -155,6 +168,7 @@ def _families():
                 SQL_DIR / "quantity_fifo_engine.sql",
                 SQL_DIR / "quantity_opening_stock.sql",
                 SQL_DIR / "quantity_purchases.sql",
+                SQL_DIR / "quantity_sales.sql",
             ),
         ),
     }
