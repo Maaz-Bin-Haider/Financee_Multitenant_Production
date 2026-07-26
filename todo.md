@@ -55,10 +55,10 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **CURRENT CHECKPOINT:** Phases 0–23 are complete. **Phase 24 — Complete
-> Serial Regression is next.** Phase 23 certified the entire quantity system
-> across two isolated tenants, complete lifecycles, hostile inputs, reports,
-> repeated upgrades/hardening, reconciliation, and identical fingerprints.
+> **CURRENT CHECKPOINT:** Phases 0–24 are complete. **Phase 25 —
+> Four-Company Isolation and Concurrency is next.** Phase 24 certified two
+> fresh serial tenants against the Phase 1 functional, schema, report, system,
+> and deep-lifecycle baselines and proved quantity-only surfaces stay absent.
 > Do not commit or push.
 
 - [x] **Phase 0 — Requirements Baseline:** completed 2026-07-25.
@@ -223,7 +223,15 @@ high-level checklist and shall be updated from the detailed plan’s results.
   checks passed 20/20; all 36 mixed-family modules, system 111/111, and deep
   serial lifecycle 2702/2702 passed. See
   `tests/PHASE23_COMPLETE_QUANTITY_SUITE_RESULTS.md`.
-- [ ] Phases 24–32: not started; see
+- [x] **Phase 24 — Complete Serial Regression:** completed 2026-07-26.
+  Added a permanent two-fresh-serial-tenant matrix, reran every unchanged
+  legacy domain with zero XFAIL, matched the Phase 1 111/111 system and
+  2702/2702 deep lifecycle results on each tenant, verified identical schema
+  fingerprints, balanced journals, report response compatibility, idempotent
+  hardening/indexes, and absence of quantity tables/functions/routes/UI.
+  Focused checks passed 51/51 and all 37 aggregate modules passed. See
+  `tests/PHASE24_COMPLETE_SERIAL_REGRESSION_RESULTS.md`.
+- [ ] Phases 25–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

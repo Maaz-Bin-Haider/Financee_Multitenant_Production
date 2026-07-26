@@ -1,7 +1,7 @@
 # Financee Multitenant Accounting and Inventory System
 
-> Development resume point: Phases 0–23 are complete. **Phase 24 —
-> Complete Serial Regression** is next.
+> Development resume point: Phases 0–24 are complete. **Phase 25 —
+> Four-Company Isolation and Concurrency** is next.
 > Read `PROJECT_CONTEXT.md` and
 > `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md` before starting.
 
