@@ -15,6 +15,12 @@ work_dir=$(mktemp -d)
 artifact_dir="${PHASE28_ARTIFACT_DIR:-$repo_root/phase28-artifacts}"
 mkdir -p "$artifact_dir"
 started_at=$(date +%s)
+deploy_env_backup="$work_dir/deploy.env.original"
+had_deploy_env=0
+if [[ -f deploy/.env ]]; then
+    cp deploy/.env "$deploy_env_backup"
+    had_deploy_env=1
+fi
 
 source_compose=(
     docker compose --project-name "$source_project"
@@ -30,6 +36,11 @@ restore_compose=(
 cleanup() {
     "${source_compose[@]}" down -v >/dev/null 2>&1 || true
     "${restore_compose[@]}" down -v >/dev/null 2>&1 || true
+    if [[ "$had_deploy_env" == "1" ]]; then
+        cp "$deploy_env_backup" deploy/.env
+    else
+        rm -f deploy/.env
+    fi
     rm -rf -- "$work_dir"
 }
 trap cleanup EXIT
@@ -68,6 +79,10 @@ services:
   web:
     env_file: $work_dir/restore.env
 EOF
+# Compose validates the base service's ignored deploy/.env before applying the
+# service override. Install a temporary compatibility copy for both clean CI
+# and local runs; cleanup restores an operator file or removes this copy.
+cp "$work_dir/source.env" deploy/.env
 openssl rand -base64 48 >"$work_dir/passphrase"
 chmod 600 "$work_dir/passphrase"
 
