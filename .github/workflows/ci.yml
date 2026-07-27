@@ -36,6 +36,7 @@ jobs:
       - run: bash tests/phase27_rollback_simulation.sh
       - run: python tests/phase28_release_gates.py
       - run: python tests/phase29_security_contracts.py
+      - run: python tests/phase30_release_gates.py
       - run: python -m pip check
 
   serial-gate:
@@ -209,4 +210,13 @@ jobs:
           APP_DIR="${{ secrets.EC2_APP_DIR }}"
           APP_DIR="${APP_DIR:-\$HOME/Financee_Multitenant_Production}"
           ssh -i ~/.ssh/id_deploy "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
-            "cd $APP_DIR/deploy && git pull --ff-only && WEB_IMAGE='$IMAGE_BASE:${{ github.sha }}' bash deploy_pull.sh"
+            "cd $APP_DIR/deploy && git pull --ff-only && \
+             WEB_IMAGE='$IMAGE_BASE:${{ github.sha }}' \
+             PHASE30_RELEASE_SHA='${{ github.sha }}' \
+             PHASE30_CHANGE_ID='github-${{ github.run_id }}' \
+             PHASE30_NOTICE_REFERENCE='${{ vars.MAINTENANCE_NOTICE_REFERENCE }}' \
+             PHASE30_MAINTENANCE_WINDOW='${{ vars.MAINTENANCE_WINDOW_UTC }}' \
+             PHASE30_ROLLBACK_OWNER='${{ vars.ROLLBACK_OWNER }}' \
+             BACKUP_DEST='${{ secrets.BACKUP_DEST }}' \
+             BACKUP_PASSPHRASE_FILE='${{ secrets.BACKUP_PASSPHRASE_FILE }}' \
+             bash phase30_foundation_deploy.sh"

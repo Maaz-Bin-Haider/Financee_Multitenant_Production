@@ -6,11 +6,18 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
-- **Last completed phase:** Phase 28 — Backup, Restore, Migration, and
-  Rollback Rehearsal.
-- **Current phase:** Phase 29 — implementation and local acceptance complete;
-  committed-SHA CI evidence and protected product/engineering/operations
-  approval remain before Phase 30.
+- **Last completed phase:** Phase 29 — Staging Acceptance and Security Review.
+- **Current phase:** Phase 30 — implementation and disposable rehearsal
+  complete; the protected production foundation deployment must pass before
+  Phase 31.
+- **Phase 30 delivered:** exact SHA/source/image enforcement, required
+  maintenance/change/rollback records, encrypted restore point, read-only
+  serial T9 audit, privacy-preserving before/after tenant continuity
+  fingerprints, serial-only enforcement, latency/5xx/connection/disk/CPU/memory
+  thresholds, retained evidence, and automatic previous-image rollback. Local
+  Phase 30 contracts passed 11/11 and serial continuity remained unchanged
+  across hardening. Evidence:
+  `tests/PHASE30_PRODUCTION_FOUNDATION_RESULTS.md`.
 - **Phase 29 delivered:** exact-source image identity verification, an isolated
   production-like staging stack, 18 static security contracts, runtime
   hardening, T4/T5/T6 and selected T7 execution, workflow/report UAT, initial

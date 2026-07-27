@@ -16,10 +16,15 @@
 
 ## Execution Resume Checkpoint
 
-- **Last completed:** Phase 28 — Backup, Restore, Migration, and Rollback
-  Rehearsal
+- **Last completed:** Phase 29 — Staging Acceptance and Security Review
 - **Commit:** pending owner commit
-- **Current phase:** Phase 29 — Staging Acceptance and Security Review
+- **Current phase:** Phase 30 — implementation and disposable rehearsal
+  complete; protected production execution remains
+- **Phase 30 status:** exact release/change controls, encrypted restore point,
+  serial-only read-only T9, before/after continuity, operational thresholds,
+  evidence retention, and automatic rollback implemented and rehearsed.
+- **Phase 29 status:** complete; staging, security, UAT, recovery dependency,
+  and protected cross-functional approval gates passed.
 - **Phase 28 status:** complete; encrypted database/media recovery, isolated
   restore, forward migration, quantity provisioning, previous-image
   compatibility, corruption rejection, and rollback passed with 43-second RTO.

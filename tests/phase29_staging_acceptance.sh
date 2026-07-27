@@ -92,6 +92,19 @@ run_gate() {
 
 run_gate release-preflight \
   "${compose[@]}" exec -T web python manage.py release_preflight
+run_gate phase30-foundation-before \
+  "${compose[@]}" exec -T web python manage.py production_foundation_audit \
+    --serial-only --json
+"${compose[@]}" exec -T web python manage.py production_foundation_audit \
+  --serial-only --json >"$artifact_dir/phase30-continuity-before.json"
+"${compose[@]}" cp "$artifact_dir/phase30-continuity-before.json" \
+  web:/tmp/phase30-continuity-before.json
+run_gate phase30-serial-hardening \
+  "${compose[@]}" exec -T web python manage.py apply_sql_all_tenants \
+    tenancy/sql/production_hardening.sql --family serial
+run_gate phase30-foundation-after \
+  "${compose[@]}" exec -T web python manage.py production_foundation_audit \
+    --serial-only --compare /tmp/phase30-continuity-before.json --json
 run_gate security-runtime \
   "${compose[@]}" exec -T web python -m unittest tests.test_hardening
 run_gate serial-t4-t5 \
