@@ -16,11 +16,12 @@
 
 ## Execution Resume Checkpoint
 
-- **Last completed:** Phase 26 — Performance and Capacity
-- **Commit:** pending owner commit
-- **Current phase:** Phase 27 — CI/CD and ARM64
-- **Phase 27 status:** locally implemented and validated; clean PR and
-  main-push GitHub-hosted T8 observations are pending.
+- **Last completed:** Phase 27 — CI/CD and ARM64
+- **Commit:** `783186e553d3884cb3ce5decbcfe8d004f4e516a`
+- **Current phase:** Phase 28 — Backup, Restore, Migration, and Rollback
+  Rehearsal
+- **Phase 27 status:** complete; clean PR and main T8 gates passed, the
+  multi-architecture image published, and production approval remained gated.
 - **Quantity schema development baseline:** version 22
 - **Phase 26 status:** complete; the tuned 2-vCPU/4-GiB profile passed the full
   100k-SKU, five-million-movement, 100-session T7 gate.

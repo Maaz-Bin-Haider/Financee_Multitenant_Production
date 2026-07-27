@@ -55,8 +55,11 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **CURRENT CHECKPOINT:** Phases 0–26 are complete. **Phase 27 — CI/CD and
-> ARM64 is next.** Phase 26 passed the constrained 2-vCPU/4-GiB T7 target with
+> **CURRENT CHECKPOINT:** Phases 0–27 are complete. **Phase 28 — Backup,
+> Restore, Migration, and Rollback Rehearsal is next.** Phase 27 passed clean
+> PR and main T8 gates, published the immutable multi-architecture image, and
+> stopped EC2 deployment at the protected production approval boundary.
+> Phase 26 passed the constrained 2-vCPU/4-GiB T7 target with
 > 100,000 SKUs, five million movements, 100 simultaneous sessions, reports
 > under three seconds, heavy export, FIFO replay, and full regression.
 > Phase 25 certified simultaneous activity
@@ -249,12 +252,13 @@ high-level checklist and shall be updated from the detailed plan’s results.
   a streamed 100,000-row export, the 10,000-event synchronous FIFO boundary,
   zero deadlocks/restarts/OOM, and complete regression. See
   `tests/PHASE26_PERFORMANCE_CAPACITY_RESULTS.md`.
-- [ ] **Phase 27 — CI/CD and ARM64:** implementation complete locally on
-  2026-07-27. Separate serial, quantity, isolation, aggregate, and ARM64 jobs;
-  real family/version/fingerprint preflight; failure artifacts; deployment
-  pre/post checks; and rollback simulation are implemented. The exit gate
-  awaits clean PR and main-push GitHub Actions observations after the owner
-  commits. See `tests/PHASE27_CICD_ARM64_RESULTS.md`.
+- [x] **Phase 27 — CI/CD and ARM64:** completed 2026-07-27. Separate serial,
+  quantity, isolation, aggregate, and ARM64 jobs; real
+  family/version/fingerprint preflight; failure artifacts; deployment pre/post
+  checks; and rollback simulation passed clean PR and main T8 runs. The
+  immutable multi-architecture image published and EC2 deployment paused at
+  protected production approval. See
+  `tests/PHASE27_CICD_ARM64_RESULTS.md`.
 - [ ] Phases 28–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 

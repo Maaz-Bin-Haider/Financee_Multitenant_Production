@@ -1,7 +1,8 @@
 # Phase 27 — CI/CD and ARM64 Results
 
 Date started: 2026-07-27
-Status: **IMPLEMENTED — EXTERNAL WORKFLOW RUN PENDING**
+Date completed: 2026-07-27
+Status: **PASSED — PHASE 27 COMPLETE**
 
 ## Delivered
 
@@ -43,15 +44,18 @@ Status: **IMPLEMENTED — EXTERNAL WORKFLOW RUN PENDING**
 - Shell syntax, Python compilation, Compose rendering, and diff whitespace
   validation passed.
 
-## External T8 gate
+## External T8 evidence
 
-The workflow definition cannot prove its own GitHub-hosted behavior before the
-owner commits and pushes it. Phase 27 remains in progress until both are
-observed:
+- Pull request: `#1`, merged after all mandatory jobs passed.
+- Final clean branch/pull-request runs: `30265388247` and `30265392131`.
+- Main merge SHA: `783186e553d3884cb3ce5decbcfe8d004f4e516a`.
+- Main workflow run: `30266140481`.
+- Main static, serial, quantity, four-company isolation, aggregate regression,
+  and ARM64 execution jobs: passed.
+- Immutable-SHA and `latest` multi-architecture manifests: published.
+- Production EC2 deployment: correctly paused at the protected `production`
+  environment approval boundary; it was not auto-approved or bypassed.
+- Failed-health rollback was exercised by the local fake-runtime simulation.
 
-1. a clean branch/pull-request run with all separate jobs and failure
-   artifacts available;
-2. a main push that executes the ARM64 gate, publishes both manifests, pauses
-   at production approval, and exercises the SHA-pinned deployment path.
-
-No commit or push was performed by the implementation agent.
+The T8 exit gate passed. Phase 28 — Backup, Restore, Migration, and Rollback
+Rehearsal — is next.
