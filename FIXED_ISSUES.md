@@ -2,6 +2,37 @@
 
 This file records production/setup issues that were diagnosed and fixed, including the root cause, code or SQL changes, and verification steps.
 
+## 2026-07-27: Phase 28 Recovery Rehearsal Isolation and Portable Evidence
+
+### Symptoms
+
+The first disposable recovery source web container could not authenticate to
+its database even though Compose was invoked with an isolated `--env-file`.
+An interrupted retry also reused its constant local project volumes, and the
+encrypted bundle sidecar named a temporary absolute path. The older Phase 27
+stack helper also overwrote `deploy/.env` during local runs without restoring
+the caller's file.
+
+### Root causes
+
+- Compose `--env-file` supplies substitution values but does not replace a
+  service-level `env_file: .env`.
+- A constant local project name makes interrupted disposable volumes reusable.
+- `sha256sum` was initially invoked with the temporary absolute bundle path.
+- The Phase 27 helper wrote its CI environment directly to `deploy/.env`.
+
+### Fix and verification
+
+- The rehearsal creates explicit source/restore service env-file overrides.
+- Local project names include the process ID; CI uses `GITHUB_RUN_ID`.
+- Sidecars contain only the relocatable bundle basename.
+- The Phase 27 helper now saves and restores an existing `deploy/.env` (or
+  removes its temporary file when none existed).
+- The complete rerun passed in 163 seconds, restored in 43 seconds, rejected
+  deliberately corrupted ciphertext, verified two serial schemas and restored
+  media, provisioned quantity v22, ran the previous image against forward
+  migrations, returned to the current image, and passed rollback simulation.
+
 ## 2026-07-25: Phase 1 Baseline Exposed a False-Green HTTP Harness and Fresh-Database Index Drift
 
 ### Symptoms

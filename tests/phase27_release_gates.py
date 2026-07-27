@@ -13,7 +13,7 @@ checks = {
     "isolation CI stage": "isolation-gate:" in workflow,
     "ARM64 execution stage": "arm64-smoke:" in workflow,
     "publish depends on mandatory gates":
-        "needs: [checks, serial-gate, quantity-gate, isolation-gate, arm64-smoke, full-regression]"
+        "needs: [checks, serial-gate, quantity-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate]"
         in workflow,
     "production approval retained": "environment: production" in workflow,
     "SHA-pinned deployment retained": "github.sha" in workflow,

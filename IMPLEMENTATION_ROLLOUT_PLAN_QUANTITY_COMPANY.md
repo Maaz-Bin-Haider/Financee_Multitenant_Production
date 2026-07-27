@@ -16,10 +16,13 @@
 
 ## Execution Resume Checkpoint
 
-- **Last completed:** Phase 27 — CI/CD and ARM64
-- **Commit:** `783186e553d3884cb3ce5decbcfe8d004f4e516a`
-- **Current phase:** Phase 28 — Backup, Restore, Migration, and Rollback
+- **Last completed:** Phase 28 — Backup, Restore, Migration, and Rollback
   Rehearsal
+- **Commit:** pending owner commit
+- **Current phase:** Phase 29 — Staging Acceptance and Security Review
+- **Phase 28 status:** complete; encrypted database/media recovery, isolated
+  restore, forward migration, quantity provisioning, previous-image
+  compatibility, corruption rejection, and rollback passed with 43-second RTO.
 - **Phase 27 status:** complete; clean PR and main T8 gates passed, the
   multi-architecture image published, and the protected deployment was
   explicitly approved and completed successfully on EC2.

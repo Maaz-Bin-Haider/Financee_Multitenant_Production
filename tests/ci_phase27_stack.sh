@@ -5,11 +5,23 @@ gate="${1:?gate required: serial|quantity|isolation|arm64|full}"
 compose="docker compose -f deploy/docker-compose.yml"
 artifact_dir="${GITHUB_WORKSPACE:-.}/phase27-artifacts/$gate"
 mkdir -p "$artifact_dir"
+env_backup=$(mktemp)
+had_deploy_env=0
+if [[ -f deploy/.env ]]; then
+  cp deploy/.env "$env_backup"
+  had_deploy_env=1
+fi
 
 cleanup() {
   $compose logs --no-color >"$artifact_dir/stack.log" 2>&1 || true
   $compose ps --format json >"$artifact_dir/containers.json" 2>&1 || true
   $compose down -v >/dev/null 2>&1 || true
+  if [[ "$had_deploy_env" == "1" ]]; then
+    cp "$env_backup" deploy/.env
+  else
+    rm -f deploy/.env
+  fi
+  rm -f "$env_backup"
 }
 trap cleanup EXIT
 

@@ -51,4 +51,5 @@ media/
 # Static files (if collected locally)
 # =====================
 staticfiles/
-
+phase27-artifacts/
+phase28-artifacts/

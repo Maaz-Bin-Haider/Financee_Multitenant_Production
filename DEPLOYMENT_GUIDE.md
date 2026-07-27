@@ -270,6 +270,25 @@ migrations / tenant SQL already applied by the failed release are **not**
 reverted — keep migrations and tenant patches backward-compatible (the
 existing idempotent-patch discipline).
 
+### Encrypted database and media recovery
+
+Production recovery covers PostgreSQL and the media volume as one encrypted,
+checksummed bundle. The destination must be off the EC2 instance and the
+passphrase must be stored separately:
+
+```bash
+cd ~/Financee_Multitenant_Production/deploy
+BACKUP_DEST=/mnt/offsite/financee \
+BACKUP_PASSPHRASE_FILE=/run/secrets/financee_backup_passphrase \
+bash backup_encrypted.sh
+```
+
+Do not test a restore against the `deploy` production project. Use
+`restore_rehearsal.sh`, an isolated `phase28_*` project, and non-production
+credentials exactly as documented in `PHASE28_RECOVERY_RUNBOOK.md`. A backup
+is not verified until its relocated sidecar passes and the isolated restore
+reaches health, media verification, and all-tenant `release_preflight`.
+
 ---
 
 ## Part E — Troubleshooting on the server

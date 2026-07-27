@@ -6,9 +6,15 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
-- **Last completed phase:** Phase 27 — CI/CD and ARM64.
-- **Next phase:** Phase 28 — Backup, Restore, Migration, and Rollback
-  Rehearsal.
+- **Last completed phase:** Phase 28 — Backup, Restore, Migration, and
+  Rollback Rehearsal.
+- **Next phase:** Phase 29 — Staging Acceptance and Security Review.
+- **Phase 28 status:** complete. Encrypted database/media backup, isolated
+  restore, two restored serial schemas, post-restore quantity provisioning,
+  forward migration, previous-image compatibility, corruption rejection, and
+  failed-health rollback passed. RPO was 0 seconds for the declared synthetic
+  recovery point and restore RTO was 43 seconds. Evidence:
+  `tests/PHASE28_BACKUP_RESTORE_ROLLBACK_RESULTS.md`.
 - **Phase 27 status:** complete. PR and main T8 gates passed, the immutable
   multi-architecture image was published, and the protected deployment was
   explicitly approved and completed on EC2 with a passing preflight. Evidence:

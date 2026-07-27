@@ -34,6 +34,7 @@ jobs:
       - run: python manage.py makemigrations --check --dry-run
       - run: python tests/phase27_release_gates.py
       - run: bash tests/phase27_rollback_simulation.sh
+      - run: python tests/phase28_release_gates.py
 
   serial-gate:
     name: Serial regression gate
@@ -114,10 +115,29 @@ jobs:
           name: full-regression-failure
           path: phase27-artifacts/full
 
+  recovery-gate:
+    name: Encrypted backup, restore & rollback gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rehearse encrypted recovery and old-image compatibility
+        env:
+          PHASE28_ARTIFACT_DIR: phase28-artifacts
+        run: |
+          chmod +x deploy/backup_encrypted.sh deploy/restore_rehearsal.sh
+          chmod +x tests/phase28_recovery_rehearsal.sh
+          tests/phase28_recovery_rehearsal.sh
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase28-encrypted-recovery-evidence
+          path: phase28-artifacts
+          retention-days: 14
+
   publish:
     name: Publish signed-off multi-architecture image
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [checks, serial-gate, quantity-gate, isolation-gate, arm64-smoke, full-regression]
+    needs: [checks, serial-gate, quantity-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate]
     runs-on: ubuntu-latest
     permissions:
       contents: read

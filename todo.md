@@ -55,8 +55,12 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **CURRENT CHECKPOINT:** Phases 0–27 are complete. **Phase 28 — Backup,
-> Restore, Migration, and Rollback Rehearsal is next.** Phase 27 passed clean
+> **CURRENT CHECKPOINT:** Phases 0–28 are complete. **Phase 29 — Staging
+> Acceptance and Security Review is next.** Phase 28 passed encrypted
+> database/media backup, isolated restore, restored serial verification,
+> forward migration, post-restore quantity provisioning, previous-image
+> compatibility, corruption rejection, and rollback with a 43-second RTO.
+> Phase 27 passed clean
 > PR and main T8 gates, published the immutable multi-architecture image, and
 > completed the protected, explicitly approved EC2 deployment and preflight.
 > Phase 26 passed the constrained 2-vCPU/4-GiB T7 target with
@@ -259,7 +263,15 @@ high-level checklist and shall be updated from the detailed plan’s results.
   immutable multi-architecture image published and the explicitly approved EC2
   deployment completed with a passing production preflight. See
   `tests/PHASE27_CICD_ARM64_RESULTS.md`.
-- [ ] Phases 28–32: not started; see
+- [x] **Phase 28 — Backup, Restore, Migration, and Rollback Rehearsal:**
+  completed 2026-07-27. Added encrypted database/media bundles, portable
+  integrity verification, guarded isolated restores, restored media/all-tenant
+  preflight, forward migration, post-restore quantity provisioning,
+  previous-image compatibility, RPO/RTO measurement, corruption rejection,
+  rollback rehearsal, runbook, and a mandatory CI recovery gate. Restore RTO
+  was 43 seconds. See
+  `tests/PHASE28_BACKUP_RESTORE_ROLLBACK_RESULTS.md`.
+- [ ] Phases 29–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements
