@@ -35,6 +35,8 @@ jobs:
       - run: python tests/phase27_release_gates.py
       - run: bash tests/phase27_rollback_simulation.sh
       - run: python tests/phase28_release_gates.py
+      - run: python tests/phase29_security_contracts.py
+      - run: python -m pip check
 
   serial-gate:
     name: Serial regression gate
@@ -134,10 +136,41 @@ jobs:
           path: phase28-artifacts
           retention-days: 14
 
+  staging-security-gate:
+    name: Phase 29 exact-image staging, security & UAT gate
+    runs-on: ubuntu-latest
+    needs: [checks, recovery-gate]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run production-like staging acceptance
+        env:
+          PHASE29_ARTIFACT_DIR: phase29-artifacts
+        run: |
+          chmod +x tests/phase29_staging_acceptance.sh
+          tests/phase29_staging_acceptance.sh
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase29-staging-security-evidence
+          path: phase29-artifacts
+          retention-days: 30
+
+  staging-release-approval:
+    name: Product, engineering & operations staging approval
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [staging-security-gate, serial-gate, quantity-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate]
+    runs-on: ubuntu-latest
+    environment: staging-release-approval
+    steps:
+      - name: Record approved release candidate
+        run: |
+          echo "Approved Phase 29 release candidate: ${{ env.IMAGE_BASE }}:${{ github.sha }}"
+          echo "The protected environment approval is the product/engineering/operations sign-off record."
+
   publish:
     name: Publish signed-off multi-architecture image
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [checks, serial-gate, quantity-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate]
+    needs: [checks, serial-gate, quantity-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate, staging-security-gate, staging-release-approval]
     runs-on: ubuntu-latest
     permissions:
       contents: read

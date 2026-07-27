@@ -55,8 +55,13 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **CURRENT CHECKPOINT:** Phases 0–28 are complete. **Phase 29 — Staging
-> Acceptance and Security Review is next.** Phase 28 passed encrypted
+> **CURRENT CHECKPOINT:** Phases 0–28 are complete. **Phase 29 implementation
+> and local acceptance are complete; committed-SHA CI evidence plus protected
+> product-owner, engineering, and operations approval remain before Phase
+> 30.** Phase 29 locally passed 18/18 static security contracts, 5/5 runtime
+> hardening, 51/51 serial, 20/20 quantity UAT, 17/17 mixed-family isolation,
+> selected T7 capacity/concurrency, all-tenant preflight, and operational
+> health. Phase 28 passed encrypted
 > database/media backup, isolated restore, restored serial verification,
 > forward migration, post-restore quantity provisioning, previous-image
 > compatibility, corruption rejection, and rollback with a 43-second RTO.

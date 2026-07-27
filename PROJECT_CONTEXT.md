@@ -8,7 +8,16 @@ This file is the persistent engineering context for Financee. Update it on every
 
 - **Last completed phase:** Phase 28 — Backup, Restore, Migration, and
   Rollback Rehearsal.
-- **Next phase:** Phase 29 — Staging Acceptance and Security Review.
+- **Current phase:** Phase 29 — implementation and local acceptance complete;
+  committed-SHA CI evidence and protected product/engineering/operations
+  approval remain before Phase 30.
+- **Phase 29 delivered:** exact-source image identity verification, an isolated
+  production-like staging stack, 18 static security contracts, runtime
+  hardening, T4/T5/T6 and selected T7 execution, workflow/report UAT, initial
+  and final tenant preflight, operational health evidence, retained CI
+  artifacts, and a protected approval gate blocking publication. Local serial
+  51/51, quantity 20/20, isolation 17/17, hardening 5/5, and T7 smoke passed.
+  Evidence: `tests/PHASE29_STAGING_SECURITY_RESULTS.md`.
 - **Phase 28 status:** complete. Encrypted database/media backup, isolated
   restore, two restored serial schemas, post-restore quantity provisioning,
   forward migration, previous-image compatibility, corruption rejection, and
