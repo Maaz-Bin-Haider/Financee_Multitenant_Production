@@ -229,11 +229,10 @@ def main():
     finally:
         for company in reversed(companies):
             drop(company)
-        # Tenant business rows reference public auth_user IDs. Drop the
-        # disposable tenant schemas before deleting their public users so a
-        # clean CI database does not trip those cross-schema foreign keys.
-        for user in users:
-            user.delete()
+        # Do not delete the public users here. The legacy SQL harness exercises
+        # cross-schema foreign keys to auth_user, and PostgreSQL can correctly
+        # reject that deletion while another exercised schema still references
+        # the ID. Usernames are run-tagged and the CI database is disposable.
 
     failed = [result for result in RESULTS if not result[1]]
     for name, ok, detail in RESULTS:
