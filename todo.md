@@ -58,7 +58,7 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > **CURRENT CHECKPOINT:** Phases 0–27 are complete. **Phase 28 — Backup,
 > Restore, Migration, and Rollback Rehearsal is next.** Phase 27 passed clean
 > PR and main T8 gates, published the immutable multi-architecture image, and
-> stopped EC2 deployment at the protected production approval boundary.
+> completed the protected, explicitly approved EC2 deployment and preflight.
 > Phase 26 passed the constrained 2-vCPU/4-GiB T7 target with
 > 100,000 SKUs, five million movements, 100 simultaneous sessions, reports
 > under three seconds, heavy export, FIFO replay, and full regression.
@@ -256,8 +256,8 @@ high-level checklist and shall be updated from the detailed plan’s results.
   quantity, isolation, aggregate, and ARM64 jobs; real
   family/version/fingerprint preflight; failure artifacts; deployment pre/post
   checks; and rollback simulation passed clean PR and main T8 runs. The
-  immutable multi-architecture image published and EC2 deployment paused at
-  protected production approval. See
+  immutable multi-architecture image published and the explicitly approved EC2
+  deployment completed with a passing production preflight. See
   `tests/PHASE27_CICD_ARM64_RESULTS.md`.
 - [ ] Phases 28–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.

@@ -54,7 +54,10 @@ Status: **PASSED — PHASE 27 COMPLETE**
   and ARM64 execution jobs: passed.
 - Immutable-SHA and `latest` multi-architecture manifests: published.
 - Production EC2 deployment: correctly paused at the protected `production`
-  environment approval boundary; it was not auto-approved or bypassed.
+  environment boundary, was explicitly approved by `Maaz-Bin-Haider`, and
+  then deployed the tested SHA successfully.
+- Production post-deploy preflight: `Euronext`, family `serial`, schema version
+  `6/6`, fingerprint `808e73deb5fbb472`; health and deployment completed.
 - Failed-health rollback was exercised by the local fake-runtime simulation.
 
 The T8 exit gate passed. Phase 28 — Backup, Restore, Migration, and Rollback

@@ -21,7 +21,8 @@
 - **Current phase:** Phase 28 — Backup, Restore, Migration, and Rollback
   Rehearsal
 - **Phase 27 status:** complete; clean PR and main T8 gates passed, the
-  multi-architecture image published, and production approval remained gated.
+  multi-architecture image published, and the protected deployment was
+  explicitly approved and completed successfully on EC2.
 - **Quantity schema development baseline:** version 22
 - **Phase 26 status:** complete; the tuned 2-vCPU/4-GiB profile passed the full
   100k-SKU, five-million-movement, 100-session T7 gate.

@@ -10,8 +10,8 @@ This file is the persistent engineering context for Financee. Update it on every
 - **Next phase:** Phase 28 — Backup, Restore, Migration, and Rollback
   Rehearsal.
 - **Phase 27 status:** complete. PR and main T8 gates passed, the immutable
-  multi-architecture image was published, and EC2 deployment stopped at the
-  protected production approval boundary. Evidence:
+  multi-architecture image was published, and the protected deployment was
+  explicitly approved and completed on EC2 with a passing preflight. Evidence:
   `tests/PHASE27_CICD_ARM64_RESULTS.md`.
 - **Phase 26 delivered:** a 2-vCPU/4-GiB constrained capacity profile,
   production PostgreSQL/Gunicorn tuning, 100,000 SKUs, five million movements,
