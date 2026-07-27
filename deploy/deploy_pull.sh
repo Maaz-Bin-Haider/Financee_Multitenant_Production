@@ -43,6 +43,15 @@ if [ -n "$PREV_CID" ]; then
 fi
 echo "==> Deploying $WEB_IMAGE (previous image: ${PREV_IMAGE:-none})"
 
+# Fail closed before changing containers when the currently running release
+# supports the family-aware gate. The conditional is needed only for the first
+# rollout that introduces this command.
+if [ -n "$PREV_CID" ] && \
+   $COMPOSE exec -T web python manage.py help release_preflight >/dev/null 2>&1; then
+    echo "==> Pre-deploy tenant family/version/fingerprint verification"
+    $COMPOSE exec -T web python manage.py release_preflight
+fi
+
 # SHA-tagged releases are not dangling, so `docker image prune -f` never
 # removed them. On a small EC2 root volume they accumulated until containerd
 # could no longer extract the next ARM64 image. `-a` removes every image not
@@ -75,12 +84,14 @@ $COMPOSE up -d --no-deps web nginx
 
 echo "==> Waiting for health through nginx"
 healthy=""
-for i in $(seq 1 30); do
+HEALTH_ATTEMPTS="${DEPLOY_HEALTH_ATTEMPTS:-30}"
+HEALTH_INTERVAL_SECONDS="${DEPLOY_HEALTH_INTERVAL_SECONDS:-4}"
+for i in $(seq 1 "$HEALTH_ATTEMPTS"); do
     if curl -fsS -o /dev/null http://localhost/authentication/login/; then
         healthy=1
         break
     fi
-    sleep 4
+    sleep "$HEALTH_INTERVAL_SECONDS"
 done
 
 if [ -z "$healthy" ]; then
@@ -95,6 +106,9 @@ fi
 
 echo "==> Applying tenant SQL to all schemas (idempotent)"
 $COMPOSE exec -T web python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql
+
+echo "==> Post-deploy tenant family/version/fingerprint and safe-report checks"
+$COMPOSE exec -T web python manage.py release_preflight
 
 echo "==> Pruning superseded images and build cache"
 docker image prune -af

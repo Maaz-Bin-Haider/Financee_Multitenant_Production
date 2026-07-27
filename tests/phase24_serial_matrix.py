@@ -227,10 +227,12 @@ def main():
             all(response.status_code in (403, 404) for response in responses),
             [response.status_code for response in responses])
     finally:
-        for user in users:
-            user.delete()
         for company in reversed(companies):
             drop(company)
+        # Do not delete the public users here. The legacy SQL harness exercises
+        # cross-schema foreign keys to auth_user, and PostgreSQL can correctly
+        # reject that deletion while another exercised schema still references
+        # the ID. Usernames are run-tagged and the CI database is disposable.
 
     failed = [result for result in RESULTS if not result[1]]
     for name, ok, detail in RESULTS:

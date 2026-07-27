@@ -1,26 +1,3 @@
-# =============================================================================
-# CI/CD for Financee
-# -----------------------------------------------------------------------------
-# checks  : fast static gate — django check + missing-migration guard.
-# test    : builds the PRODUCTION image, boots the real compose stack
-#           (Postgres seeds build_multitenant_db.sql, entrypoint runs public
-#           migrations + production_hardening.sql exactly like production),
-#           provisions a second tenant, and runs every test harness inside the
-#           container. The full suite runs on every push and PR by design.
-# publish : (inside test, main only) pushes the *tested* image to GHCR tagged
-#           with the commit SHA + latest.
-# deploy  : (main only) waits for manual approval via the `production` GitHub
-#           environment, then SSHes to the EC2 host and runs
-#           deploy/deploy_pull.sh with the SHA tag — the server never rebuilds.
-#
-# One-time repo setup (documented in README "CI/CD"):
-#   * Settings -> Environments -> New environment "production" -> add yourself
-#     as a required reviewer (this is the manual approval gate).
-#   * Secrets: EC2_HOST, EC2_USER, EC2_SSH_KEY (private key), and optional
-#     EC2_APP_DIR (defaults to ~/Financee_Multitenant_Production).
-#   * On the EC2 host, either make the GHCR package public or run a one-time
-#     `docker login ghcr.io` with a read:packages PAT.
-# =============================================================================
 name: CI/CD
 
 on:
@@ -33,7 +10,7 @@ env:
 
 jobs:
   checks:
-    name: Django checks & migration guard
+    name: Static, Django, migration & release-contract checks
     runs-on: ubuntu-latest
     env:
       SECRET_KEY: ci-only-not-secret
@@ -52,133 +29,119 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-lock.txt
       - run: pip install -r requirements-lock.txt
-      - name: Byte-compile the tree
-        run: python -m compileall -q .
-      - name: Django system checks
-        run: python manage.py check
-      - name: Fail if a model change is missing its migration
-        run: python manage.py makemigrations --check --dry-run
+      - run: python -m compileall -q .
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python tests/phase27_release_gates.py
+      - run: bash tests/phase27_rollback_simulation.sh
 
-  test:
-    name: Build image & run full suite in the real stack
+  serial-gate:
+    name: Serial regression gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: chmod +x tests/ci_phase27_stack.sh
+      - run: tests/ci_phase27_stack.sh serial
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: serial-gate-failure
+          path: phase27-artifacts/serial
+
+  quantity-gate:
+    name: Quantity complete-suite gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: chmod +x tests/ci_phase27_stack.sh
+      - run: tests/ci_phase27_stack.sh quantity
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantity-gate-failure
+          path: phase27-artifacts/quantity
+
+  isolation-gate:
+    name: Four-company isolation gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: chmod +x tests/ci_phase27_stack.sh
+      - run: tests/ci_phase27_stack.sh isolation
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolation-gate-failure
+          path: phase27-artifacts/isolation
+
+  arm64-smoke:
+    name: ARM64 image execution gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build loadable ARM64 production image
+        run: |
+          docker buildx build --platform linux/arm64 \
+            -f deploy/Dockerfile -t financee-arm64-smoke:ci --load .
+      - name: Execute migration, provisioning and HTTP smoke under ARM64
+        env:
+          WEB_IMAGE: financee-arm64-smoke:ci
+        run: |
+          chmod +x tests/ci_phase27_stack.sh
+          tests/ci_phase27_stack.sh arm64
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arm64-smoke-failure
+          path: phase27-artifacts/arm64
+
+  full-regression:
+    name: Complete production-stack regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Dedicated serial/quantity/isolation jobs are the mandatory focused
+      # gates. Run the aggregate suite once on one health-checked clean stack.
+      - name: Run complete suite
+        run: |
+          chmod +x tests/ci_phase27_stack.sh
+          tests/ci_phase27_stack.sh full
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-regression-failure
+          path: phase27-artifacts/full
+
+  publish:
+    name: Publish signed-off multi-architecture image
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [checks, serial-gate, quantity-gate, isolation-gate, arm64-smoke, full-regression]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Create throwaway CI env file
-        run: |
-          cat > deploy/.env <<'EOF'
-          SECRET_KEY=ci-only-not-secret-but-long-enough-for-django
-          DEBUG=False
-          ALLOWED_HOSTS=localhost,127.0.0.1
-          CSRF_TRUSTED_ORIGINS=http://localhost
-          DB_NAME=financee
-          DB_USER=financee
-          DB_PASSWORD=ci-postgres-password
-          DB_HOST=db
-          DB_PORT=5432
-          EOF
-
-      - name: Build the production image
-        run: docker compose -f deploy/docker-compose.yml build web
-
-      - name: Boot the stack (DB seeds bootstrap SQL, entrypoint migrates + hardens)
-        run: docker compose -f deploy/docker-compose.yml up -d
-
-      - name: Wait for web to be healthy
-        run: |
-          cid=$(docker compose -f deploy/docker-compose.yml ps -q web)
-          for i in $(seq 1 60); do
-            status=$(docker inspect -f '{{.State.Health.Status}}' "$cid")
-            [ "$status" = "healthy" ] && exit 0
-            sleep 5
-          done
-          echo "web never became healthy"; exit 1
-
-      - name: Copy test harnesses into the container
-        run: docker compose -f deploy/docker-compose.yml cp tests web:/app/
-
-      - name: Bootstrap superuser, second tenant, and tenant users
-        # The suite discovers tenants through tenancy_membership (one tenant
-        # user per company is required), mirroring the local twin-tenant setup.
-        run: |
-          docker compose -f deploy/docker-compose.yml exec -T \
-            -e DJANGO_SUPERUSER_USERNAME=admin \
-            -e DJANGO_SUPERUSER_PASSWORD=ci-admin-password \
-            -e DJANGO_SUPERUSER_EMAIL=admin@example.com \
-            web python manage.py createsuperuser --noinput
-          docker compose -f deploy/docker-compose.yml exec -T \
-            web python manage.py provision_tenant "CI Company Two"
-          docker compose -f deploy/docker-compose.yml exec -T \
-            web python tests/ci_bootstrap.py
-
-      - name: Comprehensive suite (every domain, every report, both tenants)
-        run: docker compose -f deploy/docker-compose.yml exec -T web python tests/suite/run_all.py
-
-      - name: SQL business-function harness
-        run: docker compose -f deploy/docker-compose.yml exec -T web python tests/test_system.py
-
-      - name: HTTP endpoint harness
-        run: docker compose -f deploy/docker-compose.yml exec -T web python tests/test_http.py
-
-      - name: Deep transaction-lifecycle harness
-        run: docker compose -f deploy/docker-compose.yml exec -T web python tests/test_transaction_lifecycle_deep.py
-
-      - name: Dump stack logs on failure
-        if: failure()
-        run: docker compose -f deploy/docker-compose.yml logs --no-color > stack-logs.txt || true
-      - name: Upload logs artifact on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: stack-logs
-          path: stack-logs.txt
-
-      # ── Publish the tested image (main pushes only) ─────────────────────────
-      # The suite above ran against the amd64 build. The push is MULTI-ARCH
-      # (amd64 + arm64 from the same source/Dockerfile) because the EC2 host
-      # is ARM/Graviton — an amd64-only image fails there with
-      # "exec /app/deploy/entrypoint.sh: exec format error" and the deploy
-      # health check rolls it back.
-      - name: Set up QEMU (arm64 emulation)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
       - name: Log in to GHCR
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-      - name: Push tested image (sha + latest, amd64 + arm64)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      - name: Publish immutable SHA and convenience latest manifests
         run: |
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
+          docker buildx build --platform linux/amd64,linux/arm64 \
             -f deploy/Dockerfile \
             --cache-from "type=registry,ref=$IMAGE_BASE:latest" \
             --cache-to type=inline \
             -t "$IMAGE_BASE:${{ github.sha }}" \
-            -t "$IMAGE_BASE:latest" \
-            --push .
-
-      - name: Tear down
-        if: always()
-        run: docker compose -f deploy/docker-compose.yml down -v || true
+            -t "$IMAGE_BASE:latest" --push .
 
   deploy:
     name: Deploy to EC2 (manual approval)
-    # DEPLOY_ENABLED is a repo *variable* (Settings -> Secrets and variables ->
-    # Actions -> Variables). Leave it unset until the EC2 secrets and the
-    # `production` environment reviewer are configured, so CI stays green
-    # meanwhile; set it to `true` to activate deploys.
     if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
-    needs: [checks, test]
+    needs: [publish, full-regression]
     runs-on: ubuntu-latest
-    # The approval gate: configure the `production` environment in repo
-    # settings with a required reviewer. The job pauses here until approved.
     environment: production
     concurrency: production-deploy
     steps:
@@ -188,7 +151,7 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
           ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
-      - name: Pull-deploy the tested image on the server
+      - name: Pull-deploy the SHA-pinned tested source
         run: |
           APP_DIR="${{ secrets.EC2_APP_DIR }}"
           APP_DIR="${APP_DIR:-\$HOME/Financee_Multitenant_Production}"
