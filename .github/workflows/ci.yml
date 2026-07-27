@@ -102,29 +102,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run aggregate gate and preserve exact module failure
+      # Dedicated serial/quantity/isolation jobs are the mandatory focused
+      # gates. Run the aggregate suite once on one health-checked clean stack.
+      - name: Run complete suite
         run: |
           chmod +x tests/ci_phase27_stack.sh
-          tests/ci_phase27_stack.sh quantity
-      # The separate serial/quantity/isolation jobs are the mandatory release
-      # gates. This job preserves the all-module CI behavior after they pass.
-      - name: Full suite
-        run: |
-          docker compose -f deploy/docker-compose.yml up -d
-          docker compose -f deploy/docker-compose.yml cp tests web:/app/
-          docker compose -f deploy/docker-compose.yml exec -T \
-            -e DJANGO_SUPERUSER_USERNAME=admin \
-            -e DJANGO_SUPERUSER_PASSWORD=ci-admin-password \
-            -e DJANGO_SUPERUSER_EMAIL=admin@example.com \
-            web python manage.py createsuperuser --noinput
-          docker compose -f deploy/docker-compose.yml exec -T \
-            web python manage.py provision_tenant "CI Company Two"
-          docker compose -f deploy/docker-compose.yml exec -T \
-            web python tests/ci_bootstrap.py
-          docker compose -f deploy/docker-compose.yml exec -T web \
-            python tests/suite/run_all.py
-      - if: always()
-        run: docker compose -f deploy/docker-compose.yml down -v || true
+          tests/ci_phase27_stack.sh full
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-regression-failure
+          path: phase27-artifacts/full
 
   publish:
     name: Publish signed-off multi-architecture image

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-gate="${1:?gate required: serial|quantity|isolation|arm64}"
+gate="${1:?gate required: serial|quantity|isolation|arm64|full}"
 compose="docker compose -f deploy/docker-compose.yml"
 artifact_dir="${GITHUB_WORKSPACE:-.}/phase27-artifacts/$gate"
 mkdir -p "$artifact_dir"
@@ -45,6 +45,16 @@ case "$gate" in
   arm64)
     $compose exec -T web python tests/phase27_arm64_smoke.py
     $compose exec -T web python manage.py release_preflight
+    ;;
+  full)
+    $compose exec -T \
+      -e DJANGO_SUPERUSER_USERNAME=admin \
+      -e DJANGO_SUPERUSER_PASSWORD=ci-admin-password \
+      -e DJANGO_SUPERUSER_EMAIL=admin@example.com \
+      web python manage.py createsuperuser --noinput
+    $compose exec -T web python manage.py provision_tenant "CI Company Two"
+    $compose exec -T web python tests/ci_bootstrap.py
+    $compose exec -T web python tests/suite/run_all.py
     ;;
   *) echo "unknown gate: $gate" >&2; exit 2 ;;
 esac
