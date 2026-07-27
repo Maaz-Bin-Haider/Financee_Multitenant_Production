@@ -90,7 +90,16 @@ EOF
 echo "==> Phase 30 preflight: serial-only production foundation"
 "${compose[@]}" exec -T web python manage.py release_preflight \
     --require-family serial >"$evidence_dir/preflight-before.txt"
-"${compose[@]}" exec -T web python manage.py production_foundation_audit \
+
+# The currently running (rollback) image may predate the Phase 30 management
+# command. Pull the approved candidate and execute its read-only audit code
+# against the live database with the normal entrypoint disabled. Disabling the
+# entrypoint is essential here: it prevents migrations/hardening before the
+# baseline fingerprint has been captured.
+echo "==> Pulling approved image for read-only pre-deploy audit"
+WEB_IMAGE="$WEB_IMAGE" "${compose[@]}" pull web
+WEB_IMAGE="$WEB_IMAGE" "${compose[@]}" run --rm --no-deps -T \
+    --entrypoint python web manage.py production_foundation_audit \
     --serial-only --json >"$evidence_dir/continuity-before.json"
 
 if [[ "$PHASE30_BACKUP_MODE" == "encrypted" ]]; then

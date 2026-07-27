@@ -28,6 +28,10 @@ checks = {
         "--serial-only" in deploy
         and '"mode": "read-only-production-safe"' in audit
         and "Phase 30 forbids quantity tenants" in audit,
+    "pre-deploy audit runs from candidate without entrypoint":
+        '"${compose[@]}" pull web' in deploy
+        and '"${compose[@]}" run --rm --no-deps -T' in deploy
+        and "--entrypoint python web manage.py production_foundation_audit" in deploy,
     "before and after continuity compared":
         "continuity-before.json" in deploy
         and "--compare /tmp/phase30-continuity-before.json" in deploy

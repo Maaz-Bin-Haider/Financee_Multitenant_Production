@@ -41,8 +41,11 @@ quantity tenant, failed tenant verification, or unbalanced serial ledger.
 
 1. Validate the exact SHA-tagged image, checked-out SHA, notice/window, and
    rollback ownership.
-2. Capture read-only T9 platform contracts and a privacy-preserving continuity
-   fingerprint for every active serial tenant.
+2. Pull the approved candidate and, with its entrypoint disabled, capture
+   read-only T9 platform contracts and a privacy-preserving continuity
+   fingerprint for every active serial tenant. This supports upgrades from an
+   older running image that does not yet contain the Phase 30 audit command,
+   without applying migrations before the baseline.
 3. Record the external backup plan, or create and verify an encrypted
    database/media restore point when encrypted mode is selected.
 4. Run the existing approval-gated pull deployment.
