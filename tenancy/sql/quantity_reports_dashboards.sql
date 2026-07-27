@@ -157,16 +157,30 @@ BEGIN
   cols:='[{"key":"movement_date","label":"Date"},{"key":"sku","label":"SKU"},{"key":"product_name","label":"Product"},{"key":"warehouse_code","label":"Warehouse"},{"key":"movement_type","label":"Movement"},{"key":"document_number","label":"Document"},{"key":"quantity_in","label":"In"},{"key":"quantity_out","label":"Out"},{"key":"unit_cost_base","label":"Unit Cost"},{"key":"total_cost_base","label":"Value"}]';
  ELSIF p_key IN('inventory_reconciliation','valuation_reconciliation') THEN
   SELECT COALESCE(jsonb_agg(to_jsonb(q) ORDER BY q.sku,q.warehouse_code),'[]') INTO rows FROM(
-   SELECT v.sku,w.warehouse_code,b.on_hand_quantity,
-    COALESCE(sum(sm.quantity_in-sm.quantity_out),0) movement_quantity,
-    b.on_hand_quantity-COALESCE(sum(sm.quantity_in-sm.quantity_out),0) quantity_variance,
-    round(COALESCE((SELECT sum(fl.remaining_quantity*fl.unit_cost_base) FROM fifo_layers fl
-     WHERE fl.variant_id=b.variant_id AND fl.warehouse_id=b.warehouse_id),0),4) fifo_value
-   FROM stock_balances b JOIN product_variants v USING(variant_id)
-   JOIN warehouses w USING(warehouse_id) LEFT JOIN stock_movements sm
-    ON sm.variant_id=b.variant_id AND sm.warehouse_id=b.warehouse_id
-   WHERE (wh IS NULL OR b.warehouse_id=wh) AND (var IS NULL OR b.variant_id=var)
-   GROUP BY b.variant_id,b.warehouse_id,v.sku,w.warehouse_code,b.on_hand_quantity)q;
+   SELECT page.sku,page.warehouse_code,page.on_hand_quantity,
+    COALESCE(m.movement_quantity,0) movement_quantity,
+    page.on_hand_quantity-COALESCE(m.movement_quantity,0) quantity_variance,
+    round(COALESCE(fv.fifo_value,0),4) fifo_value
+   FROM (
+    SELECT b.variant_id,b.warehouse_id,v.sku,w.warehouse_code,b.on_hand_quantity
+      FROM stock_balances b JOIN product_variants v USING(variant_id)
+      JOIN warehouses w USING(warehouse_id)
+     WHERE (wh IS NULL OR b.warehouse_id=wh)
+       AND (var IS NULL OR b.variant_id=var)
+     ORDER BY v.sku,w.warehouse_code LIMIT row_limit
+   ) page
+   LEFT JOIN LATERAL (
+    SELECT sum(sm.quantity_in-sm.quantity_out) movement_quantity
+      FROM stock_movements sm
+     WHERE sm.variant_id=page.variant_id
+       AND sm.warehouse_id=page.warehouse_id
+   ) m ON true
+   LEFT JOIN LATERAL (
+    SELECT sum(fl.remaining_quantity*fl.unit_cost_base) fifo_value
+      FROM fifo_layers fl
+     WHERE fl.variant_id=page.variant_id
+       AND fl.warehouse_id=page.warehouse_id
+   ) fv ON true)q;
   cols:='[{"key":"sku","label":"SKU"},{"key":"warehouse_code","label":"Warehouse"},{"key":"on_hand_quantity","label":"Balance Qty"},{"key":"movement_quantity","label":"Movement Qty"},{"key":"quantity_variance","label":"Variance"},{"key":"fifo_value","label":"FIFO Value"}]';
   SELECT jsonb_build_object('quantity_variance',COALESCE(sum((x->>'quantity_variance')::numeric),0),
    'fifo_value',COALESCE(sum((x->>'fifo_value')::numeric),0),

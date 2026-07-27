@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Phase 16 reproducible physical counts and FIFO-valued adjustments."""
 import json,os,sys,time
+from datetime import date
 from decimal import Decimal
 ROOT=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0,ROOT);os.environ.setdefault("DJANGO_SETTINGS_MODULE","financee.settings")
@@ -53,7 +54,9 @@ def main():
   rev=js(q(s,"SELECT quantity_reverse_physical_count(%s,CURRENT_DATE,1)",[sur["count_id"]])[0][0]);chk("untouched surplus reversal restores stock and accounting",rev["status"]=="success" and stock(s,sv,sw)==0 and account(s,"1400")==gain_before[0] and account(s,"4900")==gain_before[1])
   chk("repeat reversal rejected",reject(s,"SELECT quantity_reverse_physical_count(%s,CURRENT_DATE,1)",[sur["count_id"]]))
   chk("negative counted quantity rejected",reject(s,"SELECT quantity_create_physical_count(%s::jsonb)",[json.dumps(payload("neg",w,[{"variant_id":v,"counted_quantity":"-1","reason":"Bad"}]))]))
-  chk("surplus without valuation rejected",reject(s,"SELECT quantity_create_physical_count(%s::jsonb)",[json.dumps(payload("nocost",sw,[{"variant_id":sv,"counted_quantity":"1","reason":"Found"}],when="2026-07-26"))]))
+  nv,nw=setup_scope(s,"NOCOST","PCS")
+  today=str(date.today())
+  chk("surplus without valuation rejected",reject(s,"SELECT quantity_create_physical_count(%s::jsonb)",[json.dumps(payload("nocost",nw,[{"variant_id":nv,"counted_quantity":"1","reason":"Found"}],when=today))]))
   cv,cw=setup_scope(s,"CUTOFF","PCS");purchase(s,"cp",cv,cw,5,40,"2026-07-01");snap=create(s,payload("snap",cw,[{"variant_id":cv,"counted_quantity":"5","reason":"Cutoff"}],cutoff="2026-07-09"));sale(s,"after-cutoff",cv,cw,1,80,when="2026-07-10");approve(s,snap["count_id"])
   chk("movement after cutoff is preserved",stock(s,cv,cw)==4)
   bv,bw=setup_scope(sb,"ISO","PCS");purchase(sb,"bp",bv,bw,1,20,"2026-07-01");iso=create(sb,payload("iso",bw,[{"variant_id":bv,"counted_quantity":"1","reason":"Count"}]));chk("count numbering is tenant isolated",iso["document_number"]=="CNT-000001")

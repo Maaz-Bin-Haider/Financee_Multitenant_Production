@@ -1,7 +1,7 @@
 # Financee Multitenant Accounting and Inventory System
 
-> Development resume point: Phases 0–25 are complete. **Phase 26 —
-> Performance and Capacity** is next.
+> Development resume point: Phases 0–26 are complete. **Phase 27 —
+> CI/CD and ARM64** is next.
 > Read `PROJECT_CONTEXT.md` and
 > `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md` before starting.
 

@@ -26,20 +26,21 @@ services:
       # schema tenant_company_1. After that, `migrate` (in the web entrypoint)
       # applies the authentication permission migrations. Ignored on later boots.
       - ../build_multitenant_db.sql:/docker-entrypoint-initdb.d/01_build.sql:ro
-    # Conservative tuning for a shared 8 GB box (DB co-located with app).
-    # Adjust to the instance; see deploy/README for the rationale.
+    # Phase 26 baseline for the real t4g.medium: 2 vCPU / 4 GiB, with DB,
+    # Redis, web, and nginx co-located. work_mem is per sort/hash operation, so
+    # keep it deliberately small under the 100-session T7 load.
     command:
       - "postgres"
       - "-c"
-      - "max_connections=100"
+      - "max_connections=120"
       - "-c"
-      - "shared_buffers=1GB"
+      - "shared_buffers=768MB"
       - "-c"
-      - "effective_cache_size=3GB"
+      - "effective_cache_size=2GB"
       - "-c"
-      - "work_mem=16MB"
+      - "work_mem=4MB"
       - "-c"
-      - "maintenance_work_mem=256MB"
+      - "maintenance_work_mem=128MB"
       - "-c"
       - "wal_compression=on"
       - "-c"
@@ -65,6 +66,8 @@ services:
     environment:
       DB_HOST: db
       REDIS_URL: redis://redis:6379/0
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
+      GUNICORN_THREADS: ${GUNICORN_THREADS:-4}
     volumes:
       - staticfiles:/app/staticfiles
       - media:/app/media

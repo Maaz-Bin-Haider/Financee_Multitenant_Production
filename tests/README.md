@@ -1,5 +1,15 @@
 # Functional Test Suite
 
+Phase 26 capacity work also provides a non-destructive production preflight:
+
+```bash
+docker compose -f deploy/docker-compose.yml exec -T web \
+  python tests/phase26_capacity_preflight.py
+```
+
+It exits non-zero when the effective runtime cannot safely begin the T7
+100-session capacity test. See `PHASE26_PERFORMANCE_CAPACITY_RESULTS.md`.
+
 The clean two-tenant serial baseline captured before quantity-company
 implementation is recorded in `tests/PHASE1_BASELINE_RESULTS.md`.
 

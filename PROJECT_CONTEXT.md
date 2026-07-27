@@ -1,13 +1,21 @@
 # Project Context
 
-Last updated: 2026-07-26
+Last updated: 2026-07-27
 
 This file is the persistent engineering context for Financee. Update it on every meaningful project change, especially changes to architecture, routes, permissions, tenant SQL, deployment behavior, environment variables, tests, or data model assumptions.
 
 ## Session Resume Checkpoint
 
-- **Last completed phase:** Phase 25 — Four-Company Isolation and Concurrency.
-- **Next phase:** Phase 26 — Performance and Capacity.
+- **Last completed phase:** Phase 26 — Performance and Capacity.
+- **Next phase:** Phase 27 — CI/CD and ARM64.
+- **Phase 26 delivered:** a 2-vCPU/4-GiB constrained capacity profile,
+  production PostgreSQL/Gunicorn tuning, 100,000 SKUs, five million movements,
+  100,000 units, 100 simultaneous sessions, real 100,000-row CSV export,
+  representative daily writes, 10,000-event FIFO replay, report timing,
+  resource/lock/restart telemetry, reconciliation report optimization, and
+  complete serial/quantity/isolation regression.
+- **Phase 26 evidence:** `tests/PHASE26_PERFORMANCE_CAPACITY_RESULTS.md` and
+  `tests/phase26_target_results.json`.
 - **Quantity schema development baseline:** version 22.
 - **Phase 22 delivered:** central mode-aware 40-report catalogue, validated
   report-filter contract, accounting/stock/FIFO/sales/purchase/return and

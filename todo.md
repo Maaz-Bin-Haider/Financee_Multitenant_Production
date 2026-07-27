@@ -55,8 +55,11 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > idempotency, guarded edit/reversal, navigation/summary, a quantity-specific
 > UI, and complete serial/mixed-family regression evidence. Phase 13 is next.
 
-> **CURRENT CHECKPOINT:** Phases 0–25 are complete. **Phase 26 —
-> Performance and Capacity is next.** Phase 25 certified simultaneous activity
+> **CURRENT CHECKPOINT:** Phases 0–26 are complete. **Phase 27 — CI/CD and
+> ARM64 is next.** Phase 26 passed the constrained 2-vCPU/4-GiB T7 target with
+> 100,000 SKUs, five million movements, 100 simultaneous sessions, reports
+> under three seconds, heavy export, FIFO replay, and full regression.
+> Phase 25 certified simultaneous activity
 > across two serial and two quantity tenants with zero data, report, file,
 > cache, error, or database-connection leakage.
 > Do not commit or push.
@@ -240,7 +243,13 @@ high-level checklist and shall be updated from the detailed plan’s results.
   completed route allowlisting. Focused checks passed 17/17 and all 38
   aggregate modules passed; the ARM64 production image built successfully.
   See `tests/PHASE25_FOUR_COMPANY_ISOLATION_RESULTS.md`.
-- [ ] Phases 26–32: not started; see
+- [x] **Phase 26 — Performance and Capacity:** completed 2026-07-27. The tuned
+  `t4g.medium` envelope passed T7 with 100,000 SKUs, five million movements,
+  100,000 units, 100 active sessions, all normal reports below three seconds,
+  a streamed 100,000-row export, the 10,000-event synchronous FIFO boundary,
+  zero deadlocks/restarts/OOM, and complete regression. See
+  `tests/PHASE26_PERFORMANCE_CAPACITY_RESULTS.md`.
+- [ ] Phases 27–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements
