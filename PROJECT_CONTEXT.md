@@ -16,7 +16,7 @@ This file is the persistent engineering context for Financee. Update it on every
   serial T9 audit, privacy-preserving before/after tenant continuity
   fingerprints, serial-only enforcement, latency/5xx/connection/disk/CPU/memory
   thresholds, retained evidence, and automatic previous-image rollback. Local
-  Phase 30 contracts passed 11/11 and serial continuity remained unchanged
+  Phase 30 contracts passed 14/14 and serial continuity remained unchanged
   across hardening. Evidence:
   `tests/PHASE30_PRODUCTION_FOUNDATION_RESULTS.md`.
 - **Phase 29 delivered:** exact-source image identity verification, an isolated

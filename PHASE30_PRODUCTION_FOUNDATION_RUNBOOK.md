@@ -54,13 +54,16 @@ quantity tenant, failed tenant verification, or unbalanced serial ledger.
 6. Repeat T9 and require identical tenant sets, table counts, journals, serial
    state, trial balance, and continuity fingerprints.
 7. Enforce login latency, HTTP 5xx, PostgreSQL connection, free-disk,
-   container CPU, and container memory thresholds.
+   container CPU, and container memory thresholds after container health and
+   three consecutive successful nginx requests.
 8. Retain change, backup, deploy, continuity, container, metric, and log
    evidence under `deploy/phase30-evidence/<release-sha>/`.
 
 Any failure after deployment begins recreates the previous web image, checks
 login health, and writes `rollback-incident.txt`. Forward database changes
 remain backward-compatible under the rehearsed Phase 27/28 contract.
+The previous image is retained until every Phase 30 gate passes and is pruned
+only after successful completion.
 
 Application rollback does not undo a destructive database event. External
 backup/disaster recovery remains the operator's responsibility in `external`

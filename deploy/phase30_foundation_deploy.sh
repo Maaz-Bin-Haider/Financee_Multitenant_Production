@@ -61,9 +61,19 @@ rollback() {
             echo "triggered_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         } >"$evidence_dir/rollback-incident.txt"
         echo "!! Phase 30 gate failed; rolling web back to $previous_image"
-        WEB_IMAGE="$previous_image" "${compose[@]}" up -d --no-deps web nginx
-        curl -fsS --retry 20 --retry-delay 3 \
+        set +e
+        WEB_IMAGE="$previous_image" "${compose[@]}" up -d --no-deps web
+        rollback_container=$("${compose[@]}" ps -q web)
+        for _ in $(seq 1 60); do
+            rollback_health=$(docker inspect -f \
+                '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' \
+                "$rollback_container" 2>/dev/null)
+            [[ "$rollback_health" == "healthy" ]] && break
+            sleep 3
+        done
+        curl -fsS --retry 20 --retry-delay 3 --retry-all-errors \
             -o /dev/null http://localhost/authentication/login/
+        set -e
     fi
     exit "$status"
 }
@@ -125,7 +135,8 @@ fi
 echo "==> Deploying approved foundation release"
 deployment_started=1
 deploy_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-WEB_IMAGE="$WEB_IMAGE" bash deploy_pull.sh | tee "$evidence_dir/deploy.txt"
+WEB_IMAGE="$WEB_IMAGE" DEFER_IMAGE_PRUNE=1 \
+    bash deploy_pull.sh | tee "$evidence_dir/deploy.txt"
 
 echo "==> Comparing all tenant balances and continuity fingerprints"
 "${compose[@]}" cp "$evidence_dir/continuity-before.json" \
@@ -135,14 +146,41 @@ echo "==> Comparing all tenant balances and continuity fingerprints"
     >"$evidence_dir/continuity-after.json"
 
 echo "==> Capturing operational thresholds"
-latency=$(curl -fsS -o /dev/null -w '%{time_total}' \
+web_container=$("${compose[@]}" ps -q web)
+for _ in $(seq 1 60); do
+    web_health=$(docker inspect -f \
+        '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' \
+        "$web_container")
+    [[ "$web_health" == "healthy" ]] && break
+    sleep 3
+done
+[[ "$(docker inspect -f '{{.State.Health.Status}}' "$web_container")" == "healthy" ]]
+
+# Nginx may briefly retain the replaced container address. Require three
+# consecutive successful requests before taking the latency/5xx sample.
+stable_requests=0
+for _ in $(seq 1 30); do
+    if curl -fsS -o /dev/null http://localhost/authentication/login/; then
+        stable_requests=$((stable_requests + 1))
+        [[ "$stable_requests" -ge 3 ]] && break
+    else
+        stable_requests=0
+    fi
+    sleep 2
+done
+[[ "$stable_requests" -ge 3 ]]
+# Move the steady-state window beyond the final warm-up log timestamp.
+sleep 1
+monitoring_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+latency=$(curl -fsS --retry 5 --retry-delay 2 --retry-all-errors \
+    -o /dev/null -w '%{time_total}' \
     http://localhost/authentication/login/)
 db_connections=$("${compose[@]}" exec -T db psql \
     -U "${DB_USER:-financee}" -d "${DB_NAME:-financee}" -Atc \
     "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database()")
 docker_root=$(docker info --format '{{.DockerRootDir}}')
 available_kb=$(df -Pk "$docker_root" | awk 'NR == 2 {print $4}')
-http_5xx=$("${compose[@]}" logs --since "$deploy_started_at" nginx 2>&1 |
+http_5xx=$("${compose[@]}" logs --since "$monitoring_started_at" nginx 2>&1 |
     awk '$0 ~ /" [5][0-9][0-9] / {count++} END {print count+0}')
 "${compose[@]}" ps --format json >"$evidence_dir/containers.json"
 mapfile -t phase30_container_ids < <("${compose[@]}" ps -q)
@@ -211,6 +249,9 @@ PY
 
 completed=1
 trap - EXIT
+echo "==> Pruning superseded images after all release gates passed"
+docker image prune -af
+docker builder prune -af
 echo "completed_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     >>"$evidence_dir/change-control.txt"
 echo "Phase 30 production foundation deployment PASS"

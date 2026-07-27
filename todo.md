@@ -62,7 +62,7 @@ high-level checklist and shall be updated from the detailed plan’s results.
 > external or encrypted backup strategy, serial-only read-only T9, exact
 > before/after continuity, operational
 > thresholds, evidence, and automatic rollback. Local Phase 30 contracts passed
-> 11/11 and serial continuity was unchanged. Phase 29 passed 18/18 static
+> 14/14 and serial continuity was unchanged. Phase 29 passed 18/18 static
 > security contracts, 5/5 runtime hardening, 51/51 serial, 20/20 quantity UAT,
 > 17/17 mixed-family isolation, selected T7, preflight, and health. Phase 28
 > passed encrypted

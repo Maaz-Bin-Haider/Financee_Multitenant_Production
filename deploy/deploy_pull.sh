@@ -110,9 +110,13 @@ $COMPOSE exec -T web python manage.py apply_sql_all_tenants tenancy/sql/tenant_i
 echo "==> Post-deploy tenant family/version/fingerprint and safe-report checks"
 $COMPOSE exec -T web python manage.py release_preflight
 
-echo "==> Pruning superseded images and build cache"
-docker image prune -af
-docker builder prune -af
+if [ "${DEFER_IMAGE_PRUNE:-0}" = "1" ]; then
+    echo "==> Deferring superseded-image pruning to the release controller"
+else
+    echo "==> Pruning superseded images and build cache"
+    docker image prune -af
+    docker builder prune -af
+fi
 
 echo "==> Deploy complete."
 $COMPOSE ps

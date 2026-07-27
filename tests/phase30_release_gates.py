@@ -49,9 +49,17 @@ checks = {
         and "PHASE30_MIN_AVAILABLE_KB" in deploy
         and "PHASE30_MAX_CONTAINER_CPU_PERCENT" in deploy
         and "PHASE30_MAX_CONTAINER_MEMORY_PERCENT" in deploy,
+    "post-deploy health is stabilized before measurement":
+        "stable_requests" in deploy
+        and '"$web_health" == "healthy"' in deploy
+        and "--retry-all-errors" in deploy
+        and 'logs --since "$monitoring_started_at" nginx' in deploy,
     "failure selects previous image":
         "rollback-incident.txt" in deploy
         and 'WEB_IMAGE="$previous_image"' in deploy,
+    "previous image retained until controller succeeds":
+        "DEFER_IMAGE_PRUNE=1" in deploy
+        and 'DEFER_IMAGE_PRUNE:-0' in pull,
     "existing pull deployment retains health rollback":
         "Rolling web back to previous image" in pull,
     "production workflow invokes Phase 30 controller":

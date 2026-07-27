@@ -23,7 +23,7 @@ Date: 2026-07-27
 | Phase 27 release contracts | 11/11 PASS |
 | Phase 28 recovery contracts | 14/14 PASS |
 | Phase 29 security contracts | 18/18 PASS |
-| Phase 30 release contracts | 11/11 PASS |
+| Phase 30 release contracts | 14/14 PASS |
 | Serial-only foundation audit before hardening | PASS |
 | Idempotent serial hardening | PASS |
 | Tenant continuity comparison | PASS, no changed schemas |
