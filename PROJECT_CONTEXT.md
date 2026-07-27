@@ -8,6 +8,10 @@ This file is the persistent engineering context for Financee. Update it on every
 
 - **Last completed phase:** Phase 26 — Performance and Capacity.
 - **Next phase:** Phase 27 — CI/CD and ARM64.
+- **Phase 27 status:** implementation complete locally; external T8
+  branch/PR and main-equivalent GitHub Actions observations remain before the
+  exit gate can pass. Evidence:
+  `tests/PHASE27_CICD_ARM64_RESULTS.md`.
 - **Phase 26 delivered:** a 2-vCPU/4-GiB constrained capacity profile,
   production PostgreSQL/Gunicorn tuning, 100,000 SKUs, five million movements,
   100,000 units, 100 simultaneous sessions, real 100,000-row CSV export,

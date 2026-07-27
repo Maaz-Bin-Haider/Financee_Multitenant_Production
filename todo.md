@@ -249,7 +249,13 @@ high-level checklist and shall be updated from the detailed plan’s results.
   a streamed 100,000-row export, the 10,000-event synchronous FIFO boundary,
   zero deadlocks/restarts/OOM, and complete regression. See
   `tests/PHASE26_PERFORMANCE_CAPACITY_RESULTS.md`.
-- [ ] Phases 27–32: not started; see
+- [ ] **Phase 27 — CI/CD and ARM64:** implementation complete locally on
+  2026-07-27. Separate serial, quantity, isolation, aggregate, and ARM64 jobs;
+  real family/version/fingerprint preflight; failure artifacts; deployment
+  pre/post checks; and rollback simulation are implemented. The exit gate
+  awaits clean PR and main-push GitHub Actions observations after the owner
+  commits. See `tests/PHASE27_CICD_ARM64_RESULTS.md`.
+- [ ] Phases 28–32: not started; see
   `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
 
 ### Non-Negotiable Requirements

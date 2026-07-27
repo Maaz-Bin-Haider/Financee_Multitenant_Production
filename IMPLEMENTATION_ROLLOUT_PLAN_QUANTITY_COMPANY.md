@@ -19,6 +19,8 @@
 - **Last completed:** Phase 26 — Performance and Capacity
 - **Commit:** pending owner commit
 - **Current phase:** Phase 27 — CI/CD and ARM64
+- **Phase 27 status:** locally implemented and validated; clean PR and
+  main-push GitHub-hosted T8 observations are pending.
 - **Quantity schema development baseline:** version 22
 - **Phase 26 status:** complete; the tuned 2-vCPU/4-GiB profile passed the full
   100k-SKU, five-million-movement, 100-session T7 gate.
@@ -44,6 +46,8 @@
 **Phase 25 evidence:** `tests/PHASE25_FOUR_COMPANY_ISOLATION_RESULTS.md`.
 
 **Phase 26 evidence:** `tests/PHASE26_PERFORMANCE_CAPACITY_RESULTS.md`.
+
+**Phase 27 evidence:** `tests/PHASE27_CICD_ARM64_RESULTS.md`.
 
 Phase 18 is complete. Schema v14 includes immutable foreign/base snapshots,
 partial and final cash/bank settlement allocations, realized exchange
