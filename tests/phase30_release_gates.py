@@ -19,8 +19,11 @@ checks = {
         "PHASE30_NOTICE_REFERENCE" in deploy
         and "PHASE30_MAINTENANCE_WINDOW" in deploy
         and "PHASE30_ROLLBACK_OWNER" in deploy,
-    "encrypted backup precedes deployment":
-        deploy.index("bash backup_encrypted.sh") < deploy.index("bash deploy_pull.sh"),
+    "backup strategy is explicit before deployment":
+        "PHASE30_BACKUP_MODE" in deploy
+        and '"external" || "$PHASE30_BACKUP_MODE" == "encrypted"' in deploy
+        and deploy.index("BACKUP_MODE=external") < deploy.index("bash deploy_pull.sh")
+        and deploy.index("bash backup_encrypted.sh") < deploy.index("bash deploy_pull.sh"),
     "production audit is read only and serial only":
         "--serial-only" in deploy
         and '"mode": "read-only-production-safe"' in audit

@@ -214,9 +214,10 @@ jobs:
              WEB_IMAGE='$IMAGE_BASE:${{ github.sha }}' \
              PHASE30_RELEASE_SHA='${{ github.sha }}' \
              PHASE30_CHANGE_ID='github-${{ github.run_id }}' \
-             PHASE30_NOTICE_REFERENCE='${{ vars.MAINTENANCE_NOTICE_REFERENCE }}' \
-             PHASE30_MAINTENANCE_WINDOW='${{ vars.MAINTENANCE_WINDOW_UTC }}' \
-             PHASE30_ROLLBACK_OWNER='${{ vars.ROLLBACK_OWNER }}' \
+             PHASE30_NOTICE_REFERENCE='${{ vars.MAINTENANCE_NOTICE_REFERENCE || format('github-production-approval-{0}', github.run_id) }}' \
+             PHASE30_MAINTENANCE_WINDOW='${{ vars.MAINTENANCE_WINDOW_UTC || format('approved-production-run-{0}', github.run_id) }}' \
+             PHASE30_ROLLBACK_OWNER='${{ vars.ROLLBACK_OWNER || github.actor }}' \
+             PHASE30_BACKUP_MODE='${{ vars.PHASE30_BACKUP_MODE || 'external' }}' \
              BACKUP_DEST='${{ secrets.BACKUP_DEST }}' \
              BACKUP_PASSPHRASE_FILE='${{ secrets.BACKUP_PASSPHRASE_FILE }}' \
              bash phase30_foundation_deploy.sh"

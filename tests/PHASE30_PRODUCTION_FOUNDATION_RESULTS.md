@@ -5,9 +5,10 @@ Date: 2026-07-27
 ## Implementation result
 
 - Added a fail-closed production controller for immutable release identity,
-  maintenance/change metadata, rollback ownership, encrypted backup,
-  serial-only deployment, tenant continuity, operational thresholds, evidence,
-  and automatic previous-image rollback.
+  maintenance/change metadata, rollback ownership, explicit external or
+  integrated-encrypted backup strategy, serial-only deployment, tenant
+  continuity, operational thresholds, evidence, and automatic previous-image
+  rollback.
 - Added a read-only production T9 command. It verifies platform contracts,
   schema family/version, serial inventory, journal balance, reports, and
   privacy-preserving business-data fingerprints without posting transactions.
@@ -43,6 +44,6 @@ only after the Phase 30 comparison and deletes them before final preflight.
 
 Implementation and rehearsal found no P0/P1 regression. Actual paying-customer
 continuity can only be certified by manually approving the protected production
-job with valid maintenance, backup, and rollback metadata. The job will either
+job with valid maintenance and rollback metadata. The job will either
 produce matching before/after evidence or automatically select the rehearsed
 rollback path. Phase 31 must not begin until that production job passes.

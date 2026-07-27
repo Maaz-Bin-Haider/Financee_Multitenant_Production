@@ -9,8 +9,15 @@ cd "$(dirname "$0")"
 : "${PHASE30_NOTICE_REFERENCE:?Set PHASE30_NOTICE_REFERENCE to the maintenance notice record}"
 : "${PHASE30_MAINTENANCE_WINDOW:?Set PHASE30_MAINTENANCE_WINDOW to the approved UTC window}"
 : "${PHASE30_ROLLBACK_OWNER:?Set PHASE30_ROLLBACK_OWNER to the accountable operator}"
-: "${BACKUP_DEST:?Set BACKUP_DEST to the off-server backup destination}"
-: "${BACKUP_PASSPHRASE_FILE:?Set BACKUP_PASSPHRASE_FILE to the backup secret file}"
+PHASE30_BACKUP_MODE="${PHASE30_BACKUP_MODE:-external}"
+[[ "$PHASE30_BACKUP_MODE" == "external" || "$PHASE30_BACKUP_MODE" == "encrypted" ]] || {
+    echo "PHASE30_BACKUP_MODE must be external or encrypted" >&2
+    exit 2
+}
+if [[ "$PHASE30_BACKUP_MODE" == "encrypted" ]]; then
+    : "${BACKUP_DEST:?Encrypted mode requires the off-server backup destination}"
+    : "${BACKUP_PASSPHRASE_FILE:?Encrypted mode requires the backup secret file}"
+fi
 
 [[ "$PHASE30_RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
     echo "PHASE30_RELEASE_SHA must be a full lowercase Git SHA" >&2
@@ -71,6 +78,7 @@ change_id=$PHASE30_CHANGE_ID
 notice_reference=$PHASE30_NOTICE_REFERENCE
 maintenance_window=$PHASE30_MAINTENANCE_WINDOW
 rollback_owner=$PHASE30_ROLLBACK_OWNER
+backup_mode=$PHASE30_BACKUP_MODE
 max_http_latency_seconds=${PHASE30_MAX_HTTP_LATENCY_SECONDS:-5}
 max_db_connections=${PHASE30_MAX_DB_CONNECTIONS:-100}
 max_5xx=${PHASE30_MAX_5XX:-0}
@@ -85,16 +93,25 @@ echo "==> Phase 30 preflight: serial-only production foundation"
 "${compose[@]}" exec -T web python manage.py production_foundation_audit \
     --serial-only --json >"$evidence_dir/continuity-before.json"
 
-echo "==> Creating encrypted off-server restore point"
-BACKUP_DEST="$BACKUP_DEST" \
-BACKUP_PASSPHRASE_FILE="$BACKUP_PASSPHRASE_FILE" \
-    bash backup_encrypted.sh | tee "$evidence_dir/backup.txt"
-backup_path=$(sed -n 's/^BACKUP_PATH=//p' "$evidence_dir/backup.txt")
-[[ -n "$backup_path" && -s "$backup_path" && -s "$backup_path.sha256" ]]
-(
-    cd "$(dirname "$backup_path")"
-    sha256sum -c "$(basename "$backup_path").sha256"
-) >"$evidence_dir/backup-integrity.txt"
+if [[ "$PHASE30_BACKUP_MODE" == "encrypted" ]]; then
+    echo "==> Creating encrypted off-server restore point"
+    BACKUP_DEST="$BACKUP_DEST" \
+    BACKUP_PASSPHRASE_FILE="$BACKUP_PASSPHRASE_FILE" \
+        bash backup_encrypted.sh | tee "$evidence_dir/backup.txt"
+    backup_path=$(sed -n 's/^BACKUP_PATH=//p' "$evidence_dir/backup.txt")
+    [[ -n "$backup_path" && -s "$backup_path" && -s "$backup_path.sha256" ]]
+    (
+        cd "$(dirname "$backup_path")"
+        sha256sum -c "$(basename "$backup_path").sha256"
+    ) >"$evidence_dir/backup-integrity.txt"
+else
+    echo "==> Backup lifecycle is managed by the operator's external plan"
+    {
+        echo "BACKUP_MODE=external"
+        echo "BACKUP_CHANGE_ID=$PHASE30_CHANGE_ID"
+        echo "BACKUP_RESPONSIBILITY=operator-managed"
+    } | tee "$evidence_dir/backup.txt"
+fi
 
 echo "==> Deploying approved foundation release"
 deployment_started=1

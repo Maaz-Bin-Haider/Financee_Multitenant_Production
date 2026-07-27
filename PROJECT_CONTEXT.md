@@ -11,7 +11,8 @@ This file is the persistent engineering context for Financee. Update it on every
   complete; the protected production foundation deployment must pass before
   Phase 31.
 - **Phase 30 delivered:** exact SHA/source/image enforcement, required
-  maintenance/change/rollback records, encrypted restore point, read-only
+  maintenance/change/rollback records, explicit external or encrypted backup
+  strategy, read-only
   serial T9 audit, privacy-preserving before/after tenant continuity
   fingerprints, serial-only enforcement, latency/5xx/connection/disk/CPU/memory
   thresholds, retained evidence, and automatic previous-image rollback. Local

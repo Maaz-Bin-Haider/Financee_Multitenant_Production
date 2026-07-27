@@ -11,18 +11,29 @@ quantity tenant already exists.
 
 ## Required change record
 
-Before approving the protected `production` job, configure:
+The default `PHASE30_BACKUP_MODE=external` records that backup and disaster
+recovery are handled by the operator's separate plan. It does not require or
+create backup files on EC2.
 
-- `MAINTENANCE_NOTICE_REFERENCE`: the customer/operator notice record;
-- `MAINTENANCE_WINDOW_UTC`: the approved start/end window;
-- `ROLLBACK_OWNER`: the named operator empowered to roll back;
+To re-enable the integrated encrypted backup later, set
+`PHASE30_BACKUP_MODE=encrypted` and configure:
+
 - `BACKUP_DEST`: an off-server mounted or synchronized absolute directory;
 - `BACKUP_PASSPHRASE_FILE`: an EC2-local readable secret file.
 
-The workflow supplies the exact release SHA, image, and GitHub run/change ID.
+The following repository/environment variables are optional overrides:
+
+- `MAINTENANCE_NOTICE_REFERENCE`: the customer/operator notice record;
+- `MAINTENANCE_WINDOW_UTC`: the approved start/end window;
+- `ROLLBACK_OWNER`: the named operator empowered to roll back.
+
+When those variables are absent, the protected GitHub production approval/run
+ID is recorded as the notice and window reference, and the approving workflow
+actor is recorded as rollback owner. The workflow supplies the exact release
+SHA, image, and GitHub run/change ID.
 The controller rejects a non-SHA image, source/SHA mismatch, missing change
-metadata, missing backup configuration, quantity tenant, failed tenant
-verification, or unbalanced serial ledger.
+metadata, an invalid backup mode, missing encrypted-mode configuration,
+quantity tenant, failed tenant verification, or unbalanced serial ledger.
 
 ## Execution order
 
@@ -32,7 +43,8 @@ verification, or unbalanced serial ledger.
    rollback ownership.
 2. Capture read-only T9 platform contracts and a privacy-preserving continuity
    fingerprint for every active serial tenant.
-3. Create and verify an encrypted off-server database/media restore point.
+3. Record the external backup plan, or create and verify an encrypted
+   database/media restore point when encrypted mode is selected.
 4. Run the existing approval-gated pull deployment.
 5. Apply public migrations and serial hardening through the image entrypoint;
    no quantity company is created.
@@ -46,6 +58,10 @@ verification, or unbalanced serial ledger.
 Any failure after deployment begins recreates the previous web image, checks
 login health, and writes `rollback-incident.txt`. Forward database changes
 remain backward-compatible under the rehearsed Phase 27/28 contract.
+
+Application rollback does not undo a destructive database event. External
+backup/disaster recovery remains the operator's responsibility in `external`
+mode.
 
 ## Production-safe T9 coverage
 
