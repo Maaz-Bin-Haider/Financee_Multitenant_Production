@@ -227,10 +227,13 @@ def main():
             all(response.status_code in (403, 404) for response in responses),
             [response.status_code for response in responses])
     finally:
-        for user in users:
-            user.delete()
         for company in reversed(companies):
             drop(company)
+        # Tenant business rows reference public auth_user IDs. Drop the
+        # disposable tenant schemas before deleting their public users so a
+        # clean CI database does not trip those cross-schema foreign keys.
+        for user in users:
+            user.delete()
 
     failed = [result for result in RESULTS if not result[1]]
     for name, ok, detail in RESULTS:
