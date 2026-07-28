@@ -62,7 +62,10 @@ services:
     # name. Override WEB_IMAGE to pin a specific SHA tag (deploy_pull.sh does).
     image: ${WEB_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:latest}
     restart: unless-stopped
-    env_file: .env
+    # Production/default remains deploy/.env. Isolated restore rehearsals set
+    # WEB_ENV_FILE to their non-production credential file so web and the
+    # disposable PostgreSQL service use the same database credentials.
+    env_file: ${WEB_ENV_FILE:-.env}
     environment:
       DB_HOST: db
       REDIS_URL: redis://redis:6379/0

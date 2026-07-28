@@ -28,6 +28,12 @@ esac
     exit 2
 }
 
+# docker compose --env-file controls ${...} interpolation but does not by
+# itself replace a service-level `env_file:`. The compose file reads this
+# override so the isolated web container connects with the isolated database
+# name/user/password rather than deploy/.env production credentials.
+export WEB_ENV_FILE="$RESTORE_ENV_FILE"
+
 backup_basename=$(basename "$BACKUP_FILE")
 [[ "$backup_basename" =~ ^financee-db-[0-9]{8}T[0-9]{6}Z\.dump\.tar\.enc$ ]] || {
     echo "Backup filename does not match the managed format" >&2

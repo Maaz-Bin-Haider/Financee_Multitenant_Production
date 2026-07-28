@@ -13,10 +13,14 @@ def main():
     ).read_text()
     runbook = (ROOT / "DATABASE_BACKUP_GITHUB_RUNBOOK.md").read_text()
     workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+    compose = (ROOT / "deploy/docker-compose.yml").read_text()
     checks = {
         "unsafe production projects rejected":
             "deploy|financee|production|prod|financee_production" in restore,
         "isolated project prefix required": "dbbackup_rehearsal_" in restore,
+        "isolated web receives restore credentials":
+            'export WEB_ENV_FILE="$RESTORE_ENV_FILE"' in restore and
+            "env_file: ${WEB_ENV_FILE:-.env}" in compose,
         "ciphertext sidecar verified": "sha256sum -c" in restore,
         "bundle decrypted": "openssl enc -d" in restore,
         "internal checksums verified": "sha256sum -c SHA256SUMS" in restore,
