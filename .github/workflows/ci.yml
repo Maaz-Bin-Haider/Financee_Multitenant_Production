@@ -37,6 +37,10 @@ jobs:
       - run: python tests/phase28_release_gates.py
       - run: python tests/phase29_security_contracts.py
       - run: python tests/phase30_release_gates.py
+      - run: python tests/database_backup_contracts.py
+      - run: python tests/test_database_backup_retention.py
+      - run: python tests/test_database_backup_operations.py
+      - run: python tests/test_database_backup_restore_contracts.py
       - run: python -m pip check
 
   serial-gate:

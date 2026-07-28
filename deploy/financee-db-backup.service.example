@@ -1,0 +1,31 @@
+[Unit]
+Description=Financee encrypted PostgreSQL backup to private GitHub Releases
+Documentation=file://@APP_DIR@/DATABASE_BACKUP_GITHUB_RUNBOOK.md
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+ConditionPathExists=/etc/financee-backup/github.env
+ConditionPathExists=/etc/financee-backup/passphrase
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=@APP_DIR@/deploy
+EnvironmentFile=/etc/financee-backup/github.env
+Environment=BACKUP_DEST=/var/lib/financee-backup
+Environment=BACKUP_PASSPHRASE_FILE=/etc/financee-backup/passphrase
+Environment=BACKUP_STATE_FILE=/var/lib/financee-backup/last-success.env
+ExecStart=@APP_DIR@/deploy/run_database_backup.sh
+TimeoutStartSec=4h
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+UMask=0077
+PrivateTmp=true
+ProtectHome=read-only
+ProtectSystem=full
+ReadWritePaths=/var/lib/financee-backup
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

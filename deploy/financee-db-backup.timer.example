@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Financee PostgreSQL backup daily
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+RandomizedDelaySec=15m
+Persistent=true
+AccuracySec=1m
+Unit=financee-db-backup.service
+
+[Install]
+WantedBy=timers.target
