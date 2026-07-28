@@ -221,8 +221,14 @@ decommission action after a final restore rehearsal.
 - [x] GitHub release upload, verification, and retention script implemented.
 - [x] Systemd service/timer and status command implemented.
 - [x] Runbook and credential-rotation procedure completed.
-- [ ] Attended EC2 manual backup passed.
-- [ ] Remote isolated restore rehearsal passed.
+- [x] Attended EC2 manual backup passed (2026-07-28): production preflight,
+  encrypted DB-only bundle creation, GitHub Release upload, remote re-download,
+  ciphertext/internal checksum verification, and archive verification passed;
+  bundle size 532,512 bytes and schema count 2.
+- [x] Remote isolated restore rehearsal passed (2026-07-28): the downloaded
+  GitHub asset restored `public` plus `tenant_company_1`, all-tenant
+  `release_preflight` passed, restored schema count matched 2, and measured RTO
+  was 49 seconds.
 - [ ] Two consecutive scheduled runs passed.
 - [ ] 24-hour recovery-point monitoring and failure notification verified.
 
