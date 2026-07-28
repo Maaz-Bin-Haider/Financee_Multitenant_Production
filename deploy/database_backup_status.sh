@@ -10,7 +10,9 @@ state_file="${BACKUP_STATE_FILE:-/var/lib/financee-backup/last-success.env}"
     exit 2
 }
 # shellcheck disable=SC1090
+set -a
 source "$env_file"
+set +a
 : "${GITHUB_BACKUP_REPOSITORY:?Missing GITHUB_BACKUP_REPOSITORY}"
 : "${GH_TOKEN:?Missing GH_TOKEN}"
 [[ "$GITHUB_BACKUP_REPOSITORY" == "$APPROVED_REPOSITORY" ]] || {

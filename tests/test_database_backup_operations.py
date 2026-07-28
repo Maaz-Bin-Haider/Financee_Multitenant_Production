@@ -42,6 +42,9 @@ def main():
         "credentials forced to 0600": "chmod 0600" in installer,
         "status uses exact repository allowlist":
             "Maaz-Bin-Haider/financee_pk_backup" in status,
+        "status exports sourced GitHub token":
+            "set -a" in status and "source \"$env_file\"" in status and
+            "set +a" in status,
         "status enforces 26-hour freshness":
             "26 * 3600" in status and "REMOTE_BACKUP_STATUS=STALE" in status,
     }
