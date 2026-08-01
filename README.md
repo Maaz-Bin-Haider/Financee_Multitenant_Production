@@ -1,644 +1,693 @@
-# Financee Multitenant Accounting and Inventory System
+<div align="center">
 
-> Development resume point: Phases 0–26 are complete. **Phase 27 —
-> CI/CD and ARM64** is next.
-> Read `PROJECT_CONTEXT.md` and
-> `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md` before starting.
+# 💠 Financee
 
-Financee is a Django-based accounting and inventory application for multiple companies. Each company is isolated in its own PostgreSQL schema while shared Django data, users, permissions, and tenant registry tables live in `public`.
+### Multi-Tenant Accounting & Inventory Platform for Small and Medium Businesses
 
-The application is intentionally SQL-centric: Django handles HTTP routing, authentication, permissions, templates, tenant activation, admin screens, and request validation; PostgreSQL stored functions, triggers, and views handle the accounting and inventory transactions.
+*One installation. Many isolated companies. Bulletproof double-entry accounting — powered entirely by PostgreSQL.*
 
-## Current Stack
+<br/>
 
-| Layer | Technology |
+![Django](https://img.shields.io/badge/Django-6.0.6-092E20?style=for-the-badge&logo=django&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![Gunicorn](https://img.shields.io/badge/Gunicorn-26-499848?style=for-the-badge&logo=gunicorn&logoColor=white)
+![Nginx](https://img.shields.io/badge/Nginx-1.27-009639?style=for-the-badge&logo=nginx&logoColor=white)
+
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-EC2_t4g.medium-FF9900?style=for-the-badge&logo=amazonec2&logoColor=white)
+![ARM](https://img.shields.io/badge/Arch-ARM64_(Graviton)-0091BD?style=for-the-badge&logo=arm&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/TLS-Cloudflare_Origin-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
+
+</div>
+
+---
+
+## 📑 Table of Contents
+
+1. [What is Financee?](#-what-is-financee)
+2. [Why we built it](#-why-we-built-it)
+3. [How it helps businesses](#-how-it-helps-businesses)
+4. [How it works — the core idea](#-how-it-works--the-core-idea)
+5. [Tech stack](#-tech-stack)
+6. [System architecture](#-system-architecture)
+7. [Multi-tenancy model](#-multi-tenancy-model)
+8. [Request lifecycle](#-request-lifecycle)
+9. [Database design & ER diagrams](#-database-design--er-diagrams)
+10. [Backend deep-dive](#-backend-deep-dive)
+11. [Frontend](#-frontend)
+12. [The two schema families (serial & quantity)](#-the-two-schema-families)
+13. [Deployment](#-deployment)
+14. [CI/CD pipeline](#-cicd-pipeline)
+15. [Backups & disaster recovery](#-backups--disaster-recovery)
+16. [Testing](#-testing)
+17. [Local development](#-local-development)
+18. [Project layout](#-project-layout)
+19. [Documentation map](#-documentation-map)
+
+---
+
+## 🎯 What is Financee?
+
+**Financee** is a production accounting and inventory system that serves **many separate companies from a single deployment**. Every company gets its own fully isolated database schema, its own users, its own ledgers, inventory, and reports — while the operator runs and bills them all from one admin panel.
+
+It is built for the way real small businesses actually work: **buy stock → sell it → handle returns → collect and pay money → close the month → read the reports** — with correct double-entry bookkeeping enforced at every single step, not as an afterthought.
+
+> **The defining architectural choice:** Django handles *only* HTTP. **All business logic — accounting, inventory, FIFO costing, returns, ledgers, reports — lives inside PostgreSQL** as stored functions, triggers, and views. This makes the financial core auditable, atomic, and impossible to bypass from application code.
+
+---
+
+## 💡 Why we built it
+
+Most off-the-shelf accounting tools force a business into one of two bad corners:
+
+| Problem with typical tools | How Financee answers it |
 | --- | --- |
-| Web framework | Django, pinned in `requirements.txt` / `requirements-lock.txt` |
-| Database | PostgreSQL, schema-per-tenant design |
-| Cache / rate limits | Django cache; Redis in Docker production |
-| App server | Gunicorn |
-| Reverse proxy | Nginx |
-| Frontend | Django templates, static CSS, vanilla JavaScript |
-| PDF/report support | ReportLab |
-| Deployment | Docker Compose stack in `deploy/` |
+| 🧩 **SaaS lock-in & per-seat pricing** that punishes growth | Self-hosted, **per-company flat billing**, operator-controlled |
+| 🔓 **Shared databases** where a query bug can leak Company A's data into Company B | **Hard schema isolation** — each company is a separate PostgreSQL schema |
+| 🐛 **Business logic scattered in application code** where a developer can post an unbalanced journal | Accounting lives in the **database** with balance-enforcing triggers |
+| 📦 **Inventory & accounting bolted together loosely**, drifting out of sync | Every stock movement and every rupee move through the **same atomic SQL transaction** |
+| 🌍 **One-size-fits-all** — can't handle both serialized goods (phones/IMEI) and bulk goods (kilos/boxes) | **Two schema families**: serial-tracked *and* quantity/FIFO, chosen per company |
 
-> Note: `financee/settings.py` still contains a generated Django 5.2 header comment. The dependency files are the actual runtime source of truth.
+Financee exists to give a small operator a **trustworthy, isolated, low-cost** accounting backbone they can host once and resell to many clients with confidence.
 
-## Architecture
+---
 
-```text
-Browser
-  |
-  v
-Nginx
-  |
-  v
-Gunicorn / Django
-  |
-  |-- public schema
-  |     auth_user, auth_group, permissions, sessions,
-  |     tenancy_company, tenancy_membership
-  |
-  |-- tenant_company_1 schema
-  |     business tables, functions, views, triggers
-  |
-  |-- tenant_company_2 schema
-        business tables, functions, views, triggers
+## 🏢 How it helps businesses
+
+For the **business owner** using Financee:
+
+- 🧾 **Correct books, automatically.** Every purchase, sale, return, payment, receipt, and contra entry posts a **balanced double-entry journal**. The trial balance always balances — the database refuses to let it not.
+- 📦 **Inventory that matches the money.** Stock and cost of goods sold are updated in the *same* transaction as the sale, so inventory value on the balance sheet is always real.
+- 🔁 **Returns done right.** Sale/purchase returns restore the exact original cost basis; serials can't be double-returned; a sold serial can't be un-purchased.
+- 📊 **Reports that mean something.** Ledgers, trial balance, receivables/payables, cash ledger, stock & serial reports, monthly reports, and sales analytics — all computed from the same authoritative ledger.
+- 📎 **Document trail.** Attach the scanned invoice (image + PDF) to any sale, purchase, return, payment, receipt, or contra.
+- 🌐 **Multi-currency & tax ready** (quantity companies): foreign invoices, realized exchange gain/loss, inclusive/exclusive tax, and discounts.
+
+For the **operator** running the platform:
+
+- 🏬 **Onboard a client in seconds** — creating a company automatically provisions its isolated schema.
+- 💳 **Manual subscription billing** with a paid-until / grace / auto-suspend state machine, renewal-warning banners, and automated expiry emails — **no payment gateway required**.
+- 🎛️ **Per-company feature flags** — switch report groups, CSV export, or attachments on/off per client, straight from the admin.
+- 🔐 **Fine-grained permissions** per user, enforced both at the route and in the view.
+
+---
+
+## ⚙️ How it works — the core idea
+
+```mermaid
+flowchart LR
+    U[👤 User] -->|HTTPS| N[🌐 Nginx]
+    N -->|proxy| G[🐍 Django + Gunicorn]
+    G -->|"thin view validates input"| V[View Layer]
+    V -->|"connection.cursor()"| SQL[(🗄️ PostgreSQL<br/>Stored Functions)]
+    SQL -->|"atomic double-entry<br/>+ inventory move"| L[(Ledger & Stock)]
+    L --> R[📊 Reports via SQL Views]
+
+    style SQL fill:#4169E1,color:#fff
+    style L fill:#2E4172,color:#fff
+    style G fill:#092E20,color:#fff
 ```
 
-### Request Flow
+1. A request arrives → **Nginx** → **Gunicorn/Django**.
+2. Middleware activates the user's company by running `SET search_path TO "tenant_company_<id>", public`.
+3. The **thin Django view** validates the input and calls a **PostgreSQL stored function** (e.g. `create_sale(...)`).
+4. Inside a single SQL transaction, that function posts the balanced journal **and** moves the inventory **and** returns the result — all-or-nothing.
+5. Reports are just **SQL views/functions** reading the same ledger.
 
-1. A user logs in through `/authentication/login/`.
-2. `TenantSchemaMiddleware` resolves the authenticated user's `Membership`.
-3. The middleware sets PostgreSQL `search_path` to `"<tenant_schema>", public`.
-4. Feature views execute raw SQL / stored functions without hard-coding a schema.
-5. The middleware resets `search_path` to `public` after the response or exception.
+**Django never contains business logic.** Views are wrappers. This is the rule the whole codebase obeys.
 
-Unauthenticated requests use `public`. Authenticated users without an active company are blocked from tenant features and redirected to login, except admin/auth/static paths.
+---
 
-## Multitenancy Model
+## 🧰 Tech Stack
 
-The public tenancy registry and setup models include:
+<div align="center">
 
-| Model | Location | Purpose |
-| --- | --- | --- |
-| `Company` | `tenancy/models.py` | Tenant registry row with immutable inventory mode, base currency, and tax environment. Auto-generates `schema_name` as `tenant_company_<id>`. |
-| `Currency` | `tenancy/models.py` | Controlled ISO 4217 catalogue used for company base-currency selection. |
-| `Membership` | `tenancy/models.py` | One-to-one mapping from user to company. Enforces one company per user. |
+| Layer | Technology | Role |
+|---|---|---|
+| 🐍 **Web framework** | ![Django](https://img.shields.io/badge/Django_6.0.6-092E20?logo=django&logoColor=white) | HTTP, routing, auth, permissions, admin, templates |
+| 🗄️ **Database** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL_16-4169E1?logo=postgresql&logoColor=white) | **All** business logic: functions, triggers, views, schema-per-tenant |
+| ⚡ **Cache / rate limits** | ![Redis](https://img.shields.io/badge/Redis_7-DC382D?logo=redis&logoColor=white) | Shared cache & cross-worker rate limiting |
+| 🦄 **App server** | ![Gunicorn](https://img.shields.io/badge/Gunicorn_26-499848?logo=gunicorn&logoColor=white) | WSGI, sync workers × threads |
+| 🌐 **Reverse proxy** | ![Nginx](https://img.shields.io/badge/Nginx_1.27-009639?logo=nginx&logoColor=white) | TLS, static/media serving, upstream proxy |
+| 🎨 **Frontend** | ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white) ![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white) ![JS](https://img.shields.io/badge/Vanilla_JS-F7DF1E?logo=javascript&logoColor=black) | Django templates + vanilla JS + SweetAlert2 |
+| 📄 **PDF / reports** | ![ReportLab](https://img.shields.io/badge/ReportLab-005571?logo=adobeacrobatreader&logoColor=white) | Server-side PDF export |
+| 🐳 **Containers** | ![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?logo=docker&logoColor=white) | 4-service production stack |
+| 🔁 **CI/CD** | ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?logo=githubactions&logoColor=white) | Test → build → publish → approve → deploy |
+| 📦 **Registry** | ![GHCR](https://img.shields.io/badge/GHCR-181717?logo=github&logoColor=white) | Multi-arch image `financee-web` |
+| ☁️ **Hosting** | ![AWS EC2](https://img.shields.io/badge/AWS_EC2_t4g.medium-FF9900?logo=amazonec2&logoColor=white) ![ARM](https://img.shields.io/badge/ARM64_Graviton-0091BD?logo=arm&logoColor=white) | 2 vCPU / 4 GiB ARM instance |
+| 🔒 **TLS / CDN** | ![Cloudflare](https://img.shields.io/badge/Cloudflare_Origin_Cert-F38020?logo=cloudflare&logoColor=white) | Full-strict TLS, 15-yr origin cert |
 
-Creating a `Company` through the custom admin or `provision_tenant` command
-selects the registered serial or quantity template from the trusted company
-inventory mode. Quantity schemas use separate template, hardening, metadata,
-and versioning artifacts.
+</div>
 
-Business tables are not Django models. They are created in each tenant schema from SQL.
+**Dependencies** are pinned in `requirements.txt` / `requirements-lock.txt` (the source of truth; the `settings.py` header comment still says Django 5.2 but the pin is **6.0.6**).
 
-## Database Design
+---
 
-The tenant template contains the per-company business database. Core objects include:
+## 🏗️ System Architecture
 
-| Area | Main objects |
-| --- | --- |
-| Accounting | `chartofaccounts`, `journalentries`, `journallines`, `generalledger`, `vw_trial_balance` |
-| Masters | `items`, `parties` |
-| Purchase cycle | `purchaseinvoices`, `purchaseitems`, `purchaseunits` |
-| Sales cycle | `salesinvoices`, `salesitems`, `soldunits` |
-| Returns | `purchasereturns`, `purchasereturnitems`, `salesreturns`, `salesreturnitems` |
-| Cash movement | `payments`, `receipts`, `contra_entries`, `opening_cash` |
-| Inventory | `stockmovements`, `stock_report`, `stock_worth_report`, serial ledger functions |
-| Equity / period close | `owner_equity_transactions`, `period_closes` |
-| Reporting | dashboard functions, sales report JSON functions, monthly reports |
-| Tenant versioning | `tenant_schema_version` |
+```mermaid
+flowchart TB
+    subgraph Client
+        B[👤 Browser]
+    end
 
-Important SQL entry points include:
+    subgraph Cloudflare["☁️ Cloudflare (proxied, TLS edge)"]
+        CF[Edge + Always-HTTPS]
+    end
 
-- `add_party_from_json`, `update_party_from_json`, `get_party_by_name`
-- `add_item_from_json`, `update_item_from_json`, `get_item_by_name`
-- `create_purchase`, `delete_purchase`, `get_current_purchase`, `get_purchase_summary`
-- `create_sale`, `delete_sale`, `get_current_sale`, `get_sales_summary`
-- `create_sale_return`, `update_sale_return`, `delete_sale_return`
-- `create_purchase_return`, `update_purchase_return`, `delete_purchase_return`
-- `make_payment`, `update_payment`, `delete_payment`
-- `make_receipt`, `update_receipt`, `delete_receipt`
-- `make_contra`, `update_contra`, `delete_contra`
-- `create_opening_stock`, `delete_opening_stock`, `reclassify_opening_balance_to_capital`
-- `set_opening_cash_from_json`
-- `add_owner_equity_txn`, `delete_owner_equity_txn`
-- `preview_period_close`, `close_period_from_json`, `reverse_period_close`
-- `sales_summary_json`, `product_profitability_json`, `customer_profitability_json`, `invoice_register_json`
+    subgraph EC2["🖥️ AWS EC2 t4g.medium — ARM64, Docker Compose"]
+        direction TB
+        NG[🌐 Nginx :80/:443<br/>origin cert]
+        WEB[🐍 web — Django + Gunicorn<br/>4 workers × 4 threads]
+        RD[(⚡ Redis 7<br/>cache + rate limits)]
+        PG[(🗄️ PostgreSQL 16)]
 
-When changing business tables or stored functions:
+        NG -->|resolver + variable proxy_pass| WEB
+        WEB --> RD
+        WEB --> PG
 
-1. Update `tenancy/sql/tenant_template.sql` so new tenants receive the change.
-2. Create an idempotent SQL patch in `tenancy/sql/`.
-3. Apply it to existing tenants with:
+        subgraph PG_SCHEMAS["PostgreSQL schemas"]
+            direction LR
+            PUB[public<br/>auth · sessions · permissions<br/>tenancy registry · billing]
+            T1[tenant_company_1<br/>business tables + functions]
+            T2[tenant_company_2<br/>business tables + functions]
+            TN[tenant_company_N ...]
+        end
+        PG --- PG_SCHEMAS
+    end
 
-```bash
-python manage.py apply_sql_all_tenants tenancy/sql/<patch>.sql
+    B --> CF --> NG
+
+    style PG fill:#4169E1,color:#fff
+    style WEB fill:#092E20,color:#fff
+    style RD fill:#DC382D,color:#fff
+    style NG fill:#009639,color:#fff
+    style PUB fill:#33415522,stroke:#334155
 ```
 
-Use `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, and `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` patterns so patches are safe to rerun.
+**Four Docker services**, co-located on one ARM EC2 box:
 
-## Django Apps
+| Service | Image | Notes |
+|---|---|---|
+| `db` | `postgres:16` | Tuned via command flags for 2 vCPU / 4 GiB. First boot seeds `build_multitenant_db.sql`. |
+| `web` | `ghcr.io/.../financee-web` | Django + Gunicorn. Static baked at build with content-hashed manifest. |
+| `nginx` | `nginx:1.27` | Reverse proxy; Docker-DNS resolver + variable `proxy_pass` so recreating `web` needs no restart. |
+| `redis` | `redis:7-alpine` | Shared cache & rate-limit store (`appendonly`). |
+
+---
+
+## 🧩 Multi-tenancy model
+
+Financee's isolation is **schema-per-tenant**, not row-level. This is the most important thing to understand.
+
+```mermaid
+flowchart TB
+    subgraph public["🌍 public schema (shared)"]
+        AU[auth_user / groups / permissions]
+        SE[django sessions]
+        CO[tenancy_company registry]
+        ME[tenancy_membership<br/>1 user → 1 company]
+        SUB[subscription payments · billing · email log]
+    end
+
+    subgraph tenants["🏢 tenant schemas (isolated business data)"]
+        direction LR
+        TC1[tenant_company_1<br/>ledger · inventory · reports]
+        TC2[tenant_company_2<br/>ledger · inventory · reports]
+        TCN[tenant_company_N]
+    end
+
+    ME -.->|"schema_name = tenant_company_&lt;id&gt;"| TC1
+    ME -.-> TC2
+    ME -.-> TCN
+
+    style public fill:#33415515,stroke:#334155
+    style tenants fill:#4169E115,stroke:#4169E1
+```
+
+- **Only two ORM models** power tenancy: `Company` and `Membership` (plus `Currency` + the subscription/billing models). **Business tables are never Django models.**
+- A user belongs to **exactly one** company (`OneToOne`).
+- Creating a `Company` fires a `post_save` signal → `tenancy/provisioning.py` materializes the schema from `tenancy/sql/tenant_template.sql` (idempotent).
+- Schema names are **validated by regex and double-quoted** — never bound parameters (identifiers can't be parameterized). Helpers live in `tenancy/utils.py`.
+- Every tenant schema carries a `tenant_schema_version` row; the middleware refuses schemas that don't match `TENANT_SCHEMA_VERSION`.
+
+---
+
+## 🔄 Request lifecycle
+
+`TenantSchemaMiddleware` (`tenancy/middleware.py`) is the heart of the isolation guarantee.
+
+```mermaid
+sequenceDiagram
+    participant U as 👤 User
+    participant MW as TenantSchemaMiddleware
+    participant DB as PostgreSQL
+    participant V as View
+    participant FN as SQL Function
+
+    U->>MW: HTTP request
+    MW->>MW: resolve Membership → schema
+    MW->>DB: SET search_path TO "tenant_company_N", public
+    MW->>MW: verify schema version / currency / fingerprint
+    MW->>MW: guard order → tenant · subscription · features · perms · rate-limit
+    alt any guard fails
+        MW-->>U: 403 / redirect / scrubbed JSON
+    else allowed
+        MW->>V: dispatch view
+        V->>FN: SELECT create_sale(...) via cursor
+        FN->>DB: atomic journal + stock move
+        FN-->>V: result JSON
+        V-->>MW: response
+    end
+    MW->>DB: RESET search_path TO public  (always, in finally)
+    MW-->>U: response (JSON errors scrubbed)
+```
+
+**Guard order in `process_view`:** tenant validity → subscription state → per-company feature flag → route permission → rate limit. The `search_path` is **always reset to `public` in a `finally` block**, so a pooled/reused connection never carries a previous request's tenant context.
+
+---
+
+## 🗃️ Database design & ER diagrams
+
+### Public (shared) schema
+
+```mermaid
+erDiagram
+    Currency ||--o{ Company : "base_currency"
+    Company ||--|| Membership : "1 user → 1 company"
+    Company ||--o{ SubscriptionPayment : "billing log"
+    User ||--|| Membership : "OneToOne"
+
+    Company {
+        int id PK
+        string name UK
+        string schema_name "tenant_company_<id>"
+        string inventory_mode "serial | quantity (immutable)"
+        string tax_environment "tax | non_tax"
+        string provisioning_state "pending|provisioning|ready|failed"
+        bool is_active
+        bool is_suspended "manual kill switch"
+        date paid_until "NULL = enforcement off"
+        int grace_days
+        int warn_days_before
+        json disabled_features "per-company flags"
+        string contact_email "billing address"
+    }
+    Membership {
+        int id PK
+        int user_id FK
+        int company_id FK
+    }
+    Currency {
+        string code PK "ISO 4217"
+        string name
+        string symbol
+        int minor_units
+        bool is_active
+    }
+    SubscriptionPayment {
+        int id PK
+        int company_id FK
+        decimal amount
+        date date_received
+        int months_covered
+        date paid_until_after
+        int created_by FK
+    }
+```
+
+### Tenant business schema (per company — serial family)
+
+```mermaid
+erDiagram
+    ChartOfAccounts ||--o{ JournalLines : "account"
+    JournalEntries ||--o{ JournalLines : "1 entry → many lines (must balance)"
+    Parties ||--o{ JournalLines : "party sub-ledger"
+    Parties ||--o{ PurchaseInvoices : "vendor"
+    Parties ||--o{ SalesInvoices : "customer"
+
+    PurchaseInvoices ||--o{ PurchaseItems : ""
+    PurchaseItems ||--o{ PurchaseUnits : "serials"
+    Items ||--o{ PurchaseItems : ""
+
+    SalesInvoices ||--o{ SalesItems : ""
+    SalesItems ||--o{ SoldUnits : "COGS per unit"
+    PurchaseUnits ||--o{ SoldUnits : "which serial was sold"
+
+    SalesInvoices ||--|| JournalEntries : "revenue + COGS journal"
+    PurchaseInvoices ||--|| JournalEntries : "inventory/AP journal"
+    SalesReturns ||--|| JournalEntries : ""
+    PurchaseReturns ||--|| JournalEntries : ""
+    Payments ||--|| JournalEntries : ""
+    Receipts ||--|| JournalEntries : ""
+    ContraEntries ||--|| JournalEntries : ""
+
+    JournalEntries {
+        bigint journal_id PK
+        date entry_date
+        text description
+    }
+    JournalLines {
+        bigint line_id PK
+        bigint journal_id FK
+        bigint account_id FK
+        bigint party_id FK "nullable sub-ledger"
+        numeric debit
+        numeric credit
+    }
+    ChartOfAccounts {
+        bigint account_id PK
+        string account_code
+        string account_name
+        string account_type
+        bigint parent_account FK
+    }
+    Parties {
+        bigint party_id PK
+        string party_name
+        string party_type "customer|vendor|expense|cash"
+        bigint ar_account_id FK
+        bigint ap_account_id FK
+        numeric opening_balance
+        bool is_cash "cash-party ledger"
+    }
+    Items {
+        bigint item_id PK
+        string item_name
+        numeric sale_price
+        string item_code
+        string brand
+    }
+    PurchaseInvoices {
+        bigint purchase_invoice_id PK
+        bigint vendor_id FK
+        date invoice_date
+        numeric total_amount
+        bigint journal_id FK
+    }
+    PurchaseUnits {
+        bigint unit_id PK
+        bigint purchase_item_id FK
+        string serial_number
+        bool in_stock
+    }
+    SalesInvoices {
+        bigint sales_invoice_id PK
+        bigint customer_id FK
+        date invoice_date
+        numeric total_amount
+        bigint journal_id FK
+    }
+    SoldUnits {
+        bigint sold_unit_id PK
+        bigint sales_item_id FK
+        bigint unit_id FK "the serial sold"
+        numeric sold_price
+        string status "Sold|Returned"
+    }
+```
+
+> The **serial family** tracks every physical unit by serial number (`PurchaseUnits` → `SoldUnits`), so cost of goods sold and returns are exact per-unit. The **quantity family** replaces serials with **FIFO cost layers** and `stockmovements` while keeping the identical journal/ledger backbone. See [the two schema families](#-the-two-schema-families).
+
+### Key SQL entry points (functions, not views)
+
+`create_purchase` · `create_sale` · `create_sale_return` · `create_purchase_return` · `make_payment` · `make_receipt` · `make_contra` · `create_opening_stock` · `set_opening_cash_from_json` · `add_owner_equity_txn` · `preview_period_close` / `close_period_from_json` / `reverse_period_close` · `sales_summary_json` · `product_profitability_json` · `invoice_register_json` … (full list in `PROJECT_CONTEXT.md`).
+
+---
+
+## 🧠 Backend deep-dive
+
+### Django apps
 
 | App | Responsibility |
-| --- | --- |
-| `authentication` | Login, logout, current-user JSON, login rate limit |
-| `tenancy` | Company registry, membership, schema switching, provisioning, tenant SQL rollout commands |
-| `home` | Dashboard page and dashboard JSON APIs |
-| `parties` | Customer/vendor/expense/cash party master screens and autocomplete |
-| `items` | Item master screens, item updates, autocomplete, item list JSON |
-| `purchase` | Purchase invoice create/update/delete, navigation, summary, serial checks |
-| `sale` | Sale invoice create/update/delete, navigation, summary, serial lookup |
-| `purchaseReturn` | Purchase return create/update/delete, serial lookup, summaries |
-| `saleReturn` | Sale return create/update/delete, serial lookup, summaries |
-| `payments` | Outgoing payments, navigation, history, party balance |
-| `receipts` | Incoming receipts, navigation, history, party balance |
-| `contra` | Party-to-party contra entries, navigation, history, party balance |
-| `attachments` | Authenticated image/PDF metadata, preview, download, and file cleanup for business documents |
-| `accountsReports` | Ledgers, trial balance, cash ledger, receivable/payable, stock, serial, and monthly reports |
-| `sales_reports` | Sales analytics APIs and report screen |
-| `set_opening` | Opening cash singleton |
-| `opening_stock` | Opening stock loads and opening-balance reclassification |
-| `owner_equity` | Owner capital drawings/investments |
-| `month_close` | Period close preview, close, and reversal |
+|---|---|
+| `tenancy` | Company registry, membership, schema switching, provisioning, SQL rollout, subscriptions, feature flags, quantity views |
+| `authentication` | Login/logout, current-user JSON, login rate limit, permission seeding |
+| `home` | Dashboard page + dashboard JSON APIs |
+| `parties` · `items` | Master data + autocomplete |
+| `purchase` · `sale` | Invoice create/update/delete, navigation, summaries, serial checks |
+| `purchaseReturn` · `saleReturn` | Returns with lifecycle guards |
+| `payments` · `receipts` · `contra` | Cash movement + party balances |
+| `opening_stock` · `set_opening` · `owner_equity` · `month_close` | Onboarding & period close |
+| `accountsReports` · `sales_reports` | Ledgers, trial balance, stock/serial, monthly reports, sales analytics |
+| `attachments` | Authenticated image/PDF upload, preview, download, cleanup |
 
-## Main URL Surface
+### The two-edit rule (critical workflow)
 
-| Prefix | Purpose |
-| --- | --- |
-| `/authentication/` | Login, logout, current user |
-| `/admin/` | Custom Financee admin site |
-| `/home/` | Dashboard and dashboard APIs |
-| `/parties/` | Party master |
-| `/items/` | Item master |
-| `/purchase/` | Purchase workflow |
-| `/sale/` | Sales workflow |
-| `/purchaseReturn/` | Purchase returns |
-| `/saleReturn/` | Sales returns |
-| `/payments/` | Payments |
-| `/receipts/` | Receipts |
-| `/contra/` | Contra entries |
-| `/attachments/` | Authenticated attachment metadata, preview, and download endpoints |
-| `/accountsReports/` | Accounting and inventory reports |
-| `/sales-reports/` | Sales analytics |
-| `/set-opening/` | Opening cash |
-| `/opening-stock/` | Opening stock |
-| `/owner-equity/` | Owner equity |
-| `/month-close/` | Period close |
+Any change to tenant business SQL requires **two coordinated edits**, or new and existing tenants diverge:
 
-The legacy `/accountsReports/company-valuation/` and `/accountsReports/sale-wise-report/` Profit Reports page has been retired from the UI/routes. Its replacement coverage lives in Monthly Reports, Sales Reports, and dashboard sales/profit widgets. Database objects and historical permissions were left in place for compatibility.
-
-## Document Attachments
-
-Sale, purchase, sale return, purchase return, payment, receipt, and contra screens support optional document attachments. Each document can have at most one image and one PDF. A user may upload either file type or both file types on create/update.
-
-Attachment metadata is stored in each tenant schema in `document_attachments`; file bytes are stored under `PRIVATE_MEDIA_ROOT/document_attachments/<tenant>/<document_type>/<document_id>/`. Private media is never served directly by Nginx: `deploy/nginx/financee.conf` returns 404 for `/media/private/`, and files are streamed only through authenticated Django endpoints.
-
-Supported files:
-
-- Images: JPG/JPEG, PNG, WEBP, GIF; maximum 10 MB.
-- PDFs: `application/pdf`; maximum 20 MB.
-- One file per kind per document: one `image` row and one `pdf` row.
-
-Update behavior:
-
-- Uploading a new image replaces only the existing image.
-- Uploading a new PDF replaces only the existing PDF.
-- If a document already has an image and the user later uploads only a PDF, the image is preserved. The reverse is also true.
-- The frontend warns when a selected file will replace an existing file of the same kind.
-- Deleting a document removes its attachment metadata and physical files after the business delete succeeds.
-
-Performance behavior:
-
-- Navigation endpoints such as previous/next invoice fetches do not return file blobs.
-- The page renders the business document first, then loads attachment metadata asynchronously from `/attachments/<document_type>/<document_id>/`.
-- Image/PDF bytes are fetched only when the user chooses Preview or Download, so old-document navigation remains lightweight.
-
-Business update behavior:
-
-- Sale, purchase, sale-return, and purchase-return updates support an attachment-only path. If the submitted business payload matches the current document and only files are being added/replaced, the view saves attachments without calling the stored update function. This allows files to be added to locked documents, such as sale invoices with return history, without mutating accounting or inventory data.
-- Payments, receipts, and contra entries do not use that attachment-only bypass. Their update flow still calls the normal stored update function, then saves attachments after a successful update.
-
-Existing tenant rollout:
-
-```bash
-python manage.py apply_sql_all_tenants tenancy/sql/add_document_attachments.sql
+```mermaid
+flowchart LR
+    A[✏️ 1. Edit tenant_template.sql<br/>new tenants get it] --> C
+    B[✏️ 2. Add idempotent patch<br/>CREATE OR REPLACE / IF NOT EXISTS] --> C
+    C[🚀 3. apply_sql_all_tenants patch.sql<br/>roll out to every existing tenant]
+    C --> D[🔁 production_hardening.sql<br/>re-runs on every container start to self-heal]
+    style C fill:#4169E1,color:#fff
 ```
 
-With Docker:
+`python manage.py migrate` **only ever touches `public`** — never tenant business schemas.
 
-```bash
-docker compose -f deploy/docker-compose.yml exec -T web python manage.py apply_sql_all_tenants tenancy/sql/add_document_attachments.sql
-docker compose -f deploy/docker-compose.yml exec -u root web chown -R 10001:10001 /app/media
+### Security & guards (`financee/security.py`)
+
+- **`PROTECTED_PREFIX_PERMS`** maps URL prefixes → required `auth.*` permissions (mode `all`); `/sales-reports/` uses `SALES_REPORT_PERMS` (mode `any`). Views **also** re-check permissions individually.
+- **Rate limits** (cache-backed, per-tenant keys): dashboard 180/min, reports 90/min, lookup 240/min, login 10/min. Set `REDIS_URL` in production so limits apply across workers.
+- **JSON error scrubbing**: middleware strips internal detail from 4xx/5xx JSON responses.
+
+### Commercial layer (all in `public`, zero tenant SQL)
+
+- **Subscription control** — `paid_until` + `grace_days` + `is_suspended` → `unrestricted / active / expiring / grace / blocked / suspended` state machine. Blocked users hit a branded pay-wall; superusers are never blocked. `SubscriptionPayment` is an immutable audit log that extends access and lifts suspension.
+- **Subscription emails** — automatic expiry/suspension notices to `contact_email`, per-cycle dedup, hourly WSGI-driven scan, Gmail SMTP configured entirely from the admin.
+- **Per-company feature flags** — `disabled_features` JSON toggles report groups/sub-reports, CSV/Excel export, and attachments; enforced in middleware and hidden in the UI.
+
+---
+
+## 🎨 Frontend
+
+- **Django templates + vanilla JavaScript** — no SPA framework. Pages render the business document first, then load attachment metadata / heavy data asynchronously.
+- **Static files are content-hashed** at Docker build time (`ManifestStaticFilesStorage`), so a changed CSS/JS file gets a new name automatically — no cache-busting, ever.
+- **Unified alert layer** — every user-facing alert goes through the `Alerts` helper (`static/js/alerts.js`, a SweetAlert2 wrapper). Never call `Swal.fire` directly. Only consequential actions (deletes, month close, reclassify) get a confirm dialog; everything else is a non-blocking toast.
+- **Custom admin site** (`financee/admin_site.py`) — muted professional theme, KPI cards, subscription badges, user-activity pages with PDF export.
+- Dark mode is **temporarily retired** (commented out, not deleted) pending a rework.
+
+---
+
+## 🔀 The two schema families
+
+Financee ships **two independent tenant schema families**, chosen by an **immutable `inventory_mode`** at company creation:
+
+| | 📱 **Serial family** | 📦 **Quantity family** |
+|---|---|---|
+| **Tracks** | Every unit by serial number (IMEI, etc.) | Bulk quantities with FIFO cost layers |
+| **Inventory** | `PurchaseUnits` → `SoldUnits` | `stockmovements` + FIFO allocations |
+| **Precision** | 1 unit | `numeric(18,3)`; Pieces/Boxes whole, Kg/g/L/m up to 3 dp |
+| **Warehouses** | Single | Multi-warehouse + transfers + physical counts |
+| **Tax / currency** | Base | Inclusive/exclusive tax, discounts, multi-currency + realized FX gain/loss |
+| **Status** | ✅ **3 live paying companies** | 🚧 Fully built (schema **v22**), route-gated, awaiting pilot rollout |
+| **Template** | `tenant_template.sql` (v6) | `quantity_tenant_template.sql` (v22) |
+
+Both families share the identical **journal / chart-of-accounts / ledger** backbone — only inventory representation differs. Serial behavior is frozen and regression-guarded on every CI run while quantity work proceeds.
+
+---
+
+## 🚀 Deployment
+
+### Docker stack (`deploy/`)
+
+```mermaid
+flowchart TB
+    subgraph boot["First DB boot (pgdata empty)"]
+        SEED[build_multitenant_db.sql<br/>→ public objects + example tenant_company_1]
+    end
+    subgraph start["Every web container start (entrypoint.sh)"]
+        W1[wait for Postgres] --> W2[sync baked static → shared volume]
+        W2 --> W3[manage.py migrate  — public only]
+        W3 --> W4[apply_sql_all_tenants production_hardening.sql --family serial]
+        W4 --> W5[apply_sql_all_tenants tenant_indexes.sql --family serial]
+        W5 --> W6[apply quantity reporting + hardening --family quantity]
+        W6 --> W7[exec gunicorn]
+    end
+    SEED -.-> start
+    style SEED fill:#4169E1,color:#fff
+    style W7 fill:#092E20,color:#fff
 ```
 
-`tenancy/sql/add_document_attachments.sql` is idempotent and folded into `tenant_template.sql`, `production_hardening.sql`, and `build_multitenant_db.sql`. New tenants receive the table automatically; existing tenants need the rollout patch before uploads are tested.
+- **Host:** AWS **EC2 `t4g.medium`** — ARM64 Graviton, 2 vCPU / 4 GiB. Postgres, Redis, web, and nginx all co-located; DB tuned accordingly (`shared_buffers=768MB`, `work_mem=4MB`, etc.).
+- **TLS:** domain `financee-swisstech.com` on **Cloudflare (proxied)**, Full-strict mode, **Cloudflare Origin Certificate** on nginx (15-yr, no certbot/renewal). The 443 listener lives in `docker-compose.tls.yml`, auto-added by the deploy scripts once `origin.pem` exists on the host — so HTTP-only deploys never break before the cert is installed.
+- **Static:** collected at image build; entrypoint syncs the baked tree into the shared volume so nginx serves current hashed assets after every deploy.
+- **Ports:** only 22 / 80 / 443 open; Postgres & Redis stay internal to the Docker network.
 
-## Subscription Control
+Full step-by-step (fresh EC2 → running stack → CI/CD → HTTPS) is in **`DEPLOYMENT_GUIDE.md`**.
 
-Financee is sold per company on manual monthly billing: clients pay outside
-the system (e.g. bank transfer) and the operator controls access from the
-admin panel. There is no payment gateway.
+---
 
-How it works:
+## 🔁 CI/CD pipeline
 
-- Each `Company` has a **Paid until** date, **Grace days** (default 3), and
-  **Warn days before** (default 7). When `paid_until + grace_days` passes,
-  every user of that company is blocked automatically. Leaving **Paid until**
-  empty disables enforcement for that company.
-- **Suspended** is a manual kill switch on the company that blocks access
-  immediately, regardless of dates.
-- Blocked users can still log in, but every page shows a branded
-  "Account Suspended" notice explaining that the subscription payment is
-  overdue and access resumes after payment. API/AJAX calls receive a 403 JSON
-  denial. Login, logout, static files, and the admin remain reachable, and
-  superusers are never blocked.
-- In the warning window (and during grace) tenant users see a dismissible
-  renewal banner with the exact dates.
+`.github/workflows/ci.yml` runs on **every push & PR**:
 
-Admin workflow when a client pays:
+```mermaid
+flowchart TB
+    P[push / PR] --> CH[✅ checks<br/>compile · django check · missing-migration guard<br/>phase 27–30 release contracts · backup contracts]
+    P --> SG[🧪 serial-gate]
+    P --> QG[🧪 quantity-gate]
+    P --> IG[🧪 isolation-gate<br/>4-company leakage]
+    P --> AS[💪 arm64-smoke<br/>build + run under ARM64]
+    P --> FR[🧪 full-regression]
+    P --> RG[🔐 recovery-gate<br/>encrypted backup + restore + rollback]
 
-1. Open **Companies & Subscriptions** (or the company itself) in the admin.
-2. Add a **Subscription payment** (amount, date received, months covered,
-   optional note) — inline on the company or via the Subscription Payments
-   changelist.
-3. Saving the payment extends **Paid until** by the covered months (from the
-   current paid-until date when still active, otherwise from the payment date)
-   and automatically lifts a manual suspension. Payments are an immutable
-   audit log; editing or deleting them never shrinks the paid-until date.
+    CH & RG --> SS[🛡️ staging-security-gate<br/>exact-image staging + 18 contracts + UAT]
+    SS & SG & QG & IG & AS & FR --> AP{{"🧑‍⚖️ staging-release-approval<br/>protected environment (main only)"}}
+    AP --> PUB[📦 publish<br/>multi-arch image → GHCR<br/>tag = commit SHA + latest]
+    PUB --> DEP{{"🚀 deploy to EC2<br/>manual approval · DEPLOY_ENABLED=true"}}
+    DEP --> SH[phase30_foundation_deploy.sh<br/>SHA-pinned pull · recreate · health-check<br/>auto-rollback on failure · tenant SQL]
 
-The admin dashboard shows **Client Companies** and **Blocked Subscriptions**
-KPI cards, and the company list shows a live subscription badge
-(Active / Expires soon / Grace / Blocked / Suspended / Not enforced) with bulk
-suspend / lift-suspension actions.
-
-### Subscription emails
-
-The system emails the **company's billing address** (set per company as
-**Contact email** — not individual users) automatically:
-
-- On the day the subscription expires: "your subscription expired on X, you
-  have N days to pay, access will be restricted after Y".
-- On the day the grace window ends (access suspended): "your access is now
-  suspended and resumes as soon as the payment is received".
-- When you manually suspend a company from the admin, it is emailed
-  immediately.
-
-Setup, all inside the admin under **Billing & email settings**:
-
-1. Enter the sender account: sender name, email, and an SMTP **app password**
-   (for Gmail: Google Account → Security → 2-Step Verification → App
-   passwords). Host/port default to Gmail (`smtp.gmail.com:587`, TLS).
-2. Enter the contact details embedded in every email: WhatsApp number, phone,
-   and an optional note (e.g. bank account details or office hours). All
-   editable at any time.
-3. Save, then click **Send a test email to the sender address** to verify.
-4. Set each company's **Contact email** on its admin page.
-
-Every email (sent, failed, test) is listed under **Sent Emails** in the admin.
-Each billing cycle sends each notice at most once (failed deliveries are
-retried automatically on the next hourly scan), and recording a payment starts
-a fresh cycle. The scan runs hourly inside the web container; it can also be
-run manually:
-
-```bash
-docker compose -f deploy/docker-compose.yml exec -T web python manage.py send_subscription_emails --dry-run
+    style AP fill:#F38020,color:#fff
+    style DEP fill:#F38020,color:#fff
+    style PUB fill:#2088FF,color:#fff
+    style SH fill:#092E20,color:#fff
 ```
 
-All subscription data lives in the shared `public` schema
-(`tenancy/migrations/0002_subscription_control.py`); tenant business schemas
-are untouched. Applying the migration blocks nobody: existing companies start
-with enforcement disabled until you set their first paid-until date or record
-a payment.
+1. **checks** — compile, `manage.py check`, `makemigrations --check` (fails if a model change lacks its migration), phase release-contract gates, backup contracts, `pip check`.
+2. **Parallel gates** — serial regression, quantity complete-suite, four-company isolation, **ARM64 execution smoke**, full production-stack regression, and encrypted backup/restore/rollback rehearsal.
+3. **staging-security-gate** — boots an isolated production-like stack, verifies exact-source image identity, runs 18 static security contracts + UAT.
+4. **staging-release-approval** — a **protected GitHub environment** (product/eng/ops sign-off) on `main` pushes only.
+5. **publish** — the *exact tested* multi-arch image (`linux/amd64` + `linux/arm64`) is pushed to **GHCR** tagged with the commit SHA + `latest`.
+6. **deploy** — gated by `DEPLOY_ENABLED=true` **and** manual approval of the `production` environment → SSH to EC2 → pulls the **SHA-pinned image (no build on server)**, recreates web + nginx, health-checks through nginx, **automatically rolls back to the previous image if the check fails**, then applies idempotent tenant SQL.
 
-## Per-Company Feature Flags
+> ⚠️ **Rollback caveat:** rolling back the web image does **not** revert public migrations or tenant SQL already applied. Keep both **backward-compatible** — the same idempotent-patch discipline used everywhere.
 
-The operator can enable/disable features for a specific company from the
-company's admin page (collapsible **Features** sections). Everything is
-public-schema registry data (`Company.disabled_features`,
-`tenancy/0004_company_feature_flags`) — no tenant SQL. All features start
-enabled; existing companies are unaffected by the migration.
+---
 
-What can be switched per company:
+## 💾 Backups & disaster recovery
 
-- **Report groups** — Accounts Reports, Stock Reports, Monthly Reports,
-  Sales Reports, Opening Stock, Opening Cash (Set Opening). Each group has a
-  master switch, and every sub-report inside the four report groups has its
-  own switch (e.g. Cash Ledger, Trial Balance, Serial Ledger, Company
-  Position, Invoice Register).
-- **CSV / Excel export** — removes the CSV download buttons from every report
-  screen (including Month-End Close and Owner Equity). PDF and Print stay.
-- **Document attachments** — hides the image/PDF widget entirely (uploads and
-  existing files) and blocks the attachment endpoints. Files are never
-  deleted; re-enabling the feature brings them back.
+Two independent, rehearsed layers:
 
-Disabled features disappear from the sidebar and from in-page report buttons,
-and their URLs are enforced by the tenant middleware: data/API calls get a
-scrubbed 403 JSON, while a plain page visit to a disabled sub-report redirects
-to the first enabled report of the same group (or the dashboard). Enforcement
-applies to every user of the company, superusers included.
+| Layer | What | Where | Cadence |
+|---|---|---|---|
+| **Phase 28 bundle** | Encrypted PostgreSQL **+ media** as one checksummed bundle | Off-instance destination, passphrase stored separately | On demand / pre-release |
+| **Daily DB backup** | Encrypted PostgreSQL-only custom-format dump (public + all tenants) | Private GitHub Releases repo `financee_pk_backup` | systemd timer, **daily 02:15 UTC** |
 
-The company changelist shows a **Features off** count per company. Coverage
-lives in `tests/suite/test_feature_flags.py`.
+- Every backup is **encrypted + double-checksummed** (ciphertext SHA-256 sidecar + internal manifest). The uploader independently re-downloads, verifies, decrypts, and reads the `pg_restore` catalogue before recording success.
+- **Restore rehearsal is mandatory** before enabling the timer — an isolated, non-production Compose project (forbidden production-name guard), verified to health + all-tenant `release_preflight`.
+- Retention: newest **30 daily** + first success in each of the newest **12 months**. Status command alerts if the newest backup is > 26 h old.
 
-## Permissions and Guards
+Runbooks: **`DATABASE_BACKUP_GITHUB_RUNBOOK.md`**, **`PHASE28_RECOVERY_RUNBOOK.md`**.
 
-Permissions are seeded through migrations in `authentication/migrations/`. The middleware has a path-level guard in `financee/security.py`.
+---
 
-Protected prefixes include sales, purchases, returns, payments, receipts, parties, items, contra, opening stock, owner equity, set opening, and month close. Sales report APIs use an "any of these report permissions" rule, so a user can access the report module if they have at least one sales report permission.
+## 🧪 Testing
 
-The middleware also applies basic rate limits:
-
-- dashboard APIs: 180 requests per minute
-- report APIs: 90 requests per minute
-- lookup/autocomplete endpoints: 240 requests per minute
-- login POST: 10 requests per minute
-
-In production, Redis should be configured through `REDIS_URL` so rate limits apply across workers.
-
-## Admin Site
-
-The project uses `financee/admin_site.py` instead of Django's default admin site directly.
-
-Admin features:
-
-- superuser-only custom admin access
-- Financee branding
-- Company and Membership management
-- tenant schema provisioning when companies are created
-- user activity pages and PDF export
-- optional cross-tenant activity aggregation through `TENANCY_CROSS_TENANT_ACTIVITY`
-
-## Local Setup
-
-Create an environment file. For Docker, copy `deploy/.env.example` to `deploy/.env`. For direct local development, create `.env` at the project root with the same variables:
-
-```env
-SECRET_KEY=change-me
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-CSRF_TRUSTED_ORIGINS=
-DB_NAME=financee
-DB_USER=financee
-DB_PASSWORD=change-me
-DB_HOST=localhost
-DB_PORT=5432
-```
-
-Install dependencies:
+The suite runs **inside the running `web` container** (not the host venv), against **every active tenant**, asserting **real accounting invariants** — not just "did not error".
 
 ```bash
-python -m venv venv
-source venv/bin/activate
+./tests/run_tests.sh            # copies tests in, runs all harnesses
+./tests/run_tests.sh --reset    # ALSO drops + re-provisions tenant schemas for a clean signal
+```
+
+| Harness | Coverage |
+|---|---|
+| `tests/suite/run_all.py` | **Comprehensive** — every domain & every report on all tenants; double-entry balance, party balances, COGS, stock/serial coherence; `XFAIL` channel |
+| `test_system.py` | SQL business functions per tenant |
+| `test_http.py` | Django client over real views / permissions / templates |
+| `test_transaction_lifecycle_deep.py` | Serial lifecycle stress (purchase→sale→return→resale, mixed invoices, return guards); **intentionally fails** on duplicate returns / invalid serial transitions |
+| quantity + isolation + capacity | FIFO, multi-warehouse, tax/currency, 4-company leakage, 100k SKUs / 5M movements / 100 sessions |
+
+Latest full run: **all modules pass, 0 XFAIL.**
+
+---
+
+## 💻 Local development
+
+```bash
+# 1. Dependencies
+python -m venv venv && source venv/bin/activate
 pip install -r requirements-lock.txt
-```
 
-Run public-schema migrations:
+# 2. Environment — create .env at project root
+#    SECRET_KEY, DEBUG, ALLOWED_HOSTS, DB_NAME/USER/PASSWORD/HOST/PORT
 
-```bash
+# 3. Public/shared migrations (never touches tenant business schemas)
 python manage.py migrate
-```
-
-Create a superuser:
-
-```bash
 python manage.py createsuperuser
-```
+python manage.py seed_currencies
 
-Provision a tenant and attach an existing user:
+# 4. Provision a tenant + attach a user
+python manage.py provision_tenant "Demo Co" --owner alice
 
-```bash
-python manage.py provision_tenant "Demo Company" --owner alice
-```
-
-Run the development server:
-
-```bash
+# 5. Run
 python manage.py runserver
 ```
 
-## Docker Deployment
+### Tenant operations
 
-The production stack lives in `deploy/`:
+```bash
+# Roll a tenant SQL patch out to every tenant (with --dry-run / --only / --family)
+python manage.py apply_sql_all_tenants tenancy/sql/<patch>.sql
+python manage.py apply_sql_all_tenants tenancy/sql/<patch>.sql --only tenant_company_3
 
-- `db`: PostgreSQL 16
-- `redis`: shared cache / rate limits
-- `web`: Django + Gunicorn
-- `nginx`: reverse proxy and static/media serving
+# Retry a failed/pending schema build
+python manage.py retry_tenant_provisioning <COMPANY_ID>
+```
 
-Start it with:
+### Docker (production-like)
 
 ```bash
 cd deploy
-cp .env.example .env
-# edit .env
-docker compose up -d --build
+cp .env.example .env      # then edit
+docker compose -f docker-compose.yml up -d --build
 ```
 
-On first database boot, `build_multitenant_db.sql` seeds public objects and an example tenant. On every web container start, `deploy/entrypoint.sh` waits for Postgres, syncs baked static files, and runs `python manage.py migrate --no-input` for the shared public schema.
+---
 
-Static files are collected at image build time with `ManifestStaticFilesStorage`. The entrypoint copies the baked static tree into the shared static volume so Nginx serves current hashed assets after deploys.
+## 📁 Project layout
 
-## CI/CD
-
-GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull
-request:
-
-1. **checks** — installs `requirements-lock.txt`, runs `manage.py check` and
-   `makemigrations --check --dry-run` (fails if a model change is missing its
-   migration).
-2. **test** — builds the production Docker image, boots the real compose
-   stack (fresh Postgres seeds `build_multitenant_db.sql`; the entrypoint runs
-   public migrations + `production_hardening.sql` exactly like production),
-   creates a CI superuser, provisions a second tenant, then runs **all** test
-   harnesses inside the container: `tests/suite/run_all.py`,
-   `test_system.py`, `test_http.py`, `test_transaction_lifecycle_deep.py`.
-   Stack logs are uploaded as an artifact on failure.
-3. On `main`, the **exact tested image** is pushed to GHCR
-   (`ghcr.io/maaz-bin-haider/financee-web`) tagged with the commit SHA and
-   `latest`.
-4. **deploy** — pauses for manual approval (the `production` GitHub
-   environment), then SSHes to the EC2 host and runs
-   `deploy/deploy_pull.sh`, which pulls the SHA-tagged image (no build on the
-   server), recreates web + nginx, health-checks through nginx, **rolls back
-   to the previous image if the health check fails**, and applies idempotent
-   tenant SQL to every schema. `deploy/deploy.sh` remains as the manual
-   build-on-server fallback.
-
-One-time setup:
-
-- **Approval gate:** Settings → Environments → create `production` → add a
-  required reviewer.
-- **Secrets** (Settings → Secrets and variables → Actions): `EC2_HOST`,
-  `EC2_USER`, `EC2_SSH_KEY` (private key), optional `EC2_APP_DIR` (defaults
-  to `~/Financee_Multitenant_Production`).
-- **Activate deploys:** add repository *variable* `DEPLOY_ENABLED=true`.
-  Until then the deploy job is skipped and CI is test-only.
-- **Image pull on the server:** make the GHCR package public, or run a
-  one-time `docker login ghcr.io` on EC2 with a `read:packages` PAT.
-
-Nginx no longer needs a restart when the web container is recreated: the
-static `upstream` block was replaced with Docker's DNS resolver + a variable
-`proxy_pass` in `deploy/nginx/financee.conf` (see FIXED_ISSUES.md 2026-07-08).
-
-Rollback caveat: rolling back the web image does not revert public migrations
-or tenant SQL already applied by the failed release — keep both
-backward-compatible (the existing idempotent-patch discipline).
-
-## Tenant Operations
-
-Create a tenant:
-
-```bash
-python manage.py provision_tenant "Company Name"
+```
+Financee_Multitenant_Production/
+├── financee/               # settings, urls, security guards, admin site, wsgi/asgi
+│   ├── settings.py         #   env-driven config, CONN_MAX_AGE, cache, security flags
+│   └── security.py         #   permission prefixes, rate limits, guard responses
+├── tenancy/                # the multitenancy engine
+│   ├── middleware.py       #   search_path activation + guard chain
+│   ├── models.py           #   Company, Membership, Currency, subscriptions, billing
+│   ├── provisioning.py     #   post_save → materialize schema
+│   ├── utils.py            #   schema helpers (validated + quoted)
+│   ├── schema_families.py  #   serial vs quantity family registry
+│   ├── features.py         #   per-company feature flags
+│   ├── sql/                #   tenant_template.sql + idempotent patches (34 files)
+│   └── management/commands/#   apply_sql_all_tenants, provision_tenant, release_preflight …
+├── <feature apps>/         # parties, items, purchase, sale, returns, payments, receipts,
+│                           #   contra, opening_stock, owner_equity, month_close, reports …
+├── attachments/            # authenticated image/PDF handling
+├── templates/  static/     # Django templates, CSS, vanilla JS, alerts layer
+├── deploy/                 # Docker stack, entrypoint, nginx, TLS overlay, backup + deploy scripts
+├── tests/                  # suite/ + system/http/lifecycle harnesses + phase gates
+├── build_multitenant_db.sql# first-boot seed (public + example tenant)
+└── *.md                    # the documentation set (below)
 ```
 
-Create a tenant and assign an existing user:
+---
 
-```bash
-python manage.py provision_tenant "Company Name" --owner username
-```
+## 📚 Documentation map
 
-Select company accounting setup explicitly:
+| File | Purpose |
+|---|---|
+| **`README.md`** | This overview |
+| **`CLAUDE.md`** | Instructions & guardrails for AI-assisted work in this repo |
+| **`PROJECT_CONTEXT.md`** | Persistent engineering context — **keep current** |
+| **`FIXED_ISSUES.md`** | Diagnosed production/setup bugs, root causes & fixes |
+| **`DEPLOYMENT_GUIDE.md`** | Fresh EC2 → running stack → CI/CD → HTTPS, step by step |
+| **`DATABASE_BACKUP_GITHUB_RUNBOOK.md`** · **`PHASE28_RECOVERY_RUNBOOK.md`** | Backup & restore runbooks |
+| **`ARCHITECTURE_QUANTITY_COMPANY.md`** · **`SRS_QUANTITY_BASED_COMPANY.md`** | Quantity-family design & requirements |
+| **`IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`** · **`todo.md`** | 33-phase rollout plan & execution status |
+| `tests/README.md` · `tests/suite/README.md` | Test harness docs |
 
-```bash
-python manage.py provision_tenant "Company Name" \
-  --inventory-mode quantity \
-  --base-currency USD \
-  --tax-environment tax \
-  --owner username
-```
+---
 
-Synchronize the bundled ISO 4217 catalogue idempotently:
+<div align="center">
 
-```bash
-python manage.py seed_currencies
-```
+### Built for correctness first. 🧮
+*Accounting logic lives in the database, isolation is enforced per schema, and nothing ships that hasn't passed the full test pyramid on a from-scratch stack.*
 
-Apply SQL to every tenant:
-
-```bash
-python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql \
-  --family serial
-```
-
-Preview target schemas without applying:
-
-```bash
-python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql \
-  --family serial --dry-run
-```
-
-Apply to one tenant:
-
-```bash
-python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql \
-  --family serial --only tenant_company_3
-```
-
-Retry a failed or pending schema build:
-
-```bash
-python manage.py retry_tenant_provisioning COMPANY_ID
-```
-
-The quantity accounting foundation includes the system chart of accounts, immutable
-double-entry journals and reversals, trial balance, and concurrency-safe
-document numbering.
-
-Quantity schema version 3 also provides the product/variant master through
-`/items/quantity/`: six controlled units, seven required variant dimensions,
-unique or suggested SKUs, unit precision validation, catalogue lookup, and
-transaction-aware SKU/unit locking. Other quantity business screens remain
-intentionally gated until warehouse, stock, and transaction phases are
-complete.
-
-Quantity schema version 4 adds multi-warehouse setup through
-`/warehouses/quantity/`. Authorized users can list, create, rename, activate,
-deactivate, select a default, and delete only unreferenced warehouses. The
-database enforces normalized code/name uniqueness and at most one active
-default warehouse per quantity tenant.
-
-Quantity schema version 5 adds the isolated stock core used by later quantity
-documents. It records immutable movements, maintains per-SKU/per-warehouse
-balances, consumes FIFO cost layers with durable allocation lineage, supports
-historical availability, and deterministically replays permitted backdated
-events. Scope locks prevent overselling under concurrency, canonical lock
-ordering supports future multi-warehouse operations, and reconciliation
-functions prove movement, balance, and FIFO agreement. Quantity invoice screens
-remain gated until their assigned phases; Phase 10 is opening stock.
-
-Quantity schema version 6 enables `/opening-stock/` for quantity companies.
-Users select SKU, warehouse, quantity, and unit cost without entering serial
-numbers. Posting creates an immutable opening document, FIFO stock movements,
-and a balanced Inventory/Opening Balance journal. Untouched opening layers can
-be reversed through linked movements and journals, and Opening Balance can be
-reclassified to Owner's Capital after onboarding is complete. Serial companies
-continue to use the existing serial-based opening-stock screen. Phase 11 is
-quantity purchases.
-
-Quantity schema version 7 enables `/purchase/` for quantity companies.
-Domestic credit and cash purchases accept vendor, date, SKU, warehouse,
-quantity, unit cost, and description without serial numbers. Posting creates
-FIFO stock and balanced Inventory/AP or Inventory/Cash/Bank accounting.
-Duplicate requests are idempotent, navigation and summaries are available,
-safe edits retain revision history and replay later FIFO allocations, and
-untouched purchases can be reversed. Tax, discounts, foreign currency,
-attachments, and the full quantity party master remain scheduled later.
-Serial companies continue to use the existing serial purchase workflow.
-
-Quantity schema version 8 enables `/sale/` for quantity companies. Domestic
-credit and cash sales accept customer, date, SKU, warehouse, manual quantity,
-unit price, and description without serial numbers. PostgreSQL locks stock,
-persists FIFO allocations, rejects overselling, and posts Revenue,
-Accounts Receivable or Cash/Bank, COGS, and Inventory atomically. Idempotent
-create, guarded edit/replay and reversal, navigation, and summaries are
-available. Sale returns, tax, discounts, foreign currency, attachments, and
-the full quantity party master remain scheduled for later phases.
-
-Quantity schema version 13 adds tax and discounts across purchases, sales, and
-both source-linked return flows. Tax companies support administered tax codes,
-inclusive/exclusive pricing, taxable/zero-rated/exempt lines, and
-percentage/fixed discounts at line and invoice levels. Posted inputs and
-results are immutable snapshots; partial returns reverse historical tax
-proportionally. Non-tax companies retain zero-tax behavior and cannot post tax
-control entries.
-
-### Tenant Login Redirect Loop
-
-If a company user signs in successfully but the browser reports too many redirects between `/home/` and `/authentication/login/`, the user is usually authenticated but the tenant guard is rejecting the assigned company schema.
-
-Check that the user has a `Membership`, the company is active, the physical tenant schema exists, and the tenant schema has `tenant_schema_version`. Older databases bootstrapped before the schema-version guard may have business tables but no version table.
-
-Apply the existing hardening patch to all tenants:
-
-```bash
-python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql \
-  --family serial
-```
-
-With Docker:
-
-```bash
-docker compose -f deploy/docker-compose.yml exec -T web \
-  python manage.py apply_sql_all_tenants \
-  tenancy/sql/production_hardening.sql --family serial
-```
-
-After applying it, clear the browser cookie/session for the host or use a fresh private window before logging in again.
-
-## Testing
-
-The functional test suite is documented in `tests/README.md`.
-
-Run through Docker:
-
-```bash
-chmod +x tests/run_tests.sh
-./tests/run_tests.sh
-```
-
-Run with tenant reset:
-
-```bash
-./tests/run_tests.sh --reset
-```
-
-The suite has three major harnesses:
-
-- `tests/test_system.py`: direct SQL business-function coverage per tenant
-- `tests/test_http.py`: Django client coverage for real views, permissions, JSON, templates, and write flows
-- `tests/suite/test_attachments.py`: dedicated document-attachment coverage for sale, purchase, sale return, purchase return, payment, receipt, and contra files, including upload/update/replacement, endpoint access, validation, cleanup, and bypass rules.
-- `tests/suite/test_subscription.py`: subscription-control coverage — paid-until/grace/suspension state machine, payment-extension math, suspension page and JSON denial, exemptions (logout, superuser), and the renewal warning banner.
-- `tests/suite/test_subscription_emails.py`: subscription email coverage — settings singleton, expiry/suspension emails with per-cycle dedup and failure retry, contact-detail embedding, manual-suspension and test emails, and the admin email screens (locmem backend; nothing real is sent).
-- `tests/test_transaction_lifecycle_deep.py`: direct SQL stress coverage for real serial lifecycles, mixed purchase invoice corrections, partial returns, sale-return update/delete after resale, sale invoice update/delete after returns, cash-sale vs credit-sale returns, multi-item mixed serial invoices, duplicate/wrong-party return guards, and report execution after every entry. It also asserts financial invariants at every checkpoint (trial balance balances, no orphaned journal lines, stock/sold coherence) and covers the transaction-integrity guards from `tenancy/sql/fix_transaction_integrity_guards.sql` (delete_purchase sold-serial guard, qty-vs-serial validation, COGS reflow on purchase price edits). Confirmed-but-unfixed defects can be marked `known_bug=True` and are reported as `XFAIL` without failing the suite. See `tests/TRANSACTION_LIFECYCLE_FLOW_RESULTS.md`.
-
-## Project Rules for Future Changes
-
-- Keep `PROJECT_CONTEXT.md` updated whenever architecture, routes, tenant SQL, deployment, environment variables, permissions, or tests change.
-- Business schema changes must update both `tenant_template.sql` and an idempotent rollout SQL file for existing tenants.
-- Do not introduce Django ORM models for tenant business tables unless the multitenant `search_path` strategy is explicitly accounted for.
-- Always reset or preserve `search_path` in management commands and admin utilities that activate tenant schemas manually.
-- Keep tenant-facing errors generic; middleware currently scrubs JSON error details for 4xx/5xx responses.
-- Checking CI CD from new device
+</div>
