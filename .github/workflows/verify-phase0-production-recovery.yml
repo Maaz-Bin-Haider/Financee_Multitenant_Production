@@ -1,0 +1,74 @@
+name: Verify Phase 0 production recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type VERIFY-PHASE0-POST-CLEANUP-RESTORE"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-maintenance
+  cancel-in-progress: false
+
+jobs:
+  verify-phase0-recovery:
+    name: Isolated post-cleanup backup restore
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      RECOVERY_CONFIRMATION: ${{ inputs.confirmation }}
+      APP_DIR: ${{ secrets.EC2_APP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify recovery-gate contracts
+        run: |
+          bash -n deploy/phase0_post_cleanup_recovery_gate.sh
+          python3 tests/phase0_post_cleanup_recovery_contracts.py
+
+      - name: Validate exact workflow input
+        run: |
+          set -euo pipefail
+          [[ "$RECOVERY_CONFIRMATION" == "VERIFY-PHASE0-POST-CLEANUP-RESTORE" ]]
+
+      - name: Install production SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Run isolated recovery gate on EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          set -euo pipefail
+          printf -v remote_command 'bash -s -- %q %q %q' \
+            "$APP_DIR" "$RECOVERY_CONFIRMATION" "$GITHUB_SHA"
+          ssh -i ~/.ssh/id_deploy "$EC2_USER@$EC2_HOST" \
+            "$remote_command" <<'REMOTE' | tee phase0-recovery-result.log
+          set -euo pipefail
+          app_dir=$1
+          confirmation=$2
+          expected_sha=$3
+          app_dir="${app_dir:-$HOME/Financee_Multitenant_Production}"
+          cd "$app_dir/deploy"
+          git pull --ff-only
+          [[ "$(git -C .. rev-parse HEAD)" == "$expected_sha" ]]
+          sudo -n PHASE0_RECOVERY_CONFIRMATION="$confirmation" \
+            bash phase0_post_cleanup_recovery_gate.sh
+          REMOTE
+
+      - name: Retain non-secret recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase0-production-recovery-evidence
+          path: phase0-recovery-result.log
+          retention-days: 90

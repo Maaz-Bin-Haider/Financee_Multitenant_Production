@@ -171,3 +171,4 @@ every environment has reached the required migration leaf.
 | 2026-09-01 | Existing remote backup cadence verified | Private backup repository has daily encrypted two-asset releases through `db-backup-20260901T022916Z`; execution still requires a new operation-time release |
 | 2026-09-01 | Backup-first orphan retirement run `33535608469` | Fresh remotely verified release `db-backup-20260901T170630Z`; exact `tenant_company_2` drop committed; strict serial audit, serial preflight, and HTTP health PASS |
 | 2026-09-01 | Independent post-operation public check | Financee login redirect and complete sign-in form healthy; owner serial workflow verification still required |
+| 2026-09-01 | Owner reported the online production system working correctly after retirement | Manual online verification PASS; isolated post-cleanup restore remains required |
