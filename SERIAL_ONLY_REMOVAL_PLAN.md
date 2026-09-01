@@ -27,7 +27,7 @@ explicit production PASS for the current phase.
 
 | Phase | Scope | Implementation | Automated evidence | Manual production verification |
 |---|---|---|---|---|
-| 0 | Read-only production discovery and baseline | Ready for owner verification | Local gates PASS; restore pending | **Required — Phase 1 blocked** |
+| 0 | Production discovery, baseline, and approved test-tenant remediation | Complete | Production strict audit and fresh remote backup PASS; isolated restore pending | **Required — Phase 1 blocked** |
 | 1 | Close quantity-company creation | Not started | Not run | Required — Phase 2 blocked |
 | 2 | Remove quantity runtime and replace CI coverage | Not started | Not run | Required — Phase 3 blocked |
 | 3 | Remove quantity database metadata and approved orphan schemas | Not started | Not run | Required — Phase 4 blocked |
@@ -71,6 +71,8 @@ transaction is forced to `READ ONLY` by PostgreSQL.
 - [x] Pass Django checks and migration-drift checks in the ARM64 production
   image path.
 - [ ] Pass the command against an isolated restored production backup.
+- [x] Pass strict discovery with continuity against production after retiring
+  the individually approved orphan quantity test schema.
 - [x] Review the complete Phase 0 diff: only this plan, the read-only command,
   its contracts, and CI wiring changed; no serial runtime file changed.
 
@@ -167,3 +169,5 @@ every environment has reached the required migration leaf.
 | 2026-09-01 | First read-only retirement inspection stopped before EC2 commands | Empty optional SSH arguments were not preserved; no Docker or database command ran |
 | 2026-09-01 | Corrected read-only production inspection | Company 2 absent from registry; `tenant_company_2` proven orphaned quantity v22 (54 tables, 4,087,808 bytes); serial Company 1 v6 balanced and healthy |
 | 2026-09-01 | Existing remote backup cadence verified | Private backup repository has daily encrypted two-asset releases through `db-backup-20260901T022916Z`; execution still requires a new operation-time release |
+| 2026-09-01 | Backup-first orphan retirement run `33535608469` | Fresh remotely verified release `db-backup-20260901T170630Z`; exact `tenant_company_2` drop committed; strict serial audit, serial preflight, and HTTP health PASS |
+| 2026-09-01 | Independent post-operation public check | Financee login redirect and complete sign-in form healthy; owner serial workflow verification still required |
