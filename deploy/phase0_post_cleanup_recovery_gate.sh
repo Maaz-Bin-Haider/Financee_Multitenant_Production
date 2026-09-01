@@ -56,12 +56,20 @@ trap 'exit 130' HUP INT TERM
 available_kb=$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)
 docker_root=$(docker info --format '{{.DockerRootDir}}')
 disk_available_kb=$(df -Pk "$docker_root" | awk 'NR == 2 {print $4}')
+echo "PHASE0_RECOVERY_HOST_AVAILABLE_MEMORY_KB=$available_kb"
+echo "PHASE0_RECOVERY_DOCKER_AVAILABLE_KB=$disk_available_kb"
 [[ "$available_kb" =~ ^[0-9]+$ && "$available_kb" -ge 1258291 ]] || {
     echo "Refusing recovery rehearsal: less than 1.2 GiB host memory is available" >&2
     exit 3
 }
-[[ "$disk_available_kb" =~ ^[0-9]+$ && "$disk_available_kb" -ge 3145728 ]] || {
-    echo "Refusing recovery rehearsal: less than 3 GiB Docker disk is available" >&2
+for required_image in postgres:16 redis:7-alpine "$audit_image"; do
+    docker image inspect "$required_image" >/dev/null || {
+        echo "Refusing recovery rehearsal: required image is not local: $required_image" >&2
+        exit 3
+    }
+done
+[[ "$disk_available_kb" =~ ^[0-9]+$ && "$disk_available_kb" -ge 1048576 ]] || {
+    echo "Refusing recovery rehearsal: less than 1 GiB Docker disk is available" >&2
     exit 3
 }
 
