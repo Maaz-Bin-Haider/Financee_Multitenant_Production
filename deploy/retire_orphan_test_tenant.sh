@@ -118,17 +118,6 @@ fi
     echo "Refusing: off-server backup destination was not explicitly confirmed" >&2
     exit 3
 }
-: "${BACKUP_DEST:?Execution requires BACKUP_DEST}"
-: "${BACKUP_PASSPHRASE_FILE:?Execution requires BACKUP_PASSPHRASE_FILE}"
-[[ "$BACKUP_DEST" = /* ]] || {
-    echo "Refusing: BACKUP_DEST must be absolute" >&2
-    exit 3
-}
-[[ -s "$BACKUP_PASSPHRASE_FILE" ]] || {
-    echo "Refusing: backup passphrase file is unavailable" >&2
-    exit 3
-}
-
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 evidence_dir="retirement-evidence/company-${company_id}-${stamp}"
 mkdir -p "$evidence_dir"
@@ -138,13 +127,52 @@ WEB_IMAGE="$audit_image" "${compose[@]}" run --rm --no-deps -T \
     --entrypoint python web manage.py serial_only_phase0_audit \
     --include-continuity >"$evidence_dir/phase0-before.json"
 
-echo "==> Creating and cryptographically verifying a fresh encrypted full-database backup"
-BACKUP_DEST="$BACKUP_DEST" \
-BACKUP_PASSPHRASE_FILE="$BACKUP_PASSPHRASE_FILE" \
-    bash backup_database_encrypted.sh | tee "$evidence_dir/backup.txt"
-grep -qx 'BACKUP_RESULT=PASS' "$evidence_dir/backup.txt"
-backup_path=$(sed -n 's/^BACKUP_PATH=//p' "$evidence_dir/backup.txt" | tail -1)
-[[ -n "$backup_path" && -s "$backup_path" && -s "$backup_path.sha256" ]]
+echo "==> Creating and remotely verifying a fresh encrypted full-database backup"
+backup_started_epoch=$(date -u +%s)
+backup_reference=""
+if [[ -n "${BACKUP_DEST:-}" || -n "${BACKUP_PASSPHRASE_FILE:-}" ]]; then
+    [[ "${BACKUP_DEST:-}" = /* ]] || {
+        echo "Refusing: BACKUP_DEST must be absolute" >&2
+        exit 3
+    }
+    [[ -s "${BACKUP_PASSPHRASE_FILE:-}" ]] || {
+        echo "Refusing: backup passphrase file is unavailable" >&2
+        exit 3
+    }
+    BACKUP_DEST="$BACKUP_DEST" \
+    BACKUP_PASSPHRASE_FILE="$BACKUP_PASSPHRASE_FILE" \
+        bash backup_database_encrypted.sh | tee "$evidence_dir/backup.txt"
+    grep -qx 'BACKUP_RESULT=PASS' "$evidence_dir/backup.txt"
+    backup_path=$(sed -n 's/^BACKUP_PATH=//p' "$evidence_dir/backup.txt" | tail -1)
+    [[ -n "$backup_path" && -s "$backup_path" && -s "$backup_path.sha256" ]]
+    backup_reference="$backup_path"
+else
+    # Production normally uses the root-owned systemd job. It encrypts the
+    # complete database, uploads both assets to the allowlisted private backup
+    # repository, downloads/verifies them independently, then records success.
+    command -v sudo >/dev/null
+    sudo -n true
+    sudo -n systemctl cat financee-db-backup.service >/dev/null
+    sudo -n systemctl start financee-db-backup.service
+    sudo -n bash database_backup_status.sh | tee "$evidence_dir/backup.txt"
+    grep -qx 'REMOTE_BACKUP_STATUS=FRESH' "$evidence_dir/backup.txt"
+    backup_release=$(sed -n 's/^REMOTE_LAST_RELEASE=//p' "$evidence_dir/backup.txt" | tail -1)
+    python3 - "$backup_release" "$backup_started_epoch" <<'PY'
+import datetime
+import re
+import sys
+
+match = re.fullmatch(r"db-backup-(\d{8}T\d{6}Z)", sys.argv[1])
+if not match:
+    raise SystemExit("Backup service did not report a managed release")
+created = datetime.datetime.strptime(
+    match.group(1), "%Y%m%dT%H%M%SZ"
+).replace(tzinfo=datetime.timezone.utc)
+if int(created.timestamp()) < int(sys.argv[2]):
+    raise SystemExit("Backup release predates this retirement operation")
+PY
+    backup_reference="github-release:${backup_release}"
+fi
 
 echo "==> Dropping only the approved orphan schema in one PostgreSQL transaction"
 "${psql_cmd[@]}" <<SQL
@@ -196,6 +224,6 @@ WEB_IMAGE="$audit_image" "${compose[@]}" run --rm --no-deps -T \
 curl -fsS --retry 5 --retry-delay 2 --retry-all-errors \
     -o /dev/null http://localhost/authentication/login/
 
-echo "RETIRE_BACKUP_PATH=${backup_path}"
+echo "RETIRE_BACKUP_REFERENCE=${backup_reference}"
 echo "RETIRE_EVIDENCE_DIR=${evidence_dir}"
 echo "RETIRE_RESULT=PASS"
