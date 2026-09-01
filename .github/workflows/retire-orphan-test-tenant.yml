@@ -1,0 +1,126 @@
+name: Retire approved orphan test tenant
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Inspect is read-only; execute requires every destructive guard"
+        required: true
+        type: choice
+        default: inspect
+        options:
+          - inspect
+          - execute
+      company_id:
+        description: "Exact approved test Company id"
+        required: true
+        type: string
+        default: "2"
+      expected_schema:
+        description: "Exact approved orphan schema"
+        required: true
+        type: string
+        default: tenant_company_2
+      confirmation:
+        description: "For execute only: DROP-ORPHAN-TENANT-COMPANY-2"
+        required: false
+        type: string
+      backup_destination_confirmed_offserver:
+        description: "Confirm BACKUP_DEST is off-server or independently synchronized"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-maintenance
+  cancel-in-progress: false
+
+jobs:
+  retire-approved-test-tenant:
+    name: ${{ inputs.action }} Company 2 orphan
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      RETIRE_ACTION: ${{ inputs.action }}
+      RETIRE_COMPANY_ID: ${{ inputs.company_id }}
+      RETIRE_EXPECTED_SCHEMA: ${{ inputs.expected_schema }}
+      RETIRE_CONFIRMATION: ${{ inputs.confirmation }}
+      RETIRE_BACKUP_CONFIRMED: ${{ inputs.backup_destination_confirmed_offserver }}
+      APP_DIR: ${{ secrets.EC2_APP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify the fail-closed maintenance contracts
+        run: |
+          bash -n deploy/retire_orphan_test_tenant.sh
+          python3 tests/retire_orphan_test_tenant_contracts.py
+
+      - name: Validate exact workflow inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RETIRE_ACTION" == "inspect" || "$RETIRE_ACTION" == "execute" ]]
+          [[ "$RETIRE_COMPANY_ID" == "2" ]]
+          [[ "$RETIRE_EXPECTED_SCHEMA" == "tenant_company_2" ]]
+          if [[ "$RETIRE_ACTION" == "execute" ]]; then
+            [[ "$RETIRE_CONFIRMATION" == "DROP-ORPHAN-TENANT-COMPANY-2" ]]
+            [[ "$RETIRE_BACKUP_CONFIRMED" == "true" ]]
+          fi
+
+      - name: Install production SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Run exact-target maintenance on EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          BACKUP_DEST: ${{ secrets.BACKUP_DEST }}
+          BACKUP_PASSPHRASE_FILE: ${{ secrets.BACKUP_PASSPHRASE_FILE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          backup_confirmed=no
+          [[ "$RETIRE_BACKUP_CONFIRMED" == "true" ]] && backup_confirmed=yes
+          ssh -i ~/.ssh/id_deploy "$EC2_USER@$EC2_HOST" bash -s -- \
+            "$APP_DIR" "$RETIRE_ACTION" "$RETIRE_COMPANY_ID" \
+            "$RETIRE_EXPECTED_SCHEMA" "$RETIRE_CONFIRMATION" \
+            "$backup_confirmed" "$BACKUP_DEST" "$BACKUP_PASSPHRASE_FILE" \
+            "$GITHUB_SHA" <<'REMOTE' | tee retirement-result.log
+          set -euo pipefail
+          app_dir=$1
+          action=$2
+          company_id=$3
+          expected_schema=$4
+          confirmation=$5
+          backup_confirmed=$6
+          backup_dest=$7
+          backup_passphrase_file=$8
+          expected_sha=$9
+          app_dir="${app_dir:-$HOME/Financee_Multitenant_Production}"
+          cd "$app_dir/deploy"
+          git pull --ff-only
+          [[ "$(git -C .. rev-parse HEAD)" == "$expected_sha" ]]
+          RETIRE_ACTION="$action" \
+          RETIRE_COMPANY_ID="$company_id" \
+          RETIRE_EXPECTED_SCHEMA="$expected_schema" \
+          RETIRE_CONFIRMATION="$confirmation" \
+          RETIRE_BACKUP_DEST_CONFIRMED_OFFSERVER="$backup_confirmed" \
+          BACKUP_DEST="$backup_dest" \
+          BACKUP_PASSPHRASE_FILE="$backup_passphrase_file" \
+            bash retire_orphan_test_tenant.sh
+          REMOTE
+
+      - name: Retain non-secret operation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: company-2-${{ inputs.action }}-evidence
+          path: retirement-result.log
+          retention-days: 90
