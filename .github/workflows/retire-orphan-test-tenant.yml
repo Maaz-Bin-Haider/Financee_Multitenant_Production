@@ -88,11 +88,14 @@ jobs:
           set -euo pipefail
           backup_confirmed=no
           [[ "$RETIRE_BACKUP_CONFIRMED" == "true" ]] && backup_confirmed=yes
-          ssh -i ~/.ssh/id_deploy "$EC2_USER@$EC2_HOST" bash -s -- \
+          printf -v remote_command \
+            'bash -s -- %q %q %q %q %q %q %q %q %q' \
             "$APP_DIR" "$RETIRE_ACTION" "$RETIRE_COMPANY_ID" \
             "$RETIRE_EXPECTED_SCHEMA" "$RETIRE_CONFIRMATION" \
             "$backup_confirmed" "$BACKUP_DEST" "$BACKUP_PASSPHRASE_FILE" \
-            "$GITHUB_SHA" <<'REMOTE' | tee retirement-result.log
+            "$GITHUB_SHA"
+          ssh -i ~/.ssh/id_deploy "$EC2_USER@$EC2_HOST" \
+            "$remote_command" <<'REMOTE' | tee retirement-result.log
           set -euo pipefail
           app_dir=$1
           action=$2

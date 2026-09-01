@@ -31,6 +31,7 @@ checks = {
     "workflow retains evidence": "retention-days: 90" in WORKFLOW,
     "workflow validates maintenance contracts": "tests/retire_orphan_test_tenant_contracts.py" in WORKFLOW,
     "workflow pins EC2 source to dispatch SHA": 'rev-parse HEAD)' in WORKFLOW and 'expected_sha' in WORKFLOW,
+    "workflow preserves empty SSH arguments": "printf -v remote_command" in WORKFLOW and "'bash -s -- %q %q %q %q %q %q %q %q %q'" in WORKFLOW,
 }
 
 failed = [name for name, ok in checks.items() if not ok]
