@@ -30,6 +30,7 @@ checks = {
     "restored strict audit required": SCRIPT.index("RESTORE_RESULT=PASS") < SCRIPT.index("restored-phase0.json"),
     "disposable volumes removed exactly": '"${restore_compose[@]}" down -v' in SCRIPT and "docker volume prune" not in SCRIPT,
     "production strict after cleanup": "production-after.json" in SCRIPT,
+    "production env reset after restore": 'export WEB_ENV_FILE="$production_env_file"' in SCRIPT and SCRIPT.index('export WEB_ENV_FILE="$production_env_file"') > SCRIPT.index('"${restore_compose[@]}" down -v'),
     "production serial preflight required": "release_preflight" in SCRIPT and "--require-family serial" in SCRIPT,
     "production HTTP check required": "http://localhost/authentication/login/" in SCRIPT,
     "workflow retains evidence": "retention-days: 90" in WORKFLOW,

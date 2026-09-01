@@ -173,3 +173,4 @@ every environment has reached the required migration leaf.
 | 2026-09-01 | Independent post-operation public check | Financee login redirect and complete sign-in form healthy; owner serial workflow verification still required |
 | 2026-09-01 | Owner reported the online production system working correctly after retirement | Manual online verification PASS; isolated post-cleanup restore remains required |
 | 2026-09-01 | First post-cleanup recovery run `33536964690` stopped at capacity preflight | Docker free space was below the conservative 3 GiB threshold; no production audit, backup, container, volume, restore, or database command ran |
+| 2026-09-01 | Recovery run `33537295401` restored and verified the post-cleanup estate | Backup `db-backup-20260901T172204Z`, restore RTO 52s, strict restored audit ready; exact disposable stack removed; final production recheck used stale restore env and failed authentication without changing production |

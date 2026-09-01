@@ -74,6 +74,11 @@ done
 }
 
 production_compose=(docker compose -f docker-compose.yml)
+production_env_file="$(pwd)/.env"
+[[ -s "$production_env_file" ]] || {
+    echo "Production Compose environment file is unavailable" >&2
+    exit 3
+}
 if [[ -f /etc/nginx/cloudflare/origin.pem && -f docker-compose.tls.yml ]]; then
     production_compose+=(-f docker-compose.tls.yml)
 fi
@@ -157,6 +162,10 @@ cleanup_done=1
 [[ -z "$(docker ps -aq --filter "label=com.docker.compose.project=$restore_project")" ]]
 
 echo "==> Rechecking production after isolated recovery"
+# restore_database_backup_rehearsal.sh correctly selects the ephemeral restore
+# env for the isolated stack. Reset Compose interpolation explicitly before
+# addressing the production project again.
+export WEB_ENV_FILE="$production_env_file"
 WEB_IMAGE="$audit_image" "${production_compose[@]}" run --rm --no-deps -T \
     --entrypoint python web manage.py serial_only_phase0_audit \
     --include-continuity --strict-serial >"$evidence_dir/production-after.json"
