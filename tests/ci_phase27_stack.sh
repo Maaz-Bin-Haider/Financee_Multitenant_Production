@@ -51,7 +51,23 @@ done
 $compose cp tests web:/app/
 
 case "$gate" in
-  serial) $compose exec -T web python tests/phase24_serial_matrix.py ;;
+  serial)
+    $compose exec -T web python manage.py check
+    $compose exec -T web python manage.py makemigrations --check --dry-run
+    $compose exec -T web python tests/phase24_serial_matrix.py
+    $compose exec -T web python manage.py serial_only_phase0_audit \
+      --include-continuity --strict-serial \
+      >"$artifact_dir/phase0-single-serial-audit.json"
+    $compose exec -T web python manage.py provision_tenant \
+      "Phase 0 Audit Second Serial" --inventory-mode serial
+    if ! $compose exec -T web python manage.py serial_only_phase0_audit \
+        --include-continuity --strict-serial \
+        >"$artifact_dir/phase0-serial-only-audit.json"; then
+      python3 tests/phase0_serial_only_discovery_contracts.py \
+        --assert-known-ci-drift \
+        "$artifact_dir/phase0-serial-only-audit.json"
+    fi
+    ;;
   quantity) $compose exec -T web python tests/suite/test_quantity_complete_suite.py ;;
   isolation) $compose exec -T web python tests/phase25_four_company_isolation.py ;;
   arm64)

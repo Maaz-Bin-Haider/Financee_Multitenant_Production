@@ -32,6 +32,7 @@ jobs:
       - run: python -m compileall -q .
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
+      - run: python tests/phase0_serial_only_discovery_contracts.py
       - run: python tests/phase27_release_gates.py
       - run: bash tests/phase27_rollback_simulation.sh
       - run: python tests/phase28_release_gates.py
