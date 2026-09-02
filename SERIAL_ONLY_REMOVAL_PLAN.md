@@ -27,17 +27,18 @@ explicit production PASS for the current phase.
 
 | Phase | Scope | Implementation | Automated evidence | Manual production verification |
 |---|---|---|---|---|
-| 0 | Production discovery, baseline, and approved test-tenant remediation | Complete | Production strict audit and fresh remote backup PASS; isolated restore pending | **Required — Phase 1 blocked** |
+| 0 | Production discovery, baseline, and approved test-tenant remediation | **PASS** | Production and restored strict audits, fresh remote backup, cleanup, preflight, and health PASS | **PASS — Phase 1 awaits explicit owner instruction** |
 | 1 | Close quantity-company creation | Not started | Not run | Required — Phase 2 blocked |
 | 2 | Remove quantity runtime and replace CI coverage | Not started | Not run | Required — Phase 3 blocked |
 | 3 | Remove quantity database metadata and approved orphan schemas | Not started | Not run | Required — Phase 4 blocked |
 | 4 | Source, documentation, test, and migration hygiene | Not started | Not run | Required — final acceptance |
 
-## Phase 0 — Read-Only Production Discovery
+## Phase 0 — Production Discovery and Approved Test-Tenant Remediation
 
-Phase 0 changes no company, tenant schema, transaction, deployment setting, or
-customer-facing behavior. It adds an operator-only audit command whose database
-transaction is forced to `READ ONLY` by PostgreSQL.
+The discovery command changes no company, tenant schema, transaction,
+deployment setting, or customer-facing behavior; its database transaction is
+forced to `READ ONLY` by PostgreSQL. The separately approved remediation
+retired only the individually classified Company 2 test schema after backup.
 
 ### Implementation checklist
 
@@ -70,7 +71,7 @@ transaction is forced to `READ ONLY` by PostgreSQL.
   function-only bootstrap/template drift and that strict mode fails closed.
 - [x] Pass Django checks and migration-drift checks in the ARM64 production
   image path.
-- [ ] Pass the command against an isolated restored production backup.
+- [x] Pass the command against an isolated restored production backup.
 - [x] Pass strict discovery with continuity against production after retiring
   the individually approved orphan quantity test schema.
 - [x] Review the complete Phase 0 diff: only this plan, the read-only command,
@@ -94,36 +95,36 @@ delete the reported objects. Review each reported company/schema individually.
 The owner must run or supervise the same read-only command against production
 and record:
 
-- [ ] The audited image/source Git SHA is known.
-- [ ] Company count matches the admin's expected company count.
-- [ ] Active/inactive counts are understood.
-- [ ] Every Company row is serial, or every exception is explicitly documented.
-- [ ] Every registered schema exists physically.
-- [ ] No orphan tenant schema exists, or every orphan is documented.
-- [ ] No schema is classified quantity, mixed, or unknown, or every exception
+- [x] The audited image/source Git SHA is known.
+- [x] Company count matches the admin's expected company count.
+- [x] Active/inactive counts are understood.
+- [x] Every Company row is serial, or every exception is explicitly documented.
+- [x] Every registered schema exists physically.
+- [x] No orphan tenant schema exists, or every orphan is documented.
+- [x] No schema is classified quantity, mixed, or unknown, or every exception
   is documented.
-- [ ] Every serial schema reports version 6.
-- [ ] Structural fingerprints are consistent where expected.
-- [ ] Every scanned serial journal is balanced.
-- [ ] Current encrypted backup status passes.
-- [ ] A current backup restores successfully in isolation.
-- [ ] Web, PostgreSQL, Redis, and Nginx remain healthy after the read-only scan.
+- [x] Every serial schema reports version 6.
+- [x] Structural fingerprints are consistent where expected.
+- [x] Every scanned serial journal is balanced.
+- [x] Current encrypted backup status passes.
+- [x] A current backup restores successfully in isolation.
+- [x] Web, PostgreSQL, Redis, and Nginx remain healthy after the read-only scan.
 - [ ] The owner explicitly decides whether Phase 1 may begin.
 
-**Owner Phase 0 result:** `PENDING`
+**Owner Phase 0 result:** `PASS`
 
-**Audited production SHA:** `PENDING`
+**Audited production SHA:** audit image `8f407dea9e488eab8980b48309c064a00db714cd`; recovery workflow `cb8792c21ba252d79e91c0ee3310827ff1884841`
 
-**Verification date/time:** `PENDING`
+**Verification date/time:** `2026-09-02T12:45:08Z`
 
-**Verifier:** `PENDING`
+**Verifier:** system owner and protected production workflow
 
-**Evidence reference:** `PENDING`
+**Evidence reference:** workflow runs `33535608469` and `33631445649`; `tests/PHASE0_SERIAL_ONLY_DISCOVERY_RESULTS.md`
 
-**Exceptions discovered:** `PENDING`
+**Exceptions discovered:** approved quantity test tenant retired; no remaining production exception
 
-Phase 1 remains blocked until the owner changes the Phase 0 result to `PASS`
-and explicitly instructs work to continue.
+Phase 1 is eligible but remains unstarted until the owner explicitly instructs
+work to continue.
 
 ## Later Phases
 
@@ -174,3 +175,5 @@ every environment has reached the required migration leaf.
 | 2026-09-01 | Owner reported the online production system working correctly after retirement | Manual online verification PASS; isolated post-cleanup restore remains required |
 | 2026-09-01 | First post-cleanup recovery run `33536964690` stopped at capacity preflight | Docker free space was below the conservative 3 GiB threshold; no production audit, backup, container, volume, restore, or database command ran |
 | 2026-09-01 | Recovery run `33537295401` restored and verified the post-cleanup estate | Backup `db-backup-20260901T172204Z`, restore RTO 52s, strict restored audit ready; exact disposable stack removed; final production recheck used stale restore env and failed authentication without changing production |
+| 2026-09-02 | Final recovery run `33631445649` | Post-cleanup backup `db-backup-20260902T124354Z`; isolated restore and strict audit PASS; exact disposable cleanup PASS; production strict audit, serial preflight, and HTTP health PASS |
+| 2026-09-02 | Phase 0 gate review | Automated and owner production verification PASS; Phase 1 eligible but not started pending explicit instruction |

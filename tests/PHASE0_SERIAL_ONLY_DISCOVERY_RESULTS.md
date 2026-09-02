@@ -83,11 +83,42 @@ username, password, password-visibility, and sign-in controls.
 
 ## Remaining gates
 
-- The owner must manually verify the real serial production workflow after
-  this change and record an explicit Phase 0 PASS.
-- The fresh recovery release has passed encryption, checksum, remote download,
-  and PostgreSQL archive-catalogue verification. An isolated restore of the
-  current production recovery point remains open and must pass before Phase 1.
 - No test-user account is deleted by deleting a Company row; any orphan user
   account cleanup is a separate identity review and is not authorized here.
 - Phase 1 has not started.
+
+## Post-cleanup isolated recovery verification
+
+The owner reported the live serial system working correctly after retirement.
+Protected workflow run `33631445649` then passed at source
+`cb8792c21ba252d79e91c0ee3310827ff1884841`:
+
+- Host preflight reported 2,826,872 KiB available memory and 2,064,380 KiB
+  available Docker storage; every required image was already local.
+- Production strict Phase 0 discovery passed before backup.
+- A new post-cleanup backup was created and remotely verified as
+  `db-backup-20260902T124354Z`.
+- The published recovery release contains the uploaded 532,512-byte encrypted
+  database bundle and its 108-byte ciphertext-checksum sidecar.
+- The isolated resource-limited restore passed with schema count `2` (`public`
+  plus the one registered tenant) and restore RTO `52` seconds.
+- Strict discovery against the restored database reported one active company,
+  one physical and registered serial schema, serial version `6`, balanced
+  journals, no invalid/missing/orphan schemas, and
+  `ready_for_phase_1: true`.
+- The exact disposable restore containers, volumes, and network were removed.
+- Production strict discovery, serial release preflight, and login-page HTTP
+  health passed after disposable cleanup.
+
+The preceding run `33537295401` had already passed backup, restore, restored
+strict discovery, and disposable cleanup, then failed only because its final
+one-off production audit retained the temporary restore environment. That
+command was rejected by PostgreSQL authentication and did not alter production.
+The corrected workflow explicitly resets Compose to the production env before
+the final recheck and has a regression contract for this boundary.
+
+## Phase 0 result
+
+**PASS.** Production and restored evidence prove the remaining estate is
+serial-only and healthy. Phase 1 is eligible but remains unstarted until the
+owner explicitly instructs work to continue.
