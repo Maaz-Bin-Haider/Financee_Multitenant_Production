@@ -225,7 +225,6 @@ def main():
 
     missing_setup_form = CompanyAdminForm(data={
         "name": f"PHASE4 REQUIRED {time.time_ns()}",
-        "inventory_mode": "serial",
         "is_active": "on",
         "grace_days": "3",
         "warn_days_before": "7",

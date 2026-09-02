@@ -8,7 +8,14 @@ set -euo pipefail
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root_dir"
 
-source_revision="${GITHUB_SHA:-$(git rev-parse HEAD)}"
+if [[ -n "${GITHUB_SHA:-}" ]]; then
+  source_revision="$GITHUB_SHA"
+else
+  source_revision=$(git rev-parse HEAD)
+  if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
+    source_revision="local-working-tree-${source_revision:0:12}"
+  fi
+fi
 short_revision="${source_revision:0:12}"
 image="${PHASE29_IMAGE:-financee-phase29-staging:${source_revision}}"
 project="${PHASE29_COMPOSE_PROJECT:-financee_phase29_${GITHUB_RUN_ID:-$$}}"
@@ -109,14 +116,12 @@ run_gate security-runtime \
   "${compose[@]}" exec -T web python -m unittest tests.test_hardening
 run_gate serial-t4-t5 \
   "${compose[@]}" exec -T web python tests/phase24_serial_matrix.py
-run_gate quantity-t4-t5-uat \
-  "${compose[@]}" exec -T web python tests/suite/test_quantity_complete_suite.py
-run_gate mixed-family-t6-security \
+run_gate serial-only-creation-freeze \
+  "${compose[@]}" exec -T web python tests/phase1_serial_only_creation.py
+run_gate four-serial-t6-security \
   "${compose[@]}" exec -T web python tests/phase25_four_company_isolation.py
-run_gate selected-t7-smoke \
-  "${compose[@]}" exec -T web python tests/phase26_performance_capacity.py \
-    --profile smoke --output /tmp/phase29-t7.json
-"${compose[@]}" cp web:/tmp/phase29-t7.json "$artifact_dir/phase29-t7.json"
+run_gate t7-platform-capacity-preflight \
+  "${compose[@]}" exec -T web python tests/phase26_capacity_preflight.py
 
 run_gate final-release-preflight \
   "${compose[@]}" exec -T web python manage.py release_preflight
@@ -136,9 +141,9 @@ payload = {
     "data_classification": "synthetic-sanitized",
     "coverage": {
         "T4_serial": "PASS",
-        "T5_quantity": "PASS",
-        "T6_mixed_family_isolation": "PASS",
-        "T7_selected_smoke": "PASS",
+        "T5_serial_only_creation": "PASS",
+        "T6_four_serial_isolation": "PASS",
+        "T7_platform_capacity_preflight": "PASS",
         "T8_encrypted_recovery": "enforced-by-recovery-gate",
         "tenant_auth_security": "PASS",
         "wholesaler_workflow_and_reports": "PASS",

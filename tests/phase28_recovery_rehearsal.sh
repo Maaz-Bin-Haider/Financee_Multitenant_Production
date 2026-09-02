@@ -158,13 +158,12 @@ restore_output=$(
 restore_rto=$(printf '%s\n' "$restore_output" | sed -n 's/^RESTORE_RTO_SECONDS=//p')
 [[ "$restore_output" = *"RESTORE_RESULT=PASS"* ]]
 
-echo "==> Applying forward public/tenant migrations and adding quantity family"
+echo "==> Applying forward migrations and proving serial-only creation"
 "${restore_compose[@]}" exec -T web python manage.py migrate --noinput
 "${restore_compose[@]}" exec -T web \
     python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql
 "${restore_compose[@]}" exec -T web \
-    python manage.py provision_tenant "Phase 28 Quantity Restored" \
-    --inventory-mode quantity
+    python manage.py provision_tenant "Phase 28 Forward Serial"
 "${restore_compose[@]}" exec -T web python manage.py release_preflight \
     >"$artifact_dir/forward-preflight.txt"
 
@@ -182,10 +181,21 @@ WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T db psql \
     -U financee -d financee -Atc \
     "SELECT inventory_mode || ':' || count(*) FROM tenancy_company GROUP BY inventory_mode ORDER BY inventory_mode" \
     >"$artifact_dir/old-image-family-check.txt"
-grep -q '^quantity:' "$artifact_dir/old-image-family-check.txt"
 grep -q '^serial:' "$artifact_dir/old-image-family-check.txt"
+if grep -q '^quantity:' "$artifact_dir/old-image-family-check.txt"; then
+    echo "Forward database unexpectedly contains a quantity Company row" >&2
+    exit 1
+fi
+"${restore_compose[@]}" exec -T db psql -U financee -d financee -Atc \
+    "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname='tenancy_company_valid_inventory_mode' AND conrelid='public.tenancy_company'::regclass" \
+    >"$artifact_dir/serial-only-constraint.txt"
+grep -q 'serial' "$artifact_dir/serial-only-constraint.txt"
+if grep -q 'quantity' "$artifact_dir/serial-only-constraint.txt"; then
+    echo "Forward database constraint still permits quantity" >&2
+    exit 1
+fi
 
-echo "==> Returning to current image and rechecking all families"
+echo "==> Returning to current image and rechecking serial tenants"
 WEB_IMAGE="$current_image" "${restore_compose[@]}" up -d --no-deps web
 restore_web=$("${restore_compose[@]}" ps -q web)
 for _ in $(seq 1 90); do

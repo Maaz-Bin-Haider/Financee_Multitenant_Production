@@ -53,10 +53,11 @@ SUBSCRIPTION_UNRESTRICTED = "unrestricted"  # no paid_until set: not enforced
 BLOCKED_STATES = frozenset({SUBSCRIPTION_SUSPENDED, SUBSCRIPTION_BLOCKED})
 
 INVENTORY_MODE_SERIAL = "serial"
+# Kept temporarily for Phase 2 runtime removal. It is no longer a valid value
+# for a Company row or any supported provisioning path.
 INVENTORY_MODE_QUANTITY = "quantity"
 INVENTORY_MODE_CHOICES = (
     (INVENTORY_MODE_SERIAL, "Serial-number based"),
-    (INVENTORY_MODE_QUANTITY, "Quantity based"),
 )
 
 TAX_ENVIRONMENT_TAX = "tax"
@@ -128,11 +129,7 @@ class Company(models.Model):
         max_length=16,
         choices=INVENTORY_MODE_CHOICES,
         default=INVENTORY_MODE_SERIAL,
-        help_text=(
-            "Permanent inventory model for this company. Existing companies "
-            "are serial-number based. Quantity-company provisioning is enabled "
-            "only after its separate schema family is deployed."
-        ),
+        help_text="All companies use serial-number based inventory.",
     )
     base_currency = models.ForeignKey(
         Currency,
@@ -222,10 +219,7 @@ class Company(models.Model):
         ordering = ["name"]
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(inventory_mode__in=[
-                    INVENTORY_MODE_SERIAL,
-                    INVENTORY_MODE_QUANTITY,
-                ]),
+                condition=models.Q(inventory_mode=INVENTORY_MODE_SERIAL),
                 name="tenancy_company_valid_inventory_mode",
             ),
             models.CheckConstraint(
@@ -251,6 +245,12 @@ class Company(models.Model):
 
     def clean(self):
         super().clean()
+        if self.inventory_mode != INVENTORY_MODE_SERIAL:
+            raise ValidationError({
+                "inventory_mode": (
+                    "Only serial-number based companies are supported."
+                )
+            })
         if self.base_currency_id:
             selected_currency = Currency.objects.filter(
                 pk=self.base_currency_id
@@ -272,13 +272,6 @@ class Company(models.Model):
             original = type(self).objects.filter(pk=self.pk).values(
                 "inventory_mode", "base_currency_id", "tax_environment"
             ).first()
-            if original is not None and original["inventory_mode"] != self.inventory_mode:
-                raise ValidationError({
-                    "inventory_mode": (
-                        "Company inventory mode is permanent after creation. "
-                        "A schema conversion requires a separate migration project."
-                    )
-                })
             setup_changed = original is not None and (
                 original["base_currency_id"] != self.base_currency_id
                 or original["tax_environment"] != self.tax_environment
@@ -309,10 +302,8 @@ class Company(models.Model):
         The post_save signal — which provisions the physical schema — fires on
         the *second* save, by which point schema_name is populated.
         """
-        # ModelForm calls full_clean(), but programmatic saves must not be able
-        # to bypass the two Phase 3 safety rules: quantity provisioning remains
-        # disabled until Phase 5, and an existing company's schema family is
-        # immutable.
+        # ModelForm calls full_clean(), but programmatic saves must not bypass
+        # the serial-only registry invariant or the accounting-setup locks.
         self.clean()
 
         creating = self._state.adding and not self.schema_name

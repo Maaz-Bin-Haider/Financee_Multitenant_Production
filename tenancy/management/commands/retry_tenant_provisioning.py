@@ -3,6 +3,7 @@
 from django.core.management.base import BaseCommand, CommandError
 
 from tenancy.models import (
+    INVENTORY_MODE_SERIAL,
     PROVISIONING_FAILED,
     PROVISIONING_PENDING,
     PROVISIONING_READY,
@@ -23,6 +24,8 @@ class Command(BaseCommand):
             company = Company.objects.get(pk=options["company_id"])
         except Company.DoesNotExist as exc:
             raise CommandError("Company does not exist.") from exc
+        if company.inventory_mode != INVENTORY_MODE_SERIAL:
+            raise CommandError("Only serial company provisioning can be retried.")
         if company.provisioning_state not in {
             PROVISIONING_PENDING,
             PROVISIONING_FAILED,

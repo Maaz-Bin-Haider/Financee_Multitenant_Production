@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ARM64 startup, migration, provisioning, family and HTTP smoke."""
+"""ARM64 startup, serial-only provisioning and HTTP smoke."""
 from __future__ import annotations
 
 import os
@@ -16,8 +16,9 @@ django.setup()
 
 from django.db import connection  # noqa: E402
 from django.core.management import call_command  # noqa: E402
+from django.core.exceptions import ValidationError  # noqa: E402
 from django.test import Client  # noqa: E402
-from tenancy.models import Company, Currency  # noqa: E402
+from tenancy.models import Company, Currency, INVENTORY_MODE_SERIAL  # noqa: E402
 from tenancy.schema_verification import verify_company_schema  # noqa: E402
 
 
@@ -28,29 +29,42 @@ def main():
                    platform.machine().lower() in {"aarch64", "arm64"}))
     currency = Currency.objects.get(pk="PKR")
     try:
-        for family in ("serial", "quantity"):
+        for index in range(2):
             company = Company.objects.create(
-                name=f"PHASE27 ARM64 {family} {time.time_ns()}",
-                inventory_mode=family, base_currency=currency,
+                name=f"PHASE27 ARM64 SERIAL {index} {time.time_ns()}",
+                inventory_mode=INVENTORY_MODE_SERIAL, base_currency=currency,
                 tax_environment="non_tax",
             )
             companies.append(company)
             company.refresh_from_db()
             verification = verify_company_schema(company, use_cache=False)
-            checks.append((f"{family} tenant provisions and verifies", verification.ok))
+            checks.append((
+                f"serial tenant {index + 1} provisions and verifies",
+                verification.ok and verification.family == INVENTORY_MODE_SERIAL,
+            ))
+        try:
+            Company(
+                name=f"PHASE27 ARM64 BLOCK {time.time_ns()}",
+                inventory_mode="quantity",
+                base_currency=currency,
+            ).full_clean()
+            quantity_blocked = False
+        except ValidationError:
+            quantity_blocked = True
+        checks.append(("quantity company creation is rejected", quantity_blocked))
         response = Client(SERVER_NAME="localhost").get("/authentication/login/")
         checks.append(("HTTP login smoke", response.status_code == 200))
         try:
             call_command(
                 "release_preflight",
-                require_family=["serial", "quantity"],
+                require_family=["serial"],
                 verbosity=0,
             )
             preflight_ok = True
         except Exception as exc:
             print(f"release preflight error: {exc}")
             preflight_ok = False
-        checks.append(("mixed-family release preflight", preflight_ok))
+        checks.append(("serial-only release preflight", preflight_ok))
     finally:
         with connection.cursor() as cursor:
             cursor.execute("SET search_path TO public")

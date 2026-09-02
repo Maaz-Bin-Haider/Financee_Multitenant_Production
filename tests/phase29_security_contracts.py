@@ -56,10 +56,12 @@ checks = {
         and "An unexpected error occurred." in security,
     "rate limits include tenant identity":
         'return f"rl:{key_prefix}:{tenant}:{identity}:{bucket}"' in security,
-    "company inventory family is immutable":
-        'original["inventory_mode"] != self.inventory_mode' in company,
-    "company admin locks inventory family":
-        'fields.append("inventory_mode")' in admin,
+    "company registry is serial only":
+        "self.inventory_mode != INVENTORY_MODE_SERIAL" in company
+        and "condition=models.Q(inventory_mode=INVENTORY_MODE_SERIAL)" in company,
+    "company admin hides inventory family":
+        '"inventory_mode",' in admin.split("exclude = (", 1)[1].split(")", 1)[0]
+        and '"inventory_mode"' not in admin.split("list_display = (", 1)[1].split(")", 1)[0],
     "release verifies every tenant and safe report":
         "for company in companies" in preflight
         and "get_trial_balance_json" in preflight,

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-gate="${1:?gate required: serial|quantity|isolation|arm64|full}"
+gate="${1:?gate required: serial|creation-freeze|isolation|arm64|full}"
 compose="docker compose -f deploy/docker-compose.yml"
 artifact_dir="${GITHUB_WORKSPACE:-.}/phase27-artifacts/$gate"
 mkdir -p "$artifact_dir"
@@ -59,7 +59,7 @@ case "$gate" in
       --include-continuity --strict-serial \
       >"$artifact_dir/phase0-single-serial-audit.json"
     $compose exec -T web python manage.py provision_tenant \
-      "Phase 0 Audit Second Serial" --inventory-mode serial
+      "Phase 0 Audit Second Serial"
     if ! $compose exec -T web python manage.py serial_only_phase0_audit \
         --include-continuity --strict-serial \
         >"$artifact_dir/phase0-serial-only-audit.json"; then
@@ -68,7 +68,7 @@ case "$gate" in
         "$artifact_dir/phase0-serial-only-audit.json"
     fi
     ;;
-  quantity) $compose exec -T web python tests/suite/test_quantity_complete_suite.py ;;
+  creation-freeze) $compose exec -T web python tests/phase1_serial_only_creation.py ;;
   isolation) $compose exec -T web python tests/phase25_four_company_isolation.py ;;
   arm64)
     $compose exec -T web python tests/phase27_arm64_smoke.py

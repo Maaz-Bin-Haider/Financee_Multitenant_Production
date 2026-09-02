@@ -22,7 +22,9 @@ checks = {
     "restore verifies media": "RESTORE_MEDIA_SENTINEL" in restore,
     "RTO measured": "RESTORE_RTO_SECONDS" in restore,
     "forward public migration rehearsed": "manage.py migrate --noinput" in rehearsal,
-    "quantity provisioned after restore": "--inventory-mode quantity" in rehearsal,
+    "serial-only forward registry rehearsed":
+        "Phase 28 Forward Serial" in rehearsal
+        and "tenancy_company_valid_inventory_mode" in rehearsal,
     "old image compatibility rehearsed": "PHASE28_OLD_IMAGE" in rehearsal,
     "failed health rollback rehearsed": "phase27_rollback_simulation.sh" in rehearsal,
     "RPO documented": "RPO" in runbook and "created_at_utc" in runbook,

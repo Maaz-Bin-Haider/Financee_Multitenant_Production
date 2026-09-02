@@ -17,7 +17,7 @@ publish_needs = (
 mandatory_publish_gates = {
     "checks",
     "serial-gate",
-    "quantity-gate",
+    "creation-freeze-gate",
     "isolation-gate",
     "arm64-smoke",
     "full-regression",
@@ -26,8 +26,9 @@ mandatory_publish_gates = {
 
 checks = {
     "serial CI stage": "serial-gate:" in workflow,
-    "quantity CI stage": "quantity-gate:" in workflow,
-    "isolation CI stage": "isolation-gate:" in workflow,
+    "serial-only creation CI stage": "creation-freeze-gate:" in workflow,
+    "four-serial isolation CI stage": "isolation-gate:" in workflow
+        and "Four-serial-company isolation gate" in workflow,
     "ARM64 execution stage": "arm64-smoke:" in workflow,
     "publish depends on mandatory gates":
         mandatory_publish_gates <= publish_needs,

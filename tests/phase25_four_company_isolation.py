@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 25: certify concurrent isolation across two serial and two quantity tenants."""
+"""Certify concurrent isolation across four serial-only tenants."""
 from __future__ import annotations
 
 import json
@@ -350,8 +350,8 @@ def main():
         modes = (
             (INVENTORY_MODE_SERIAL, "SA"),
             (INVENTORY_MODE_SERIAL, "SB"),
-            (INVENTORY_MODE_QUANTITY, "QA"),
-            (INVENTORY_MODE_QUANTITY, "QB"),
+            (INVENTORY_MODE_SERIAL, "SC"),
+            (INVENTORY_MODE_SERIAL, "SD"),
         )
         for mode, suffix in modes:
             company = Company.objects.create(
@@ -366,31 +366,25 @@ def main():
             companies.append(company)
             users.append(user)
 
-        chk("T6 provisions two serial and two quantity companies",
-            [c.inventory_mode for c in companies].count(INVENTORY_MODE_SERIAL) == 2
-            and [c.inventory_mode for c in companies].count(INVENTORY_MODE_QUANTITY) == 2
+        chk("T6 provisions four serial companies",
+            [c.inventory_mode for c in companies].count(INVENTORY_MODE_SERIAL) == 4
             and all(c.provisioning_state == PROVISIONING_READY for c in companies))
-        chk("all four schema families verify before concurrency",
+        chk("all four serial schemas verify before concurrency",
             all(verify_company_schema(c, use_cache=False).ok for c in companies))
 
         jobs = []
         with ThreadPoolExecutor(max_workers=4) as pool:
             for company, user, (_, suffix) in zip(companies, users, modes):
-                fn = quantity_lifecycle if company.inventory_mode == INVENTORY_MODE_QUANTITY else serial_lifecycle
-                jobs.append(pool.submit(fn, company, user, suffix))
+                jobs.append(pool.submit(serial_lifecycle, company, user, suffix))
             states = [future.result() for future in as_completed(jobs)]
         state_by_suffix = {state["suffix"]: state for state in states}
         chk("all four simultaneous business lifecycles complete", len(states) == 4)
         chk("every concurrent tenant journal remains balanced",
             all(state["trial"] in ("0", "0.00", "0.0000") for state in states),
             [(s["suffix"], s["trial"]) for s in states])
-        chk("quantity purchases, sales, returns, transfers and counts reconcile",
-            all(float(state["balance"]) == 7 and not state["report_failures"]
-                for state in states if state["mode"] == "quantity"),
-            states)
         chk("serial purchases, sales and returns retain independent stock",
-            all(state["stock"] == 2 and state["report"]
-                for state in states if state["mode"] == "serial"), states)
+            all(state["mode"] == "serial" and state["stock"] == 2
+                and state["report"] for state in states), states)
         chk("independent worker connections reset to public",
             all(state["schema_after"] == "public" for state in states), states)
 
@@ -434,7 +428,7 @@ def main():
         mismatch = Company(
             pk=companies[2].pk, name=companies[2].name,
             schema_name=companies[2].schema_name,
-            inventory_mode=INVENTORY_MODE_SERIAL,
+            inventory_mode=INVENTORY_MODE_QUANTITY,
             base_currency=companies[2].base_currency,
             tax_environment=companies[2].tax_environment,
         )

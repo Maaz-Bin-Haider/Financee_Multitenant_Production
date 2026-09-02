@@ -33,6 +33,7 @@ jobs:
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
       - run: python tests/phase0_serial_only_discovery_contracts.py
+      - run: python tests/phase1_serial_only_creation_contracts.py
       - run: python tests/phase27_release_gates.py
       - run: bash tests/phase27_rollback_simulation.sh
       - run: python tests/phase28_release_gates.py
@@ -57,21 +58,21 @@ jobs:
           name: serial-gate-failure
           path: phase27-artifacts/serial
 
-  quantity-gate:
-    name: Quantity complete-suite gate
+  creation-freeze-gate:
+    name: Serial-only company creation gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: chmod +x tests/ci_phase27_stack.sh
-      - run: tests/ci_phase27_stack.sh quantity
+      - run: tests/ci_phase27_stack.sh creation-freeze
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: quantity-gate-failure
-          path: phase27-artifacts/quantity
+          name: creation-freeze-gate-failure
+          path: phase27-artifacts/creation-freeze
 
   isolation-gate:
-    name: Four-company isolation gate
+    name: Four-serial-company isolation gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -111,7 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Dedicated serial/quantity/isolation jobs are the mandatory focused
+      # Dedicated serial/creation-freeze/isolation jobs are mandatory focused
       # gates. Run the aggregate suite once on one health-checked clean stack.
       - name: Run complete suite
         run: |
@@ -164,7 +165,7 @@ jobs:
   staging-release-approval:
     name: Product, engineering & operations staging approval
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [staging-security-gate, serial-gate, quantity-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate]
+    needs: [staging-security-gate, serial-gate, creation-freeze-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate]
     runs-on: ubuntu-latest
     environment: staging-release-approval
     steps:
@@ -176,7 +177,7 @@ jobs:
   publish:
     name: Publish signed-off multi-architecture image
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [checks, serial-gate, quantity-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate, staging-security-gate, staging-release-approval]
+    needs: [checks, serial-gate, creation-freeze-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate, staging-security-gate, staging-release-approval]
     runs-on: ubuntu-latest
     permissions:
       contents: read

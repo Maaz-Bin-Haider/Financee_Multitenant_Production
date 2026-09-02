@@ -16,7 +16,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from tenancy.models import (
-    INVENTORY_MODE_CHOICES,
+    INVENTORY_MODE_SERIAL,
     TAX_ENVIRONMENT_CHOICES,
     Company,
     Currency,
@@ -31,12 +31,6 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("name", help="Company / tenant display name.")
-        parser.add_argument(
-            "--inventory-mode",
-            choices=[value for value, _ in INVENTORY_MODE_CHOICES],
-            default="serial",
-            help="Tenant schema family (default: serial).",
-        )
         parser.add_argument(
             "--owner",
             dest="owner",
@@ -61,7 +55,6 @@ class Command(BaseCommand):
         owner_username = options["owner"]
         base_currency_code = options["base_currency"].strip().upper()
         tax_environment = options["tax_environment"]
-        inventory_mode = options["inventory_mode"]
 
         if Company.objects.filter(name=name).exists():
             raise CommandError(f"A company named {name!r} already exists.")
@@ -94,7 +87,7 @@ class Command(BaseCommand):
             # physical schema from tenant_template.sql.
             company = Company.objects.create(
                 name=name,
-                inventory_mode=inventory_mode,
+                inventory_mode=INVENTORY_MODE_SERIAL,
                 base_currency=base_currency,
                 tax_environment=tax_environment,
             )

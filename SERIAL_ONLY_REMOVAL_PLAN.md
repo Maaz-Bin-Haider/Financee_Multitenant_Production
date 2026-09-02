@@ -27,8 +27,8 @@ explicit production PASS for the current phase.
 
 | Phase | Scope | Implementation | Automated evidence | Manual production verification |
 |---|---|---|---|---|
-| 0 | Production discovery, baseline, and approved test-tenant remediation | **PASS** | Production and restored strict audits, fresh remote backup, cleanup, preflight, and health PASS | **PASS — Phase 1 awaits explicit owner instruction** |
-| 1 | Close quantity-company creation | Not started | Not run | Required — Phase 2 blocked |
+| 0 | Production discovery, baseline, and approved test-tenant remediation | **PASS** | Production and restored strict audits, fresh remote backup, cleanup, preflight, and health PASS | **PASS** |
+| 1 | Close quantity-company creation | **Candidate locally verified** | Local static, serial, creation, isolation, ARM64, full, recovery, and staging gates PASS; protected exact-SHA CI pending | Required — Phase 2 blocked |
 | 2 | Remove quantity runtime and replace CI coverage | Not started | Not run | Required — Phase 3 blocked |
 | 3 | Remove quantity database metadata and approved orphan schemas | Not started | Not run | Required — Phase 4 blocked |
 | 4 | Source, documentation, test, and migration hygiene | Not started | Not run | Required — final acceptance |
@@ -109,7 +109,7 @@ and record:
 - [x] Current encrypted backup status passes.
 - [x] A current backup restores successfully in isolation.
 - [x] Web, PostgreSQL, Redis, and Nginx remain healthy after the read-only scan.
-- [ ] The owner explicitly decides whether Phase 1 may begin.
+- [x] The owner explicitly decides whether Phase 1 may begin.
 
 **Owner Phase 0 result:** `PASS`
 
@@ -123,8 +123,7 @@ and record:
 
 **Exceptions discovered:** approved quantity test tenant retired; no remaining production exception
 
-Phase 1 is eligible but remains unstarted until the owner explicitly instructs
-work to continue.
+Phase 1 was explicitly started by the owner on 2026-09-02.
 
 ## Later Phases
 
@@ -133,6 +132,26 @@ work to continue.
 Remove quantity selection from admin and supported provisioning commands, force
 new companies to serial, and add the serial-only database constraint only after
 Phase 0 proves the production registry contains no conflicting rows.
+
+#### Implementation checklist
+
+- [x] Hide inventory mode from company add/change forms, lists, and filters.
+- [x] Expose serial as the only model choice and reject non-serial model saves.
+- [x] Remove `--inventory-mode` from `provision_tenant` and assign serial explicitly.
+- [x] Reject non-serial low-level and retry provisioning paths.
+- [x] Add a fail-closed migration precondition before replacing the database
+  check constraint with an exact serial-only constraint.
+- [x] Replace active quantity-company CI creation with a creation-freeze gate.
+- [x] Convert mandatory mixed-family isolation and ARM64 creation smokes to
+  serial-only operation without deleting quantity runtime source.
+- [x] Preserve encrypted restore and previous-image compatibility rehearsal on
+  the forward serial-only database.
+- [x] Pass local static, Django, migration, live PostgreSQL, serial regression,
+  four-serial isolation, recovery, staging, and ARM64 gates.
+- [x] Review the complete diff and verify no serial business runtime behavior
+  or serial tenant SQL was changed.
+- [ ] Push the exact reviewed commit and pass protected CI/CD.
+- [ ] Owner manually verifies production and records Phase 1 PASS.
 
 ### Phase 2 — Runtime Removal
 
@@ -177,3 +196,5 @@ every environment has reached the required migration leaf.
 | 2026-09-01 | Recovery run `33537295401` restored and verified the post-cleanup estate | Backup `db-backup-20260901T172204Z`, restore RTO 52s, strict restored audit ready; exact disposable stack removed; final production recheck used stale restore env and failed authentication without changing production |
 | 2026-09-02 | Final recovery run `33631445649` | Post-cleanup backup `db-backup-20260902T124354Z`; isolated restore and strict audit PASS; exact disposable cleanup PASS; production strict audit, serial preflight, and HTTP health PASS |
 | 2026-09-02 | Phase 0 gate review | Automated and owner production verification PASS; Phase 1 eligible but not started pending explicit instruction |
+| 2026-09-02 | Owner explicitly instructed “Start Phase 1” | Phase 1 creation freeze started; production unchanged pending all gates and protected approval |
+| 2026-09-02 | Phase 1 local candidate validation | Static/release contracts 90/90; serial 51/51; creation freeze 15/15; isolation 16/16; full suite, ARM64, recovery, and staging PASS; production unchanged |

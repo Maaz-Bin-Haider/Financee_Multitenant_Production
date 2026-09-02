@@ -474,9 +474,11 @@ flowchart LR
 
 ---
 
-## 🔀 The two schema families
+## 🔀 Serial-only schema transition
 
-Financee ships **two independent tenant schema families**, chosen by an **immutable `inventory_mode`** at company creation:
+Financee provisions the **serial schema family only**. The quantity column below
+documents legacy source that remains temporarily during the phased removal; it
+cannot be selected or provisioned for a Company.
 
 | | 📱 **Serial family** | 📦 **Quantity family** |
 |---|---|---|
@@ -485,10 +487,12 @@ Financee ships **two independent tenant schema families**, chosen by an **immuta
 | **Precision** | 1 unit | `numeric(18,3)`; Pieces/Boxes whole, Kg/g/L/m up to 3 dp |
 | **Warehouses** | Single | Multi-warehouse + transfers + physical counts |
 | **Tax / currency** | Base | Inclusive/exclusive tax, discounts, multi-currency + realized FX gain/loss |
-| **Status** | ✅ **3 live paying companies** | 🚧 Fully built (schema **v22**), route-gated, awaiting pilot rollout |
+| **Status** | ✅ Production registry verified serial-only | Removal in progress; no production tenant |
 | **Template** | `tenant_template.sql` (v6) | `quantity_tenant_template.sql` (v22) |
 
-Both families share the identical **journal / chart-of-accounts / ledger** backbone — only inventory representation differs. Serial behavior is frozen and regression-guarded on every CI run while quantity work proceeds.
+New companies are **serial-only**. Quantity-company creation is blocked in the
+admin, model, provisioning commands, and public database constraint while the
+remaining inactive quantity runtime is removed in later consolidation phases.
 
 ---
 
@@ -531,14 +535,14 @@ Full step-by-step (fresh EC2 → running stack → CI/CD → HTTPS) is in **`DEP
 flowchart TB
     P[push / PR] --> CH[✅ checks<br/>compile · django check · missing-migration guard<br/>phase 27–30 release contracts · backup contracts]
     P --> SG[🧪 serial-gate]
-    P --> QG[🧪 quantity-gate]
-    P --> IG[🧪 isolation-gate<br/>4-company leakage]
+    P --> CFG[🧪 creation-freeze-gate<br/>serial-only at every creation boundary]
+    P --> IG[🧪 isolation-gate<br/>4 serial companies · leakage]
     P --> AS[💪 arm64-smoke<br/>build + run under ARM64]
     P --> FR[🧪 full-regression]
     P --> RG[🔐 recovery-gate<br/>encrypted backup + restore + rollback]
 
     CH & RG --> SS[🛡️ staging-security-gate<br/>exact-image staging + 18 contracts + UAT]
-    SS & SG & QG & IG & AS & FR --> AP{{"🧑‍⚖️ staging-release-approval<br/>protected environment (main only)"}}
+    SS & SG & CFG & IG & AS & FR --> AP{{"🧑‍⚖️ staging-release-approval<br/>protected environment (main only)"}}
     AP --> PUB[📦 publish<br/>multi-arch image → GHCR<br/>tag = commit SHA + latest]
     PUB --> DEP{{"🚀 deploy to EC2<br/>manual approval · DEPLOY_ENABLED=true"}}
     DEP --> SH[phase30_foundation_deploy.sh<br/>SHA-pinned pull · recreate · health-check<br/>auto-rollback on failure · tenant SQL]
@@ -550,7 +554,9 @@ flowchart TB
 ```
 
 1. **checks** — compile, `manage.py check`, `makemigrations --check` (fails if a model change lacks its migration), phase release-contract gates, backup contracts, `pip check`.
-2. **Parallel gates** — serial regression, quantity complete-suite, four-company isolation, **ARM64 execution smoke**, full production-stack regression, and encrypted backup/restore/rollback rehearsal.
+2. **Parallel gates** — serial regression, serial-only creation freeze,
+   four-serial-company isolation, **ARM64 execution smoke**, full active serial
+   production-stack regression, and encrypted backup/restore/rollback rehearsal.
 3. **staging-security-gate** — boots an isolated production-like stack, verifies exact-source image identity, runs 18 static security contracts + UAT.
 4. **staging-release-approval** — a **protected GitHub environment** (product/eng/ops sign-off) on `main` pushes only.
 5. **publish** — the *exact tested* multi-arch image (`linux/amd64` + `linux/arm64`) is pushed to **GHCR** tagged with the commit SHA + `latest`.

@@ -92,11 +92,19 @@ def _platform_contracts(existing_company):
         path = reverse(name, kwargs=kwargs)
         routes[name] = resolve(path).url_name is not None
     company_admin = CompanyAdmin(Company, admin.site)
-    readonly = set(company_admin.get_readonly_fields(None, existing_company))
+    inventory_mode_hidden = (
+        "inventory_mode" not in company_admin.form.base_fields
+        and all(
+            "inventory_mode" not in fieldset[1].get("fields", ())
+            for fieldset in company_admin.fieldsets
+        )
+    )
     user_model = get_user_model()
     return {
         "routes": routes,
-        "inventory_mode_admin_locked": "inventory_mode" in readonly,
+        # Preserve the evidence key consumed by the Phase 30 deployment
+        # controller; hidden is stricter than the previous read-only field.
+        "inventory_mode_admin_locked": inventory_mode_hidden,
         "active_user_count": user_model.objects.filter(is_active=True).count(),
         "membership_count": Membership.objects.count(),
         "subscription_states_valid": all(

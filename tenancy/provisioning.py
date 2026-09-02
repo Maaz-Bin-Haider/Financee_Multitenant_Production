@@ -4,6 +4,7 @@ from django.db import connection, transaction
 
 from .models import (
     INVENTORY_MODE_QUANTITY,
+    INVENTORY_MODE_SERIAL,
     PROVISIONING_FAILED,
     PROVISIONING_PROVISIONING,
     PROVISIONING_READY,
@@ -88,6 +89,8 @@ def provision_schema(
 ) -> bool:
     """Create one physical tenant schema from its registered family template."""
     validate_schema_name(schema_name)
+    if family != INVENTORY_MODE_SERIAL:
+        raise ValueError("only serial tenant provisioning is supported")
     definition = schema_family(family)
 
     if not force and schema_has_tables(schema_name):
@@ -127,6 +130,8 @@ def provision_company(company: Company) -> bool:
     """Provision a company and persist a sanitized operational state."""
     if not company.schema_name:
         return False
+    if company.inventory_mode != INVENTORY_MODE_SERIAL:
+        raise ValueError("only serial companies can be provisioned")
     Company.objects.filter(pk=company.pk).update(
         provisioning_state=PROVISIONING_PROVISIONING,
         provisioning_error_code="",

@@ -34,7 +34,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 
 from tenancy.models import (
-    Company, INVENTORY_MODE_CHOICES, INVENTORY_MODE_QUANTITY,
+    Company, INVENTORY_MODE_QUANTITY, INVENTORY_MODE_SERIAL,
 )
 from tenancy.schema_families import family_for_sql_file, schema_family
 from tenancy.schema_verification import verify_company_schema
@@ -52,7 +52,9 @@ class Command(BaseCommand):
         parser.add_argument("sql_file", help="Path to the .sql file to execute.")
         parser.add_argument(
             "--family",
-            choices=[value for value, _label in INVENTORY_MODE_CHOICES],
+            # Phase 1 closes Company creation only. Keep both legacy rollout
+            # families until the entrypoint/runtime removal in Phase 2.
+            choices=[INVENTORY_MODE_SERIAL, INVENTORY_MODE_QUANTITY],
             default=None,
             help=(
                 "Target schema family. Must agree with the controlled SQL "

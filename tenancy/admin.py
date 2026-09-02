@@ -140,6 +140,7 @@ class _CompanyAdminFormBase(forms.ModelForm):
         model = Company
         exclude = (
             "disabled_features",
+            "inventory_mode",
             "provisioning_state",
             "provisioning_error_code",
         )
@@ -153,12 +154,6 @@ class _CompanyAdminFormBase(forms.ModelForm):
                     Q(is_active=True) | Q(pk=self.instance.base_currency_id)
                 )
             self.fields["base_currency"].queryset = currencies.order_by("code")
-        if not self.instance.pk:
-            self.fields["inventory_mode"].help_text = (
-                "Serial-number based is the only provisionable mode currently. "
-                "Quantity based is visible for the approved future schema family "
-                "but cannot be saved until Phase 5 enables provisioning."
-            )
         if self.instance.pk:
             disabled = set(self.instance.disabled_features or [])
             for key in all_feature_keys():
@@ -205,7 +200,6 @@ class CompanyAdmin(admin.ModelAdmin):
     form = CompanyAdminForm
     list_display = (
         "name",
-        "inventory_mode",
         "base_currency",
         "tax_environment",
         "provisioning_state",
@@ -218,7 +212,7 @@ class CompanyAdmin(admin.ModelAdmin):
         "created_at",
     )
     list_filter = (
-        "inventory_mode", "base_currency", "tax_environment",
+        "base_currency", "tax_environment",
         "is_active", "is_suspended",
     )
     search_fields = ("name", "schema_name")
@@ -231,13 +225,13 @@ class CompanyAdmin(admin.ModelAdmin):
             "Company setup",
             {
                 "fields": (
-                    "name", "inventory_mode", "base_currency",
+                    "name", "base_currency",
                     "tax_environment", "schema_name", "is_active", "created_at",
                     "provisioning_state", "provisioning_error_code",
                 ),
                 "description": (
-                    "Inventory mode is permanent after creation. Base currency "
-                    "and tax environment can be corrected only before the "
+                    "All companies use serial-number based inventory. Base "
+                    "currency and tax environment can be corrected only before the "
                     "company has financial activity."
                 ),
             },
@@ -262,7 +256,6 @@ class CompanyAdmin(admin.ModelAdmin):
         fields = list(super().get_readonly_fields(request, obj))
         fields.extend(("provisioning_state", "provisioning_error_code"))
         if obj is not None:
-            fields.append("inventory_mode")
             if obj.has_financial_activity():
                 fields.extend(("base_currency", "tax_environment"))
         return tuple(fields)
