@@ -4,20 +4,22 @@
 
 **Production target:** AWS EC2 `t4g.medium`, ARM64, `ap-south-1`
 
-**Candidate tested:** uncommitted local working tree based on
-`0f008141423890d5c69ca32ca7b6a3a6e92f8e4b`
+**Deployed commit:** `102e55e857bbffa8bd4318e6afaec42e048c8e67`
 
-**Production changed:** No
+**Protected workflow:** `33636045130`
+
+**Production deployment:** PASS
+
+**Owner manual production verification:** PASS — 2026-09-02
 
 ## Outcome
 
-The Phase 1 candidate is locally ready for exact-commit protected CI/CD. New
-Company rows are serial-only at every supported creation boundary and at the
-PostgreSQL constraint. Existing serial schema version 6 and business behavior
-were not changed.
-
-Phase 1 is not complete: the candidate has not been pushed or deployed, and the
-owner's required manual production verification remains pending.
+Phase 1 is complete. New Company rows are serial-only at every supported
+creation boundary and at the PostgreSQL constraint. Exact commit `102e55e` was
+pushed, passed the protected CI/CD workflow, deployed to the ARM64 production
+host, and passed its post-deployment checks without rollback. The owner then
+manually verified that the production site is working properly. Phase 2 remains
+unstarted and requires a separate explicit owner instruction.
 
 ## Implemented controls
 
@@ -53,6 +55,9 @@ owner's required manual production verification remains pending.
 | ARM64 container smoke | **6/6 PASS** |
 | Encrypted backup/restore/old-image/rollback rehearsal | **PASS** |
 | Production-like staging/UAT/capacity preflight | **PASS** |
+| Exact-SHA protected CI/CD workflow `33636045130` | **PASS** |
+| ARM64 production deployment and post-deploy checks | **PASS — no rollback** |
+| Owner manual production verification | **PASS** |
 
 The full suite included per-tenant serial party, item, purchase, sale, return,
 cash, opening, equity, close, and report modules; 208 attachment checks; 40
@@ -67,11 +72,26 @@ tenant, and proved the previous image
 serial-only database. Total rehearsal time was 179 seconds; all disposable
 Compose projects and volumes were removed.
 
-The final staging run labeled the image
+The preliminary staging run labeled the image
 `local-working-tree-0f0081414238`, explicitly preventing uncommitted code from
-being represented as an exact commit. Serial continuity was unchanged before
-and after idempotent hardening, PostgreSQL/Redis health passed, and the
-100-session connection/capacity preflight passed.
+being represented as an exact commit. The final exact-commit staging and
+protected workflow then tested and deployed `102e55e`. Serial continuity was
+unchanged before and after idempotent hardening, PostgreSQL/Redis health passed,
+and the 100-session connection/capacity preflight passed.
+
+## Protected production evidence
+
+- GitHub workflow `33636045130` passed every required static, serial creation,
+  serial isolation, full regression, recovery, staging, ARM64, publication, and
+  protected deployment job.
+- The deployment pulled the SHA-pinned ARM64 image for `102e55e`; it did not
+  build on the EC2 host.
+- The remaining registered production tenant was serial schema version 6 before
+  and after deployment, with matching continuity evidence.
+- PostgreSQL, Redis, Nginx, and the web health path passed after deployment.
+- The deployment completed without invoking automatic rollback.
+- After all automated gates passed, the system owner manually visited the live
+  site and reported: “this site is working properly.”
 
 ## Failure encountered and resolved
 
@@ -82,12 +102,10 @@ production system was involved. The parser was separated from Company creation
 choices, preserving the legacy runtime boundary until Phase 2. The corrected
 container startup and every subsequent gate passed.
 
-## Required next gates
+## Exit status
 
-1. Review and commit the exact Phase 1 diff.
-2. Obtain explicit owner authorization before pushing to GitHub `main`.
-3. Pass GitHub's exact-SHA checks, serial creation, serial isolation, ARM64,
-   full regression, recovery, staging approval, image publication, and
-   protected production deployment.
-4. Owner manually verifies the real production system and records Phase 1
-   PASS. Phase 2 remains blocked until that record exists.
+**PASS — Phase 1 complete.**
+
+The Phase 1 implementation, protected deployment, automated production checks,
+and mandatory owner verification are complete. Phase 2 has not started and may
+begin only after a separate explicit instruction from the owner.

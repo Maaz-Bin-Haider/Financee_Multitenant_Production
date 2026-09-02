@@ -28,7 +28,7 @@ explicit production PASS for the current phase.
 | Phase | Scope | Implementation | Automated evidence | Manual production verification |
 |---|---|---|---|---|
 | 0 | Production discovery, baseline, and approved test-tenant remediation | **PASS** | Production and restored strict audits, fresh remote backup, cleanup, preflight, and health PASS | **PASS** |
-| 1 | Close quantity-company creation | **Candidate locally verified** | Local static, serial, creation, isolation, ARM64, full, recovery, and staging gates PASS; protected exact-SHA CI pending | Required — Phase 2 blocked |
+| 1 | Close quantity-company creation | **PASS** | Local gates and protected exact-SHA workflow `33636045130` PASS; production deployed without rollback | **PASS** |
 | 2 | Remove quantity runtime and replace CI coverage | Not started | Not run | Required — Phase 3 blocked |
 | 3 | Remove quantity database metadata and approved orphan schemas | Not started | Not run | Required — Phase 4 blocked |
 | 4 | Source, documentation, test, and migration hygiene | Not started | Not run | Required — final acceptance |
@@ -150,8 +150,22 @@ Phase 0 proves the production registry contains no conflicting rows.
   four-serial isolation, recovery, staging, and ARM64 gates.
 - [x] Review the complete diff and verify no serial business runtime behavior
   or serial tenant SQL was changed.
-- [ ] Push the exact reviewed commit and pass protected CI/CD.
-- [ ] Owner manually verifies production and records Phase 1 PASS.
+- [x] Push exact commit `102e55e857bbffa8bd4318e6afaec42e048c8e67`
+  and pass protected CI/CD workflow `33636045130`.
+- [x] Owner manually verifies production and records Phase 1 PASS.
+
+**Owner Phase 1 result:** `PASS`
+
+**Deployed production SHA:** `102e55e857bbffa8bd4318e6afaec42e048c8e67`
+
+**Verification date:** `2026-09-02`
+
+**Verifier:** system owner and protected production workflow
+
+**Evidence reference:** workflow run `33636045130` and
+`tests/PHASE1_SERIAL_ONLY_CREATION_RESULTS.md`
+
+Phase 2 remains unstarted and requires a separate explicit owner instruction.
 
 ### Phase 2 — Runtime Removal
 
@@ -198,3 +212,5 @@ every environment has reached the required migration leaf.
 | 2026-09-02 | Phase 0 gate review | Automated and owner production verification PASS; Phase 1 eligible but not started pending explicit instruction |
 | 2026-09-02 | Owner explicitly instructed “Start Phase 1” | Phase 1 creation freeze started; production unchanged pending all gates and protected approval |
 | 2026-09-02 | Phase 1 local candidate validation | Static/release contracts 90/90; serial 51/51; creation freeze 15/15; isolation 16/16; full suite, ARM64, recovery, and staging PASS; production unchanged |
+| 2026-09-02 | Phase 1 protected workflow `33636045130` deployed exact commit `102e55e` | All required CI/CD and post-deployment checks PASS; ARM64 production deployment completed without rollback |
+| 2026-09-02 | Owner manually verified the live site after Phase 1 deployment | Phase 1 PASS; Phase 2 remains unstarted pending explicit instruction |
