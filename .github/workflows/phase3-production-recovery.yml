@@ -1,0 +1,78 @@
+name: Phase 3B production backup and isolated restore
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type VERIFY-PHASE3B-BACKUP-RESTORE-NO-CLEANUP"
+        required: true
+        type: string
+      expected_deployed_sha:
+        description: "Exact owner-accepted Phase 3A image SHA"
+        required: true
+        type: string
+        default: 497b6650ed678bc462f85de6bff14692bffd6ace
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  recovery:
+    name: Current-image encrypted database backup and isolated restore
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      CONFIRMATION: ${{ inputs.confirmation }}
+      EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+      APP_DIR: ${{ secrets.EC2_APP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate recovery controls and explicit inputs
+        run: |
+          set -euo pipefail
+          [[ "$CONFIRMATION" == VERIFY-PHASE3B-BACKUP-RESTORE-NO-CLEANUP ]]
+          [[ "$EXPECTED_DEPLOYED_SHA" == 497b6650ed678bc462f85de6bff14692bffd6ace ]]
+          python3 -m unittest tests.test_phase3_recovery_remote
+          sha256sum deploy/phase3_recovery_remote.py
+      - name: Rehearse with synthetic data on the GitHub runner first
+        run: |
+          set -euo pipefail
+          docker pull ghcr.io/maaz-bin-haider/financee-web:497b6650ed678bc462f85de6bff14692bffd6ace
+          docker pull postgres:16
+          docker pull redis:7-alpine
+          python3 tests/phase3_recovery_local.py
+      - name: Install production SSH key
+        env:
+          DEPLOY_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+      - name: Stream exact recovery source without updating production checkout
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          set -euo pipefail
+          # Resolve the existing user's default before sudo changes identity.
+          printf -v remote_command 'app_dir=%q; app_dir="${app_dir:-$HOME/Financee_Multitenant_Production}"; sudo -n python3 - "$app_dir" %q %q %q' \
+            "$APP_DIR" "$EXPECTED_DEPLOYED_SHA" "$GITHUB_SHA" "$CONFIRMATION"
+          ssh -i ~/.ssh/id_deploy "$EC2_USER@$EC2_HOST" "$remote_command" \
+            < deploy/phase3_recovery_remote.py | tee phase3-production-recovery.log
+      - name: Retain operational summary only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase3-production-recovery
+          path: phase3-production-recovery.log
+          retention-days: 90

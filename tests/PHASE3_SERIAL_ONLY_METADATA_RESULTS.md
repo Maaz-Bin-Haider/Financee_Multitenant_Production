@@ -3,16 +3,18 @@
 **Date:** 2026-09-03
 
 **Status:** Checkpoint 3.0 local validation, protected production inventory, and
-owner manual site check PASS. Compatibility checkpoint 3A local implementation
-subsequently started; cleanup checkpoint 3B has not started. Phase 3 is not complete.
+owner manual site check PASS. Compatibility checkpoint 3A subsequently deployed
+and received owner acceptance; checkpoint 3B discovery/preparation has started.
+The findings below remain the historical 3.0 snapshot, not a fresh 3B inventory.
+Phase 3 is not complete.
 
-**Current production image:** `e44737f1f740fa936e853a3d6bbbd068a1b6d89d` (Phase 2)
+**Image inspected at checkpoint 3.0:** `e44737f1f740fa936e853a3d6bbbd068a1b6d89d` (Phase 2)
 
 **Production target:** EC2 `t4g.medium`, ARM64, `ap-south-1`
 
 ## Why this checkpoint precedes cleanup
 
-The current Django model and multiple commands still read the physical
+At checkpoint 3.0, the Phase 2 Django model and multiple commands still read the physical
 `inventory_mode` column. An immediate column drop would break the running
 Phase 2 image and the image-only rollback contract. A first compatibility
 release must stop relying on the column while keeping it usable by the old
@@ -190,11 +192,14 @@ individual sales, purchase, return, or other transaction checks were observed.
 No migration, permission removal, feature cleanup, schema/column deletion, or
 production mutation belongs to the inventory checkpoint. Its authorized push,
 protected execution, evidence review, and owner site verification are complete.
-The owner subsequently instructed “continue” to start local checkpoint 3A;
-its evidence is tracked in `tests/PHASE3A_COMPATIBILITY_RESULTS.md`.
-Any subsequent push and protected deployment require separate approval; a new owner manual production PASS is
-required after that release before checkpoint 3B. No deletion authorization is
-inferred from the inventory or site confirmation.
+The owner subsequently instructed “continue” to start checkpoint 3A;
+its completed deployment and owner acceptance are tracked in
+`tests/PHASE3A_COMPATIBILITY_RESULTS.md`. Fresh 3B inventory run `33755059375`
+subsequently passed protected execution against deployed 3A SHA
+`497b6650ed678bc462f85de6bff14692bffd6ace`; its separate evidence belongs in
+`tests/PHASE3B_CLEANUP_RESULTS.md`. Any subsequent push and protected deployment
+require separate approval. No deletion authorization is inferred from an
+inventory or site confirmation.
 
 Phase 3 is not complete. Phase 4 is blocked until the controlled cleanup and
 the owner's mandatory production verification are complete.

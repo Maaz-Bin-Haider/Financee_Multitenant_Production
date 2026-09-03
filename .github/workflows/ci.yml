@@ -38,6 +38,7 @@ jobs:
       - run: python tests/phase3_metadata_inventory_contracts.py
       - run: python tests/phase3a_compatibility_contracts.py
       - run: python -m unittest tests.test_phase3_inventory_remote
+      - run: python -m unittest tests.test_phase3_recovery_remote
       - run: python -m unittest tests.test_phase2_static_retirement
       - run: python tests/phase27_release_gates.py
       - run: bash tests/phase27_rollback_simulation.sh

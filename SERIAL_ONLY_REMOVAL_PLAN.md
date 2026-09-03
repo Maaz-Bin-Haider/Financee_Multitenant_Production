@@ -30,7 +30,7 @@ explicit production PASS for the current phase.
 | 0 | Production discovery, baseline, and approved test-tenant remediation | **PASS** | Production and restored strict audits, fresh remote backup, cleanup, preflight, and health PASS | **PASS** |
 | 1 | Close quantity-company creation | **PASS** | Local gates and protected exact-SHA workflow `33636045130` PASS; production deployed without rollback | **PASS** |
 | 2 | Remove quantity runtime and replace CI coverage | **PASS** | Local gates and all 12 jobs in protected exact-SHA workflow `33728502631` PASS; production controller PASS | **PASS** |
-| 3 | Remove quantity database metadata and approved orphan schemas | **In progress — checkpoint 3A local validation PASS** | Inventory `33732596063` PASS; 3A compatibility 36/36, full suite 21/21, ARM64, recovery and local staging PASS; not pushed/deployed | Owner site check PASS after inventory; separate deployed-3A/3B checks still required — Phase 4 blocked |
+| 3 | Remove quantity database metadata and approved orphan schemas | **In progress — 3A accepted; 3B recovery preparation locally validated** | 3A workflow `33736055610` all 14 jobs PASS; fresh 3B inventory `33755059375` PASS; recovery-only tooling and synthetic ARM64 restore PASS, not pushed/run in production | Owner 3A functionality and incognito appearance PASS; separate post-cleanup 3B check required — Phase 4 blocked |
 | 4 | Source, documentation, test, and migration hygiene | Not started | Not run | Required — final acceptance |
 
 ## Phase 0 — Production Discovery and Approved Test-Tenant Remediation
@@ -265,14 +265,15 @@ Any archive retention/removal decision remains separate from its creation.
 - [x] Review current production candidates and exceptions before implementing
   cleanup migrations.
 - [x] Obtain owner manual site confirmation after the read-only inventory.
-- [ ] Deploy compatibility checkpoint 3A and obtain owner manual production PASS.
+- [x] Deploy compatibility checkpoint 3A and obtain owner manual production PASS.
 - [ ] Complete approved cleanup checkpoint 3B and owner manual production PASS.
 
 **Owner checkpoint 3.0 result:** `PASS` — the owner reported “the site is live
 and fine” after the protected inventory. This records the supplied site check,
 not independently observed transaction-by-transaction verification.
 
-**Overall Phase 3 result:** `IN PROGRESS` — compatibility and cleanup remain.
+**Overall Phase 3 result:** `IN PROGRESS` — compatibility deployed and accepted;
+controlled cleanup remains.
 
 **Local and production evidence:** `tests/PHASE3_SERIAL_ONLY_METADATA_RESULTS.md`.
 
@@ -289,14 +290,16 @@ strict continuity audit passed with a balanced journal. The ARM64 web container
 and image remained unchanged and healthy; no cleanup was authorized or run.
 
 **Current boundary:** no cleanup migration or production schema deletion is
-implemented or executed. Checkpoint 3.0 is complete. The owner instructed
-“continue” to start local checkpoint 3A implementation. Its compatibility work
-retains the physical inventory-mode column and serial constraint, adds a guarded
-database default, and removes only Django's dependency on that column. It must
-preserve old-image rollback and existing serial behavior.
+implemented or executed. Checkpoint 3A is deployed at
+`497b6650ed678bc462f85de6bff14692bffd6ace` and owner-accepted. Its compatibility
+work retains the physical inventory-mode column and serial constraint, adds a
+guarded database default, and removes Django's dependency on that column.
+The owner authorized starting 3B after confirming the reported appearance
+difference was absent in incognito. A fresh read-only inventory passed;
+the old 08:19 snapshot above is historical, not current cleanup authorization.
 Any push and protected deployment require separate approval. Checkpoint 3B still
-requires fresh inventory and backup/restore evidence; this snapshot is not
-authorization to delete permissions, grants, columns, or schemas.
+requires fresh inventory and backup/restore evidence plus exact-target approval
+before deleting permissions, grants, columns, or schemas.
 
 **Checkpoint 3A evidence:** `tests/PHASE3A_COMPATIBILITY_RESULTS.md`.
 
@@ -312,11 +315,42 @@ authorization to delete permissions, grants, columns, or schemas.
   entrypoint rollback, serial company creation and return to the candidate.
 - [x] Pass full regression, preservation/static checks, metadata inventory,
   ARM64, encrypted restore and local production-like staging acceptance.
-- [ ] Create and validate the exact source commit through staging.
-- [ ] Obtain explicit push approval, then verify all GitHub CI/CD gates.
-- [ ] Obtain protected-production approval and deploy the exact tested image.
-- [ ] STOP: owner manually checks production and explicitly records 3A PASS.
-- [ ] Only then review a separate 3B cleanup candidate with fresh evidence.
+- [x] Create and validate the exact source commit through staging.
+- [x] Obtain explicit push approval, then verify all GitHub CI/CD gates.
+- [x] Obtain protected-production approval and deploy the exact tested image.
+- [x] STOP: owner manually checks production and explicitly records 3A PASS.
+- [x] Obtain owner authorization to start separate 3B discovery/preparation.
+- [ ] Review a separate 3B cleanup candidate with fresh evidence.
+
+**Owner checkpoint 3A result:** `PASS` — 2026-09-03. The owner reported all
+functionality working, initially raised a background-color concern, then
+confirmed normal appearance in incognito. This records the owner's overall
+acceptance, not independently observed transaction-by-transaction checks.
+No frontend change was made; the precise normal-browser cause was not proven.
+
+#### Checkpoint 3B ordered gates
+
+- [x] Verify deployed 3A, all 14 CI/CD jobs, and owner manual acceptance.
+- [x] Queue fresh protected read-only inventory `33755059375`, explicitly
+  expecting deployed SHA `497b6650ed678bc462f85de6bff14692bffd6ace`.
+- [x] Obtain protected approval; review the fresh report and reported dependencies.
+- [x] Prepare and validate current-image, resource-bounded backup/isolated
+  recovery tooling; do not reuse the older Phase 0 audit-image default unchanged.
+- [ ] Obtain approval to push recovery-only tooling, then separately approve
+  its protected production backup/restore rehearsal; review retained evidence.
+- [ ] Design and test exact-target metadata archival/restoration and bounded
+  column contraction, preserving all serial data and unrelated permissions.
+- [ ] Prove actual deployed 3A normal-entrypoint rollback on the contracted
+  database, fresh installs, re-upgrade, serial/full/ARM64/recovery/staging gates.
+- [ ] Obtain exact-commit push authorization and pass protected CI/CD gates.
+- [ ] Obtain fresh production backup/isolated restore evidence and exact-target
+  cleanup approval; revalidate preconditions at execution, not only discovery.
+- [ ] Run the separately approved cleanup/release and verify continuity/health.
+- [ ] STOP: owner manually verifies production and records checkpoint 3B PASS.
+
+Detailed preparation and unresolved safety decisions are recorded in
+`tests/PHASE3B_CLEANUP_RESULTS.md`. No archive or tenant-schema removal is
+authorized by starting preparation or approving the read-only inventory.
 
 ### Phase 4 — Repository Hygiene
 
@@ -373,3 +407,8 @@ every environment has reached the required migration leaf.
 | 2026-09-03 | Owner instructed “continue” after the checkpoint 3A implementation prompt | Local compatibility implementation started; no push/deployment/cleanup authorization inferred |
 | 2026-09-03 | Checkpoint 3A local implementation and negative review | Default-only physical migration plus state-only field/constraint removal; existing serial display/validation preserved; wrong constraint kind fails clearly; test-discovery legacy filters corrected without changing serial business logic |
 | 2026-09-03 | Checkpoint 3A local validation | 152 static/release and 71 backup contracts, 8 wrapper tests, 36 compatibility checks, all 21 active modules, serial 51/51, ARM64, metadata 24/24 and staging PASS; actual Phase 2 image recovery and serial creation PASS with synthetic restore RTO 43s; no production mutation |
+| 2026-09-03 | Exact checkpoint 3A commit `497b665` staged, explicitly approved for push, and deployed by workflow `33736055610` | All 14 jobs PASS; production controller PASS at 09:05:11 UTC; duplicate run `33736057506` cancelled with owner authorization |
+| 2026-09-03 | Owner verified functionality and subsequently confirmed normal appearance in incognito | Checkpoint 3A manual PASS; no appearance fix or production mutation made during diagnosis |
+| 2026-09-03 | Owner authorized starting checkpoint 3B; fresh read-only inventory queued | Run `33755059375` expects deployed 3A `497b665`, awaits protected production approval; no cleanup authorized or executed |
+| 2026-09-03 | Fresh checkpoint 3B production inventory reviewed | Run `33755059375` PASS at 12:31 UTC; one serial company/schema, 14 exact quantity permissions and 14 direct grant records, no stale keys/orphans; expected serial default present; unchanged healthy ARM64 container |
+| 2026-09-03 | Current-image recovery-only tooling prepared and tested locally | 16 new unit tests, 152 release contracts, 71 backup contracts and eight existing wrapper/static tests PASS; published 3A ARM64 synthetic encrypted DB restore RTO 44s; exact disposable cleanup verified; production recovery and cleanup remain unexecuted |
