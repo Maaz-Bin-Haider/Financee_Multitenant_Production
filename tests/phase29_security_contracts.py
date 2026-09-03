@@ -16,6 +16,8 @@ utils = read("tenancy/utils.py")
 attachments = read("attachments/views.py")
 nginx = read("deploy/nginx/financee_common.conf")
 company = read("tenancy/models.py")
+creation_migration = read("tenancy/migrations/0008_serial_only_company_creation.py")
+compatibility = read("tenancy/migrations/0009_inventory_mode_compatibility.py")
 admin = read("tenancy/admin.py")
 workflow = read(".github/workflows/ci.yml")
 preflight = read("tenancy/management/commands/release_preflight.py")
@@ -58,7 +60,9 @@ checks = {
         'return f"rl:{key_prefix}:{tenant}:{identity}:{bucket}"' in security,
     "company registry is serial only":
         "self.inventory_mode != INVENTORY_MODE_SERIAL" in company
-        and "condition=models.Q(inventory_mode=INVENTORY_MODE_SERIAL)" in company,
+        and 'condition=models.Q(inventory_mode="serial")' in creation_migration
+        and "expected validated serial-only constraint required" in compatibility
+        and "DROP CONSTRAINT" not in compatibility,
     "company admin hides inventory family":
         '"inventory_mode",' in admin.split("exclude = (", 1)[1].split(")", 1)[0]
         and '"inventory_mode"' not in admin.split("list_display = (", 1)[1].split(")", 1)[0],

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-gate="${1:?gate required: serial|creation-freeze|runtime-removal|metadata-inventory|isolation|arm64|full}"
+gate="${1:?gate required: serial|creation-freeze|runtime-removal|metadata-inventory|compatibility|isolation|arm64|full}"
 case "$gate" in
-  serial|creation-freeze|runtime-removal|metadata-inventory|isolation|arm64|full) ;;
+  serial|creation-freeze|runtime-removal|metadata-inventory|compatibility|isolation|arm64|full) ;;
   *) echo "unknown gate: $gate" >&2; exit 2 ;;
 esac
 # Never attach tests or their destructive cleanup to the default deploy project.
@@ -82,9 +82,19 @@ case "$gate" in
       >"$artifact_dir/phase3-deployed-image-inventory.json"
     ;;
   isolation) "${compose[@]}" exec -T web python tests/phase25_four_company_isolation.py ;;
+  compatibility)
+    "${compose[@]}" exec -T -e PHASE3A_TEST_DISPOSABLE=1 web python tests/phase3a_compatibility.py \
+      | tee "$artifact_dir/phase3a-compatibility.log"
+    docker run --rm -i --network "${test_project}_default" --env-file "$WEB_ENV_FILE" \
+      -e PHASE3A_TEST_DISPOSABLE=1 --entrypoint python \
+      ghcr.io/maaz-bin-haider/financee-web:e44737f1f740fa936e853a3d6bbbd068a1b6d89d \
+      - < tests/phase3a_old_image.py | tee "$artifact_dir/phase3a-old-image.log"
+    ;;
   arm64)
     "${compose[@]}" exec -T web python tests/phase27_arm64_smoke.py
     "${compose[@]}" exec -T web python tests/phase2_serial_runtime_removal.py
+    "${compose[@]}" exec -T -e PHASE3A_TEST_DISPOSABLE=1 web python tests/phase3a_compatibility.py \
+      | tee "$artifact_dir/phase3a-compatibility.log"
     "${compose[@]}" exec -T web python manage.py release_preflight
     ;;
   full)

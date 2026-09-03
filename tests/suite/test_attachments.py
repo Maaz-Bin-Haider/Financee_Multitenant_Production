@@ -28,7 +28,6 @@ from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: E402
 from django.db import connection  # noqa: E402
 from django.test import Client  # noqa: E402
 from tenancy.models import (  # noqa: E402
-    INVENTORY_MODE_SERIAL,
     Company,
     Membership,
 )
@@ -515,11 +514,9 @@ def main():
         chk("a superuser exists", False, "no superuser to drive attachment tests")
         return report()
 
-    # Quantity attachments arrive with the shared document foundation in a
-    # later phase. This legacy suite must exercise only the serial capability.
+    # All registered companies are serial-only; the legacy column is unmapped.
     companies = list(Company.objects.filter(
         is_active=True,
-        inventory_mode=INVENTORY_MODE_SERIAL,
         schema_name__isnull=False,
     ).order_by("id"))
     if not companies:

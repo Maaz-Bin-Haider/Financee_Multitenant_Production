@@ -108,8 +108,23 @@ class Currency(models.Model):
         return f"{self.code} — {self.name}"
 
 
+class CompanyQuerySet(models.QuerySet):
+    def bulk_create(self, objs, *args, **kwargs):
+        # Django skips save()/clean() for bulk inserts. Since the legacy input
+        # is no longer a column, reject it before it could be silently ignored.
+        objs = list(objs)
+        for obj in objs:
+            if obj.inventory_mode != INVENTORY_MODE_SERIAL:
+                raise ValidationError({
+                    "inventory_mode": "Only serial-number based companies are supported."
+                })
+        return super().bulk_create(objs, *args, **kwargs)
+
+
 class Company(models.Model):
     """A tenant. Its data lives in the schema named by ``schema_name``."""
+
+    objects = CompanyQuerySet.as_manager()
 
     name = models.CharField(max_length=150, unique=True)
     # Blank on first save; filled in automatically (see save() below). Unique so
@@ -125,12 +140,27 @@ class Company(models.Model):
         help_text="Inactive companies cannot have their schema activated for requests.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    inventory_mode = models.CharField(
-        max_length=16,
-        choices=INVENTORY_MODE_CHOICES,
-        default=INVENTORY_MODE_SERIAL,
-        help_text="All companies use serial-number based inventory.",
-    )
+    # Compatibility API only, not an ORM field. Migration 0009 keeps the
+    # physical serial-only column/default for the previous deployed image.
+    # Preserve existing call sites and the displayed label without SELECTing
+    # or INSERTing that column. Explicit legacy non-serial input still fails
+    # clean()/save(); it is never silently converted into a serial company.
+    @property
+    def inventory_mode(self):
+        return getattr(self, "_requested_inventory_mode", INVENTORY_MODE_SERIAL)
+
+    @inventory_mode.setter
+    def inventory_mode(self, value):
+        self._requested_inventory_mode = value
+
+    def get_inventory_mode_display(self):
+        return dict(INVENTORY_MODE_CHOICES).get(self.inventory_mode, self.inventory_mode)
+
+    def refresh_from_db(self, using=None, fields=None, from_queryset=None):
+        super().refresh_from_db(using=using, fields=fields, from_queryset=from_queryset)
+        if fields is None:
+            self.__dict__.pop("_requested_inventory_mode", None)
+
     base_currency = models.ForeignKey(
         Currency,
         default="PKR",
@@ -219,10 +249,6 @@ class Company(models.Model):
         ordering = ["name"]
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(inventory_mode=INVENTORY_MODE_SERIAL),
-                name="tenancy_company_valid_inventory_mode",
-            ),
-            models.CheckConstraint(
                 condition=models.Q(tax_environment__in=[
                     TAX_ENVIRONMENT_TAX,
                     TAX_ENVIRONMENT_NON_TAX,
@@ -270,7 +296,7 @@ class Company(models.Model):
                     })
         if self.pk:
             original = type(self).objects.filter(pk=self.pk).values(
-                "inventory_mode", "base_currency_id", "tax_environment"
+                "base_currency_id", "tax_environment"
             ).first()
             setup_changed = original is not None and (
                 original["base_currency_id"] != self.base_currency_id

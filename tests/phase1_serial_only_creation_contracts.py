@@ -17,6 +17,7 @@ provisioning = read("tenancy/provisioning.py")
 command = read("tenancy/management/commands/provision_tenant.py")
 retry = read("tenancy/management/commands/retry_tenant_provisioning.py")
 migration = read("tenancy/migrations/0008_serial_only_company_creation.py")
+compatibility = read("tenancy/migrations/0009_inventory_mode_compatibility.py")
 workflow = read(".github/workflows/ci.yml")
 stack = read("tests/ci_phase27_stack.sh")
 suite = read("tests/suite/run_all.py")
@@ -35,8 +36,11 @@ checks = {
     "model validation rejects every non-serial value":
         "self.inventory_mode != INVENTORY_MODE_SERIAL" in models
         and "Only serial-number based companies are supported" in models,
-    "model database state declares exact serial constraint":
-        "condition=models.Q(inventory_mode=INVENTORY_MODE_SERIAL)" in models,
+    "physical serial constraint retained independently of ORM state":
+        'condition=models.Q(inventory_mode="serial")' in migration
+        and "migrations.SeparateDatabaseAndState" in compatibility
+        and "expected validated serial-only constraint required" in compatibility
+        and "DROP CONSTRAINT" not in compatibility,
     "admin excludes inventory mode from its form":
         '"inventory_mode"' in admin_exclude,
     "admin removes inventory mode column and filter":

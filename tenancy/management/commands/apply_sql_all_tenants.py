@@ -95,9 +95,7 @@ class Command(BaseCommand):
             )
         definition = schema_family(requested_family)
 
-        companies = Company.objects.filter(
-            inventory_mode=requested_family,
-        ).exclude(schema_name="").order_by("schema_name")
+        companies = Company.objects.exclude(schema_name="").order_by("schema_name")
         registered_targets = list(companies.values_list("schema_name", flat=True))
         companies_by_schema = {company.schema_name: company for company in companies}
         if opts["only"]:

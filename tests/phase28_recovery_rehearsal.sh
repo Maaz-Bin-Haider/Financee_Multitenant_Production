@@ -10,7 +10,7 @@ restore_project="phase28_restore_$run_tag"
 source_project=${source_project//-/_}
 restore_project=${restore_project//-/_}
 current_image="financee-phase28-current:${GITHUB_SHA:-local}"
-old_image="${PHASE28_OLD_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:102e55e857bbffa8bd4318e6afaec42e048c8e67}"
+old_image="${PHASE28_OLD_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:e44737f1f740fa936e853a3d6bbbd068a1b6d89d}"
 work_dir=$(mktemp -d)
 artifact_dir="${PHASE28_ARTIFACT_DIR:-$repo_root/phase28-artifacts}"
 mkdir -p "$artifact_dir"
@@ -179,10 +179,12 @@ for _ in $(seq 1 90); do
 done
 [[ "$(docker inspect -f '{{.State.Health.Status}}' "$restore_web")" = healthy ]]
 WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T web python manage.py check
+WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T web \
+    python manage.py provision_tenant "Phase 3A Old Image Serial"
 WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T web python manage.py release_preflight \
     >"$artifact_dir/old-image-preflight.txt"
 WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T web python -c \
-    'from pathlib import Path; p=Path("/app/staticfiles"); assert list((p/"js").glob("quantity_*.js")); print("PASS: old image repopulates its retired static assets")' \
+    'from pathlib import Path; p=Path("/app/staticfiles"); assert not list((p/"js").glob("quantity_*.js")); assert (p/"js/phase2-serial-cache-sentinel.012345abcdef.js").read_text()=="preserved-serial-cache"; print("PASS: deployed Phase 2 image preserves serial cached assets without quantity assets")' \
     >"$artifact_dir/old-image-static.txt"
 WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T db psql \
     -U financee -d financee -Atc \

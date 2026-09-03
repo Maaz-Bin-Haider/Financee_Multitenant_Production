@@ -315,10 +315,30 @@ class Command(BaseCommand):
                         "id",
                         "schema_name",
                         "is_active",
-                        "inventory_mode",
                         "provisioning_state",
                     )
                 )
+                # Inspect a retained legacy column when present, but do not
+                # require it. The 3A image must also operate after the later,
+                # separately approved contraction. Never mask a conflicting
+                # value while the physical column still exists.
+                cursor.execute("""
+                    SELECT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                         WHERE table_schema='public' AND table_name='tenancy_company'
+                           AND column_name='inventory_mode'
+                    )
+                """)
+                has_legacy_mode = cursor.fetchone()[0]
+                legacy_modes = {}
+                if has_legacy_mode:
+                    cursor.execute("SELECT id, inventory_mode FROM public.tenancy_company")
+                    legacy_modes = dict(cursor.fetchall())
+                for company in companies:
+                    company["inventory_mode"] = (
+                        legacy_modes.get(company["id"]) if has_legacy_mode
+                        else INVENTORY_MODE_SERIAL
+                    )
                 registered = {
                     row["schema_name"]: row
                     for row in companies

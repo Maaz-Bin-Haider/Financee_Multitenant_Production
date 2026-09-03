@@ -113,10 +113,11 @@ def main():
         )
 
     # The database constraint protects against quantity and unknown values even
-    # when ORM validation is bypassed with QuerySet.update().
+    # when the ORM is bypassed with raw SQL against the retained legacy column.
     try:
         with transaction.atomic():
-            Company.objects.filter(pk=company.pk).update(inventory_mode="quantity")
+            with connection.cursor() as cur:
+                cur.execute("UPDATE public.tenancy_company SET inventory_mode='quantity' WHERE id=%s", [company.pk])
         chk("database rejects quantity inventory mode", False, "update succeeded")
     except IntegrityError:
         company.refresh_from_db()

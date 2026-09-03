@@ -443,7 +443,6 @@ def main():
         SELECT schema_name
           FROM public.tenancy_company
          WHERE is_active = true
-           AND inventory_mode = 'serial'
            AND schema_name IS NOT NULL
          ORDER BY id
         """

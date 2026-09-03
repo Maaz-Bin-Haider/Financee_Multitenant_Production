@@ -53,7 +53,6 @@ try:
 except Membership.DoesNotExist:
     company = Company.objects.filter(
         is_active=True,
-        inventory_mode="serial",
     ).exclude(schema_name="").order_by("id").first()
     if company is None:
         raise SystemExit("No active provisioned company found.")

@@ -30,7 +30,7 @@ explicit production PASS for the current phase.
 | 0 | Production discovery, baseline, and approved test-tenant remediation | **PASS** | Production and restored strict audits, fresh remote backup, cleanup, preflight, and health PASS | **PASS** |
 | 1 | Close quantity-company creation | **PASS** | Local gates and protected exact-SHA workflow `33636045130` PASS; production deployed without rollback | **PASS** |
 | 2 | Remove quantity runtime and replace CI coverage | **PASS** | Local gates and all 12 jobs in protected exact-SHA workflow `33728502631` PASS; production controller PASS | **PASS** |
-| 3 | Remove quantity database metadata and approved orphan schemas | **In progress — local inventory ready** | Inventory contracts 20/20, live checks 24/24, wrapper tests 5/5 PASS; production inventory and cleanup not run | Required at each compatibility/cleanup checkpoint — Phase 4 blocked |
+| 3 | Remove quantity database metadata and approved orphan schemas | **In progress — checkpoint 3A local validation PASS** | Inventory `33732596063` PASS; 3A compatibility 36/36, full suite 21/21, ARM64, recovery and local staging PASS; not pushed/deployed | Owner site check PASS after inventory; separate deployed-3A/3B checks still required — Phase 4 blocked |
 | 4 | Source, documentation, test, and migration hygiene | Not started | Not run | Required — final acceptance |
 
 ## Phase 0 — Production Discovery and Approved Test-Tenant Remediation
@@ -260,20 +260,63 @@ Any archive retention/removal decision remains separate from its creation.
   image pull, deployment, migration, restart, or container-file copy on EC2.
 - [x] Finish local contracts, real PostgreSQL negative tests, exact deployed-
   image execution, wrapper failure tests, and diff review.
-- [ ] Obtain explicit approval to push the inventory-only commit (`[skip ci]`).
-- [ ] Obtain protected approval and run the read-only production inventory.
-- [ ] Review current production candidates and exceptions before implementing
+- [x] Obtain explicit approval to push the inventory-only commit (`[skip ci]`).
+- [x] Obtain protected approval and run the read-only production inventory.
+- [x] Review current production candidates and exceptions before implementing
   cleanup migrations.
+- [x] Obtain owner manual site confirmation after the read-only inventory.
 - [ ] Deploy compatibility checkpoint 3A and obtain owner manual production PASS.
 - [ ] Complete approved cleanup checkpoint 3B and owner manual production PASS.
 
-**Owner Phase 3 result:** `NOT RUN`.
+**Owner checkpoint 3.0 result:** `PASS` — the owner reported “the site is live
+and fine” after the protected inventory. This records the supplied site check,
+not independently observed transaction-by-transaction verification.
 
-**Local evidence:** `tests/PHASE3_SERIAL_ONLY_METADATA_RESULTS.md`.
+**Overall Phase 3 result:** `IN PROGRESS` — compatibility and cleanup remain.
 
-**Current boundary:** no cleanup migration or schema deletion is implemented
-or executed. Phase 3 production facts must come from the new protected
-inventory, not assumptions based on the earlier Phase 0 snapshot.
+**Local and production evidence:** `tests/PHASE3_SERIAL_ONLY_METADATA_RESULTS.md`.
+
+**Verified production snapshot:** workflow `33732596063` ran audit source
+`330d22e8bb378545872983351b0d58c2cb731e2d` against unchanged deployed Phase 2
+image `e44737f1f740fa936e853a3d6bbbd068a1b6d89d`. At 08:19 UTC on 2026-09-03,
+all seven inventory checks passed: one active serial company and one registered
+serial v6 schema, no orphan/quantity schemas, 14 exact historical quantity
+permissions with 14 direct-user grant records and no group grants, and no stale
+quantity feature keys. Grant-record counts do not identify distinct users.
+The redundant `inventory_mode` column is non-nullable with no database default;
+its reported dependencies identify only the expected serial constraint. The
+strict continuity audit passed with a balanced journal. The ARM64 web container
+and image remained unchanged and healthy; no cleanup was authorized or run.
+
+**Current boundary:** no cleanup migration or production schema deletion is
+implemented or executed. Checkpoint 3.0 is complete. The owner instructed
+“continue” to start local checkpoint 3A implementation. Its compatibility work
+retains the physical inventory-mode column and serial constraint, adds a guarded
+database default, and removes only Django's dependency on that column. It must
+preserve old-image rollback and existing serial behavior.
+Any push and protected deployment require separate approval. Checkpoint 3B still
+requires fresh inventory and backup/restore evidence; this snapshot is not
+authorization to delete permissions, grants, columns, or schemas.
+
+**Checkpoint 3A evidence:** `tests/PHASE3A_COMPATIBILITY_RESULTS.md`.
+
+#### Checkpoint 3A implementation and release checklist
+
+- [x] Remove the physical-column dependency from ORM reads/inserts and rollout
+  queries, preserving the serial display/API compatibility and input rejection.
+- [x] Add the bounded, atomic, fail-closed default-only migration; preserve the
+  physical column, constraint identity, metadata values and serial tenant SQL.
+- [x] Test migration forward/reverse, unexpected physical contracts, contention,
+  candidate pre-deployment audit, and application operation without the column.
+- [x] Test the actual Phase 2 image on the expanded database, including normal
+  entrypoint rollback, serial company creation and return to the candidate.
+- [x] Pass full regression, preservation/static checks, metadata inventory,
+  ARM64, encrypted restore and local production-like staging acceptance.
+- [ ] Create and validate the exact source commit through staging.
+- [ ] Obtain explicit push approval, then verify all GitHub CI/CD gates.
+- [ ] Obtain protected-production approval and deploy the exact tested image.
+- [ ] STOP: owner manually checks production and explicitly records 3A PASS.
+- [ ] Only then review a separate 3B cleanup candidate with fresh evidence.
 
 ### Phase 4 — Repository Hygiene
 
@@ -324,3 +367,9 @@ every environment has reached the required migration leaf.
 | 2026-09-03 | Phase 3 dependency review | Deployed Phase 2 still reads `inventory_mode`; compatibility release required before column drop. Shared serial currency/tax/provisioning/subscription fields preserved |
 | 2026-09-03 | Phase 3 local inventory validation | 134/134 static/release contracts including 20/20 inventory contracts, 24/24 PostgreSQL inventory checks, 5/5 wrapper tests on host and Linux, and exact deployed Phase 2 image stdin execution PASS; disposable projects removed |
 | 2026-09-03 | Phase 3 read-only preparation boundary | Source scanner label false-positive corrected; shell guards made explicit after negative tests; no runtime/model/migration/serial SQL change; inventory-only push and protected production inspection require approval |
+| 2026-09-03 | Owner explicitly authorized inventory-only push and then protected read-only inspection | Commit `330d22e` pushed to `main` with `[skip ci]`; no automatic CI/CD; manual inventory run `33732596063` queued and separately approved |
+| 2026-09-03 | Protected Phase 3 inventory and retained artifact reviewed | All seven inventory checks and strict continuity audit PASS; one serial tenant, 14 legacy quantity permissions/14 direct grant records, no stale quantity feature keys or orphan schemas; deployed Phase 2 ARM64 image and healthy container unchanged |
+| 2026-09-03 | Owner reported “the site is live and fine” after the inventory | Checkpoint 3.0 automated and owner site checks PASS; 3A eligible but not started; no cleanup/deployment authorization inferred |
+| 2026-09-03 | Owner instructed “continue” after the checkpoint 3A implementation prompt | Local compatibility implementation started; no push/deployment/cleanup authorization inferred |
+| 2026-09-03 | Checkpoint 3A local implementation and negative review | Default-only physical migration plus state-only field/constraint removal; existing serial display/validation preserved; wrong constraint kind fails clearly; test-discovery legacy filters corrected without changing serial business logic |
+| 2026-09-03 | Checkpoint 3A local validation | 152 static/release and 71 backup contracts, 8 wrapper tests, 36 compatibility checks, all 21 active modules, serial 51/51, ARM64, metadata 24/24 and staging PASS; actual Phase 2 image recovery and serial creation PASS with synthetic restore RTO 43s; no production mutation |

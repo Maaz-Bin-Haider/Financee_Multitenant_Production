@@ -68,7 +68,7 @@ def main():
     try:
         check(
             "registry contains serial companies only",
-            not Company.objects.exclude(inventory_mode=INVENTORY_MODE_SERIAL).exists(),
+            all(company.inventory_mode == INVENTORY_MODE_SERIAL for company in Company.objects.all()),
         )
         definition = schema_family("quantity")
         check(

@@ -21,7 +21,7 @@ django.setup()
 from django.core.exceptions import ValidationError  # noqa: E402
 from django.core.management import call_command, get_commands, load_command_class  # noqa: E402
 from django.db import IntegrityError, connection, transaction  # noqa: E402
-from django.apps import apps as django_apps  # noqa: E402
+from django.db.migrations.executor import MigrationExecutor  # noqa: E402
 
 from financee.admin_site import financee_admin_site  # noqa: E402
 from tenancy.admin import CompanyAdmin, CompanyAdminForm  # noqa: E402
@@ -67,10 +67,9 @@ def main():
     created = None
     blocked_schema = f"tenant_company_{time.time_ns()}"
     try:
-        check(
-            "production-compatible registry contains serial companies only",
-            Company.objects.exclude(inventory_mode=INVENTORY_MODE_SERIAL).count() == 0,
-        )
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT count(*) FROM public.tenancy_company WHERE inventory_mode IS DISTINCT FROM 'serial'")
+            check("production-compatible registry contains serial companies only", cursor.fetchone()[0] == 0)
         check(
             "model exposes serial as its only company choice",
             {value for value, _label in INVENTORY_MODE_CHOICES}
@@ -93,7 +92,8 @@ def main():
         if company is not None:
             try:
                 with transaction.atomic():
-                    Company.objects.filter(pk=company.pk).update(inventory_mode="quantity")
+                    with connection.cursor() as cursor:
+                        cursor.execute("UPDATE public.tenancy_company SET inventory_mode='quantity' WHERE id=%s", [company.pk])
                 check("database rejects quantity registry row", False, "update allowed")
             except IntegrityError:
                 company.refresh_from_db()
@@ -131,9 +131,13 @@ def main():
                         "ALTER TABLE tenancy_company DROP CONSTRAINT "
                         "tenancy_company_valid_inventory_mode"
                     )
-                Company.objects.filter(pk=company.pk).update(inventory_mode="quantity")
+                with connection.cursor() as cursor:
+                    cursor.execute("UPDATE public.tenancy_company SET inventory_mode='quantity' WHERE id=%s", [company.pk])
                 try:
-                    migration.require_serial_registry(django_apps, None)
+                    historical_apps = MigrationExecutor(connection).loader.project_state(
+                        [("tenancy", "0007_company_provisioning_state")]
+                    ).apps
+                    migration.require_serial_registry(historical_apps, None)
                 except RuntimeError as exc:
                     precondition_blocked = (
                         str(company.pk) in str(exc)
