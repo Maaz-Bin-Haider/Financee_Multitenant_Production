@@ -29,7 +29,7 @@ explicit production PASS for the current phase.
 |---|---|---|---|---|
 | 0 | Production discovery, baseline, and approved test-tenant remediation | **PASS** | Production and restored strict audits, fresh remote backup, cleanup, preflight, and health PASS | **PASS** |
 | 1 | Close quantity-company creation | **PASS** | Local gates and protected exact-SHA workflow `33636045130` PASS; production deployed without rollback | **PASS** |
-| 2 | Remove quantity runtime and replace CI coverage | **Local candidate ready; production pending** | Static, full regression, isolation, recovery, ARM64, and staging PASS; protected exact-SHA CI/CD pending | Required — Phase 3 blocked |
+| 2 | Remove quantity runtime and replace CI coverage | **PASS** | Local gates and all 12 jobs in protected exact-SHA workflow `33728502631` PASS; production controller PASS | **PASS** |
 | 3 | Remove quantity database metadata and approved orphan schemas | Not started | Not run | Required — Phase 4 blocked |
 | 4 | Source, documentation, test, and migration hygiene | Not started | Not run | Required — final acceptance |
 
@@ -191,15 +191,29 @@ tenant isolation, lifecycle, recovery, security, and ARM64 gates.
 - [x] Pass Django/migration checks and complete serial regression.
 - [x] Pass four-serial isolation, full active suite, ARM64, recovery, and staging.
 - [x] Review and commit the exact Phase 2 diff locally.
-- [ ] Obtain explicit owner authorization before pushing to GitHub `main`.
-- [ ] Pass protected exact-SHA CI/CD and production deployment.
-- [ ] Owner manually verifies production and records Phase 2 PASS.
+- [x] Obtain explicit owner authorization before pushing to GitHub `main`.
+- [x] Pass protected exact-SHA CI/CD and production deployment.
+- [x] Owner manually verifies production and records Phase 2 PASS.
 
-**Local evidence:** `tests/PHASE2_SERIAL_ONLY_RUNTIME_RESULTS.md`.
+**Evidence:** workflow `33728502631` and
+`tests/PHASE2_SERIAL_ONLY_RUNTIME_RESULTS.md`.
 
-**Owner Phase 2 result:** `NOT RUN` — Phase 1's earlier manual PASS does not
-count as Phase 2 verification. No Phase 2 push or production deployment is
-authorized by the local test results alone.
+**Owner Phase 2 result:** `PASS` — owner reported: “the complete CI CD passed
+and the actual deployed site is working fine”.
+
+**Deployed production SHA:** `e44737f1f740fa936e853a3d6bbbd068a1b6d89d`
+
+**Production controller PASS:** `2026-09-03T07:39:52Z`
+
+**Owner verification date:** `2026-09-03`
+
+**Verifier:** system owner and protected production workflow. The owner's
+overall manual acceptance is recorded as supplied; individual transaction
+checklist actions were not separately reported.
+
+Phase 2 is complete. Phase 3 is eligible but has not started and requires a
+separate explicit owner instruction. This sign-off authorizes no database
+cleanup or schema deletion.
 
 ### Phase 3 — Database Cleanup
 
@@ -249,3 +263,6 @@ every environment has reached the required migration leaf.
 | 2026-09-03 | Production-Python preservation contracts | Version-specific AST formatting false failure replaced with independent exact-source hashes; 114/114 release/static contracts and 71/71 backup contracts PASS under Python 3.12 |
 | 2026-09-03 | Phase 2 recovery and static rollback rehearsal | Synthetic encrypted restore RTO 43s; deployed Phase 1 image compatibility PASS; re-upgrade removes retired assets and preserves serial cache; disposable stacks removed |
 | 2026-09-03 | Phase 2 local staging and diff review | Serial 51/51, creation 15/15, runtime removal 13/13, isolation 16/16, security 5/5, continuity and capacity preflight PASS; no schema/migration/serial SQL changes; push and production gates pending |
+| 2026-09-03 | Owner explicitly authorized pushing Phase 2 commit `e44737f`; exact commit pushed to `main` | CI/CD workflow `33728502631` started |
+| 2026-09-03 | Phase 2 protected exact-SHA workflow verified | All 12 jobs succeeded, including ARM64, full regression, recovery, staging approval, publication, and EC2 deployment; production controller PASS at 07:39:52 UTC after continuity/operational gates |
+| 2026-09-03 | Owner reported the actual deployed site working fine | Phase 2 manual production PASS; Phase 2 complete; Phase 3 not started pending explicit instruction |

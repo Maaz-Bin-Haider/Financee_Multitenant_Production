@@ -4,11 +4,18 @@
 
 **Target:** AWS EC2 `t4g.medium`, ARM64, `ap-south-1`
 
-**Deployed baseline:** `102e55e857bbffa8bd4318e6afaec42e048c8e67` (Phase 1)
+**Preservation baseline:** `102e55e857bbffa8bd4318e6afaec42e048c8e67` (Phase 1)
 
-**Candidate status:** Local validation PASS; not pushed or deployed.
+**Deployed Phase 2 commit:** `e44737f1f740fa936e853a3d6bbbd068a1b6d89d`
 
-**Owner manual Phase 2 production verification:** NOT RUN — required after deployment.
+**Protected workflow:** `33728502631` — all 12 jobs PASS
+
+**Production deployment:** PASS — controller completed at `2026-09-03T07:39:52Z`
+
+**Owner manual Phase 2 production verification:** PASS — 2026-09-03
+
+Phase 2 is complete. Phase 3 has not started and requires a separate explicit
+owner instruction. This record does not authorize database cleanup.
 
 ## Scope and preservation evidence
 
@@ -51,10 +58,11 @@ symlink rejection. Old-image rollback repopulates its own baked assets.
 
 ## Automated evidence
 
-All runtime tests below use synthetic data in isolated local Docker projects.
-They are not a substitute for the protected workflow or owner production UAT.
+The local runtime tests use synthetic data in isolated Docker projects. The
+protected workflow and owner production acceptance are recorded separately
+below; local tests are not represented as production observations.
 
-| Gate | Local result |
+| Gate | Result |
 |---|---|
 | Phase 0/1/2 and Phase 27–30 static/release contracts, Python 3.12 | 114/114 PASS |
 | Backup, retention, operations, and restore contracts | 71/71 PASS |
@@ -72,8 +80,9 @@ They are not a substitute for the protected workflow or owner production UAT.
 | Failed-health rollback simulation | PASS |
 | Locked dependency consistency (`pip check`) | PASS |
 | Production-like staging, security, and capacity preflight | PASS |
-| Protected exact-SHA CI/CD | NOT RUN |
-| Owner manual production verification | NOT RUN |
+| Protected exact-SHA CI/CD | PASS — all 12 jobs in run `33728502631` |
+| EC2 deployment and production-controller gates | PASS |
+| Owner manual production verification | PASS — 2026-09-03 |
 
 The full active suite includes serial parties/items, purchases, sales, returns,
 cash movement, opening balances, owner equity, month close, reports, 208
@@ -112,9 +121,32 @@ or a published Phase 2 image. Its image ID and running container image matched.
 The before/after foundation audit reported unchanged tenant set and continuity.
 Security unit tests passed 5/5, serial checks 51/51, creation checks 15/15,
 runtime removal 13/13, and concurrent isolation 16/16. All six capacity
-preflight checks, final serial preflight, and Redis health passed. The release
-commit still requires its own protected exact-SHA CI/CD run after authorized
-push.
+preflight checks, final serial preflight, and Redis health passed.
+
+The clean release commit `e44737f1f740fa936e853a3d6bbbd068a1b6d89d` was then
+rebuilt and passed the same local staging acceptance. Its source-revision
+label, image ID, and running container image matched. After the owner
+authorized the push, the protected exact-SHA workflow also passed.
+
+## Protected production evidence
+
+- [CI/CD workflow 33728502631](https://github.com/Maaz-Bin-Haider/Financee_Multitenant_Production/actions/runs/33728502631)
+  is completed with conclusion `success` for the exact Phase 2 SHA above.
+- All 12 jobs succeeded: static/Django/migration contracts, serial regression,
+  creation freeze, runtime removal, four-company isolation, ARM64 execution,
+  full regression, encrypted recovery, exact-image staging, protected staging
+  approval, multi-architecture publication, and protected EC2 deployment.
+- The deployment log names `PHASE30_RELEASE_SHA=e44737f1f740fa936e853a3d6bbbd068a1b6d89d`.
+  It reports deployment completion at `07:39:21Z`, then tenant-balance and
+  continuity comparison, operational-threshold capture, and the controller's
+  final `Phase 30 production foundation deployment PASS` at `07:39:52Z` on
+  2026-09-03. This is a successful completion of the fail-closed controller;
+  the underlying on-host JSON evidence was not separately downloaded here.
+- The workflow completed at `2026-09-03T07:39:55Z`.
+- The owner then reported: “the complete CI CD passed and the actual deployed
+  site is working fine”. This is recorded as the Phase 2 manual production
+  acceptance. No claim is made that individual transaction checklist actions
+  were separately observed or reported.
 
 ## Failures, corrections, and limitations
 
@@ -141,8 +173,9 @@ push.
   not represented as a clean strict two-schema audit or silently repaired.
 - The staging capacity check is a configuration/headroom preflight for the
   existing 100-session target, not a new 100-session load benchmark on EC2.
-- Local tests do not establish that production is healthy after Phase 2:
-  production has not received the candidate.
+- Local tests alone do not establish production health. The completed
+  production-controller run and the owner's manual acceptance provide the
+  separate Phase 2 production evidence above.
 
 ## Local audit artifacts
 
@@ -157,6 +190,8 @@ commit or uploaded by this work:
 - `/tmp/phase2-recovery-20260903/` (synthetic encrypted bundle and recovery checks)
 - `/tmp/phase2-staging-20260903.log`
 - `/tmp/phase2-staging-20260903/` (local working-tree image provenance and gates)
+- `/tmp/phase2-exact-staging-20260903.log`
+- `/tmp/phase2-exact-staging-20260903/` (committed Phase 2 image provenance and gates)
 
 SHA-256 audit anchors for the completed local runs:
 
@@ -168,19 +203,13 @@ fc4a2a1ba8e51d2e6e7087c37a1476e670f26b8d2426076af1636ae67b0f79ba  phase2-contrac
 dbc93297e17afcbb026b4683963de25e704c6a47e8fe1ba5a583ea841e272bc0  phase2-staging-20260903/acceptance-summary.json
 ```
 
-## Release gate and mandatory owner check
+## Exit status
 
-Before production: obtain explicit authorization to push the reviewed candidate
-commit, pass every CI gate,
-obtain protected staging/production approvals, and confirm the exact-SHA
-deployment and before/after continuity checks pass.
+**PASS — Phase 2 complete.**
 
-After deployment, the owner must manually verify the live system using the
-normal authorized test workflow: login and tenant access; serial purchase,
-sale, both returns and serial lookup; opening stock; payments/receipts;
-attachments; dashboard/report totals; and company admin creation. Confirm
-quantity-only routes/controls are gone and no existing serial workflow is
-broken. Record the deployed SHA, verification date, and explicit PASS or FAIL.
-Do not create or delete customer transactions just to test this change.
-
-**Phase 3 remains blocked until the owner records Phase 2 production PASS.**
+The implementation, authorized push, protected exact-SHA CI/CD, production
+deployment, automated production gates, and owner manual acceptance are
+complete. Historical database metadata/source cleanup remains deferred to
+Phase 3/4. Phase 3 may start only after a separate explicit owner instruction;
+any destructive database cleanup still requires its own exact-target review,
+backup/restore evidence, and approval.
