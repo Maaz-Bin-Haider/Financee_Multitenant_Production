@@ -1,0 +1,73 @@
+name: Phase 3B read-only cleanup state inspection
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type INSPECT-PHASE3B-CLEANUP-STATE (no changes)"
+        required: true
+        type: string
+      expected_deployed_sha:
+        description: "Exact deployed Phase 3A image SHA"
+        required: true
+        type: string
+        default: 497b6650ed678bc462f85de6bff14692bffd6ace
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  inspection:
+    name: Read-only exact-state fingerprint for later cleanup approval
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      CONFIRMATION: ${{ inputs.confirmation }}
+      EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+      APP_DIR: ${{ secrets.EC2_APP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate inspected source and transport
+        run: |
+          set -euo pipefail
+          [[ "$CONFIRMATION" == INSPECT-PHASE3B-CLEANUP-STATE ]]
+          [[ "$EXPECTED_DEPLOYED_SHA" == 497b6650ed678bc462f85de6bff14692bffd6ace ]]
+          python3 tests/phase3b_cleanup_contracts.py
+          python3 -m unittest tests.test_phase3_inventory_remote
+          bash -n deploy/phase3_inventory_remote.sh
+          sha256sum tenancy/management/commands/serial_only_phase3_cleanup.py
+      - name: Install production SSH key
+        env:
+          DEPLOY_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+      - name: Stream inspection through database-enforced read-only transport
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          set -euo pipefail
+          remote_script=$(< deploy/phase3_inventory_remote.sh)
+          printf -v remote_command 'bash -c %q -- %q %q %q' \
+            "$remote_script" "$APP_DIR" "$EXPECTED_DEPLOYED_SHA" "$GITHUB_SHA"
+          # The unchanged wrapper passes only --strict, never --action apply.
+          # The command defaults to inspect; PGOPTIONS also forces read-only.
+          ssh -i ~/.ssh/id_deploy "$EC2_USER@$EC2_HOST" "$remote_command" \
+            < tenancy/management/commands/serial_only_phase3_cleanup.py \
+            | tee phase3b-cleanup-inspection.log
+      - name: Retain operational fingerprint and counts only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase3b-cleanup-inspection
+          path: phase3b-cleanup-inspection.log
+          retention-days: 90

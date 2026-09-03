@@ -20,7 +20,7 @@ django.setup()
 
 from django.core.exceptions import ValidationError  # noqa: E402
 from django.core.management import call_command, get_commands, load_command_class  # noqa: E402
-from django.db import IntegrityError, connection, transaction  # noqa: E402
+from django.db import DatabaseError, connection, transaction  # noqa: E402
 from django.db.migrations.executor import MigrationExecutor  # noqa: E402
 
 from financee.admin_site import financee_admin_site  # noqa: E402
@@ -68,8 +68,18 @@ def main():
     blocked_schema = f"tenant_company_{time.time_ns()}"
     try:
         with connection.cursor() as cursor:
-            cursor.execute("SELECT count(*) FROM public.tenancy_company WHERE inventory_mode IS DISTINCT FROM 'serial'")
-            check("production-compatible registry contains serial companies only", cursor.fetchone()[0] == 0)
+            cursor.execute("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tenancy_company' AND column_name='inventory_mode')")
+            legacy_present = cursor.fetchone()[0]
+            contracted = False
+            if legacy_present:
+                cursor.execute("SELECT count(*) FROM public.tenancy_company WHERE inventory_mode IS DISTINCT FROM 'serial'")
+                serial_registry = cursor.fetchone()[0] == 0
+            else:
+                from tenancy.management.commands.serial_only_phase3_cleanup import archive
+                stored = archive(cursor)
+                contracted = bool(stored and stored["state"] == "applied")
+                serial_registry = contracted and all(c.inventory_mode == INVENTORY_MODE_SERIAL for c in Company.objects.all())
+            check("production-compatible registry contains serial companies only", serial_registry)
         check(
             "model exposes serial as its only company choice",
             {value for value, _label in INVENTORY_MODE_CHOICES}
@@ -95,11 +105,12 @@ def main():
                     with connection.cursor() as cursor:
                         cursor.execute("UPDATE public.tenancy_company SET inventory_mode='quantity' WHERE id=%s", [company.pk])
                 check("database rejects quantity registry row", False, "update allowed")
-            except IntegrityError:
+            except DatabaseError as exc:
                 company.refresh_from_db()
                 check(
                     "database rejects quantity registry row",
-                    company.inventory_mode == INVENTORY_MODE_SERIAL,
+                    company.inventory_mode == INVENTORY_MODE_SERIAL
+                    and getattr(exc.__cause__, "pgcode", None) == ("23514" if legacy_present else "42703"),
                     company.inventory_mode,
                 )
 
@@ -115,8 +126,9 @@ def main():
             row = cursor.fetchone()
         definition = row[0].lower() if row else ""
         check(
-            "database has exact serial-only check constraint",
-            bool(row) and "serial" in definition and "quantity" not in definition,
+            "database has exact serial-only constraint or certified column contraction",
+            (bool(row) and "serial" in definition and "quantity" not in definition)
+            if legacy_present else contracted and row is None,
             definition,
         )
 
@@ -126,6 +138,12 @@ def main():
             )
             precondition_blocked = False
             with transaction.atomic():
+                if not legacy_present:
+                    # Reconstruct the historical fixture only in this rolled-back
+                    # test transaction so 0008's original guard remains covered.
+                    with connection.cursor() as cursor:
+                        cursor.execute("ALTER TABLE public.tenancy_company ADD COLUMN inventory_mode varchar(16) NOT NULL DEFAULT 'serial'")
+                        cursor.execute("ALTER TABLE public.tenancy_company ADD CONSTRAINT tenancy_company_valid_inventory_mode CHECK (inventory_mode='serial')")
                 with connection.cursor() as cursor:
                     cursor.execute(
                         "ALTER TABLE tenancy_company DROP CONSTRAINT "

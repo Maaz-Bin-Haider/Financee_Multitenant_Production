@@ -16,7 +16,7 @@ import django  # noqa: E402
 django.setup()
 
 from django.core.exceptions import ValidationError  # noqa: E402
-from django.db import IntegrityError, connection, transaction  # noqa: E402
+from django.db import DatabaseError, connection, transaction  # noqa: E402
 
 from financee.admin_site import financee_admin_site  # noqa: E402
 from tenancy.admin import CompanyAdmin, CompanyAdminForm  # noqa: E402
@@ -112,18 +112,27 @@ def main():
             validation_message(exc),
         )
 
-    # The database constraint protects against quantity and unknown values even
-    # when the ORM is bypassed with raw SQL against the retained legacy column.
+    # Before 3B the constraint rejects quantity; after certified 3B the column
+    # itself no longer exists. Neither state can store a quantity company mode.
+    with connection.cursor() as cur:
+        cur.execute("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tenancy_company' AND column_name='inventory_mode')")
+        legacy_present = cur.fetchone()[0]
+        contracted = False
+        if not legacy_present:
+            from tenancy.management.commands.serial_only_phase3_cleanup import archive
+            stored = archive(cur)
+            contracted = bool(stored and stored["state"] == "applied")
     try:
         with transaction.atomic():
             with connection.cursor() as cur:
                 cur.execute("UPDATE public.tenancy_company SET inventory_mode='quantity' WHERE id=%s", [company.pk])
         chk("database rejects quantity inventory mode", False, "update succeeded")
-    except IntegrityError:
+    except DatabaseError as exc:
         company.refresh_from_db()
         chk(
             "database rejects quantity inventory mode",
-            company.inventory_mode == INVENTORY_MODE_SERIAL,
+            company.inventory_mode == INVENTORY_MODE_SERIAL
+            and getattr(exc.__cause__, "pgcode", None) == ("23514" if legacy_present else "42703"),
             company.inventory_mode,
         )
 
@@ -137,7 +146,8 @@ def main():
             """
         )
         constraint_count = cur.fetchone()[0]
-    chk("inventory mode database constraint exists", constraint_count == 1, constraint_count)
+    chk("serial-only database constraint or certified column contraction",
+        constraint_count == 1 if legacy_present else contracted and constraint_count == 0, constraint_count)
 
     admin_obj = CompanyAdmin(Company, financee_admin_site)
     chk("admin form hides inventory mode", "inventory_mode" not in CompanyAdminForm.base_fields)

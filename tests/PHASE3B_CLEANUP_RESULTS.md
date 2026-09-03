@@ -2,10 +2,14 @@
 
 **Date:** 2026-09-03
 
-**Status:** Fresh protected production inventory PASS. Current-image recovery-only
-tooling implemented and locally validated; not pushed or executed on production.
-No cleanup migration or metadata archive is implemented. No production database
-mutation, deployment, or deletion has run in 3B.
+**Status:** Fresh protected production inventory and current-image production
+backup/isolated recovery PASS. Recovery-only commit `962f36f` was explicitly
+approved, pushed, and run under separate protected approval. The owner subsequently
+confirmed the live site works. A reversible cleanup command and tests are now
+local candidates, documented in `PHASE3B_CONTROLLED_CLEANUP_RESULTS.md`; no
+automatic cleanup migration is introduced. No production business/database
+cleanup or application deployment has run in 3B; only the backup and disposable
+recovery resources were created, with the disposable resources removed afterward.
 
 **Required rollback image:** deployed and owner-accepted 3A
 `497b6650ed678bc462f85de6bff14692bffd6ace`.
@@ -94,7 +98,8 @@ through read-only sessions in the existing web container.
 The script requires at least 1.5 GiB host memory and 1 GiB Docker free space;
 after the fresh backup it checks Docker and temporary-file storage against the
 greater of 1 GiB or four times the audited database size plus two encrypted
-copies. These are conservative guards, not a measured production capacity PASS.
+copies. The production run below passed these guards; exact capacity readings
+are not included in the downloaded operational summary.
 Insufficient capacity stops the gate without silently reducing thresholds.
 
 The existing encrypted DB-backup service creates and remotely verifies a new
@@ -134,7 +139,7 @@ database. Both remain separate requirements.
 | Actual Compose merge and synthetic encrypted DB restore | PASS using published 3A ARM64 image; RTO 44 seconds |
 | Restored strict serial and metadata audits | PASS; cleanup authorization remains false |
 | Actual restored image/resource limits and disposable removal | PASS; independently checked containers, volumes and networks absent |
-| Production recovery | NOT RUN — push and protected approval still required |
+| Production recovery | PASS — protected run `33760176723`; separate production evidence below |
 
 The local synthetic backup timestamp was `20260903T124308Z`, size 542,752
 encrypted bytes. Published 3A image ID:
@@ -163,6 +168,67 @@ also required narrowing the static no-pull assertion to the remote execution
 step; production still never pulls images. Neither issue was a production
 failure. The full application suite was not rerun for this recovery-only source
 change; application/model/migration/frontend/tenant SQL remain unchanged.
+
+## Verified protected production recovery
+
+The owner explicitly authorized pushing
+`962f36feec98f2ab1babff1fc50ec7efe34c125c` to `main`. The push used `[skip ci]`;
+no automatic CI/CD run started. The owner separately authorized dispatch of
+[run `33760176723`](https://github.com/Maaz-Bin-Haider/Financee_Multitenant_Production/actions/runs/33760176723)
+and approved its production gate externally. The agent did not submit that
+protected approval. All run steps succeeded, including the GitHub-runner
+synthetic rehearsal before SSH. The job completed at `2026-09-03T13:59:08Z`.
+
+The downloaded operational summary and the checked-out controller establish:
+
+- Source SHA `962f36feec98f2ab1babff1fc50ec7efe34c125c`; deployed/restore target
+  remains the owner-accepted 3A SHA `497b6650ed678bc462f85de6bff14692bffd6ace`.
+- New operation-time encrypted database backup release
+  `db-backup-20260903T135747Z`. A separate read-only GitHub release lookup
+  confirmed publication at `13:57:54Z`, non-draft/non-prerelease status, the
+  encrypted asset (532,512 bytes), and its checksum asset (108 bytes) in the
+  existing private backup repository. That independent lookup inspected only
+  release metadata, not backup contents. Checksum/decryption/restore validation
+  was performed by the protected workflow.
+- Isolated restore RTO **51 seconds**, as measured by the existing restore
+  helper; this is not total workflow duration or an application-wide recovery
+  guarantee. It covers the database-only bundle, not uploaded media.
+- Exact disposable project
+  `dbbackup_rehearsal_phase3_d829a63d7e3e40529b8d69c0cb2ac91d`. Before reporting
+  PASS, the controller verified its restored image IDs/resource limits, both
+  strict audits, and removal of its containers, volumes and network. Its private
+  temporary environment and encrypted working copy were removed afterward.
+- The controller passed production read-only metadata/continuity audits before
+  and after, checked unchanged production container/image identities and health,
+  and passed the final HTTP check. The summary explicitly records
+  `production_container_images_unchanged=true`, `result=PASS`, and
+  `authorizes_cleanup=false`. This is not a before/after financial-balance
+  equality claim while customers continue transacting.
+
+The [retained artifact `9896759886`](https://github.com/Maaz-Bin-Haider/Financee_Multitenant_Production/actions/runs/33760176723/artifacts/9896759886)
+contains the controlled operational summary, with 90-day retention. The local
+download is outside Git:
+`/tmp/phase3-recovery-review-33760176723.GATqry/phase3-production-recovery.log`.
+
+```text
+4ea0d5533754c4f32d6a8f036b0c0ea597c312d4ed4adab1cde38598790996f9  GitHub-reported artifact ZIP SHA-256
+31e4257a6a8579ff4f657bade0e217988139b20487068320847ca7bf170005ee  downloaded recovery summary SHA-256
+```
+
+Raw backup-service, restore, audit and cleanup logs remain root-only on EC2 in
+`/var/lib/financee-backup/phase3-recovery-evidence/20260903T135745Z-5ad5e9dab2584524ad2a4a68a8e1bc7d`.
+They were not downloaded or added to Git. The final checks above are therefore
+verified through the successful controller and summary, not claimed as a
+separate direct inspection of each raw host log.
+
+The owner's initial “its passed” reported the workflow result. The subsequent
+“yes it working fine” records the owner's manual live-site PASS after recovery,
+not final 3B acceptance or independently observed transaction-by-transaction
+verification. Controlled cleanup is now a locally tested candidate, but production
+execution remains unauthorized and its guarded write wrapper unimplemented.
+This successful recovery establishes readiness to prepare it, not permission to
+remove records or reuse this recovery point indefinitely. Evidence freshness and
+exact cleanup preconditions must be checked again at destructive execution.
 
 ## Required implementation and operational safeguards
 
@@ -194,9 +260,10 @@ change; application/model/migration/frontend/tenant SQL remain unchanged.
    Define and test reversal separately from image-only rollback.
 6. Test actual deployed 3A normal startup, authenticated serial workflows and
    company creation on the contracted database, then re-upgrade. Check that
-   old-image migration startup does not recreate retired metadata. Fresh installs
-   must pass through historical migrations to the new leaf correctly. Applied
-   historical migrations remain untouched during this operational checkpoint.
+   old-image migration startup does not recreate retired metadata. Synthetic
+   fresh databases must pass historical migrations before explicit cleanup.
+   Automatic fresh-install retirement/migration replacement remains Phase 4;
+   applied historical migrations remain untouched at this operational checkpoint.
 7. Pass serial source-preservation, full regression, isolation, ARM64, encrypted
    restore, exact-image staging, and failure/lock-contention tests. Prove the
    pre-deployment audit also works on the uncontracted production database.
@@ -209,5 +276,6 @@ change; application/model/migration/frontend/tenant SQL remain unchanged.
 
 No tenant-schema drop is planned based on the old inventory. Any newly found
 orphan requires independent classification and exact-target authorization;
-the earlier Company 2 permission cannot be reused. These are preparation
-requirements, not claims of implemented controls or executed cleanup.
+the earlier Company 2 permission cannot be reused. These are gate requirements,
+not claims of executed cleanup. The companion local-candidate report identifies
+which controls are implemented/tested and which production gates remain pending.

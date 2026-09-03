@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import tempfile
 import uuid
+import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,9 @@ spec.loader.exec_module(gate)
 
 
 def main():
+    if sys.argv[1:] not in ([], ["--cleanup-test"]):
+        raise SystemExit("Use no arguments for recovery, or --cleanup-test for the disposable cleanup proof")
+    cleanup_test = sys.argv[1:] == ["--cleanup-test"]
     os.umask(0o077)
     os.chdir(ROOT / "deploy")
     project = "dbbackup_rehearsal_phase3source_" + uuid.uuid4().hex
@@ -53,6 +57,71 @@ def main():
         gate.run([*compose, "up", "-d", "--wait", "--wait-timeout", "180", "db", "redis", "web"],
                  env=env, timeout=240, log=work / "synthetic-startup.log")
         print("SYNTHETIC_SOURCE_STARTUP=PASS", flush=True)
+        if cleanup_test:
+            gate.run([*compose, "cp", str(ROOT / "tenancy/management/commands/serial_only_phase3_cleanup.py"),
+                      "web:/app/tenancy/management/commands/serial_only_phase3_cleanup.py"], env=env)
+            gate.run([*compose, "cp", str(ROOT / "tests"), "web:/app/"], env=env)
+            for test in ("tests/phase1_serial_only_creation.py", "tests/suite/test_company_metadata.py"):
+                gate.run([*compose, "exec", "-T", "web", "python", test], env=env,
+                         timeout=180, log=work / ("pre-cleanup-" + Path(test).stem + ".log"))
+            print("SYNTHETIC_PRE_CLEANUP_CREATION_METADATA=PASS", flush=True)
+            result = gate.run([*compose, "exec", "-T", "-e", "PHASE3B_TEST_DISPOSABLE=1", "web",
+                               "python", "tests/phase3b_cleanup.py"], env=env, timeout=240, log=work / "cleanup-tests.log")
+            print(result, flush=True)
+            # Recreate from the unmodified published image: copied test/command
+            # files do not survive. Its normal entrypoint must tolerate 3B.
+            gate.run([*compose, "up", "-d", "--force-recreate", "--wait", "--wait-timeout", "180", "web"],
+                     env=env, timeout=240, log=work / "old-image-startup.log")
+            proof = '''import os,time
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","financee.settings")
+import django; django.setup()
+from django.db import connection,transaction
+from django.core.exceptions import ValidationError
+from tenancy.models import Company
+from tenancy.schema_verification import verify_company_schema
+with connection.cursor() as c:
+ c.execute("SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='tenancy_company' AND column_name='inventory_mode'")
+ assert c.fetchone()[0] == 0
+ c.execute("SELECT state FROM public.tenancy_phase3b_retirement_archive WHERE operation_key='serial-only-phase3b-v1'")
+ assert c.fetchone() == ('applied',)
+ c.execute("""SELECT count(*) FROM public.auth_permission p
+ JOIN public.django_content_type ct ON ct.id=p.content_type_id
+ WHERE ct.app_label='auth' AND ct.model='user' AND p.codename IN (
+ SELECT value->>'codename' FROM public.tenancy_phase3b_retirement_archive a,
+ jsonb_array_elements(a.payload->'targets'->'permissions'))""")
+ assert c.fetchone()[0] == 0, 'published image startup recreated retired permissions'
+with transaction.atomic():
+ company=Company.objects.create(name="3B old-image synthetic "+str(time.time_ns()))
+ company.refresh_from_db(); company.full_clean()
+ assert company.provisioning_state == 'ready' and verify_company_schema(company,use_cache=False).ok
+ company.contact_email='synthetic@example.com'; company.save(update_fields=['contact_email']); company.refresh_from_db()
+ assert company.contact_email=='synthetic@example.com' and company.get_inventory_mode_display()=='Serial-number based'
+ try: Company.objects.create(name='rejected synthetic',inventory_mode='quantity')
+ except ValidationError: pass
+ else: raise AssertionError('quantity accepted')
+ transaction.set_rollback(True)
+print('PASS: actual published 3A normal entrypoint retains retirement; company reads/creation/edit and quantity rejection after contraction')
+'''
+            print(gate.run([*compose, "exec", "-T", "web", "python", "-c", proof], env=env,
+                           log=work / "old-image-proof.log"), flush=True)
+            # Current tests now verify the contracted state as well as the old
+            # retained-column state. Application code stays the published image.
+            gate.run([*compose, "cp", str(ROOT / "tests"), "web:/app/"], env=env)
+            gate.run([*compose, "cp", str(ROOT / "tenancy/management/commands/serial_only_phase3_cleanup.py"),
+                      "web:/app/tenancy/management/commands/serial_only_phase3_cleanup.py"], env=env)
+            gate.run([*compose, "exec", "-T", "web", "python", "-c",
+                      "import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE','financee.settings'); import django; django.setup(); from tenancy.models import Company; Company.objects.update(disabled_features=[])"], env=env)
+            gate.run([*compose, "exec", "-T", "-e", "DJANGO_SUPERUSER_USERNAME=admin",
+                      "-e", "DJANGO_SUPERUSER_PASSWORD=ci-admin-password", "-e", "DJANGO_SUPERUSER_EMAIL=admin@example.com",
+                      "web", "python", "manage.py", "createsuperuser", "--noinput"], env=env)
+            gate.run([*compose, "exec", "-T", "web", "python", "manage.py", "provision_tenant", "CI Company Two"], env=env)
+            gate.run([*compose, "exec", "-T", "web", "python", "tests/ci_bootstrap.py"], env=env)
+            gate.run([*compose, "exec", "-T", "web", "python", "tests/suite/run_all.py"], env=env,
+                     timeout=1200, log=work / "post-cleanup-full-suite.log")
+            gate.run([*compose, "exec", "-T", "web", "python", "manage.py", "serial_only_phase3_cleanup", "--strict"],
+                     env=env, log=work / "post-suite-cleanup-state.json")
+            print("SYNTHETIC_POST_CLEANUP_FULL_SUITE=PASS", flush=True)
+            return
         backup = gate.run(["bash", "backup_database_encrypted.sh"], timeout=240,
                           log=work / "synthetic-backup.log", env={**env,
                               "BACKUP_DEST": str(work), "BACKUP_PASSPHRASE_FILE": str(passphrase),
