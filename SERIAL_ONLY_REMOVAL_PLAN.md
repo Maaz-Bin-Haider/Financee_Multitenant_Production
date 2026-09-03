@@ -30,7 +30,7 @@ explicit production PASS for the current phase.
 | 0 | Production discovery, baseline, and approved test-tenant remediation | **PASS** | Production and restored strict audits, fresh remote backup, cleanup, preflight, and health PASS | **PASS** |
 | 1 | Close quantity-company creation | **PASS** | Local gates and protected exact-SHA workflow `33636045130` PASS; production deployed without rollback | **PASS** |
 | 2 | Remove quantity runtime and replace CI coverage | **PASS** | Local gates and all 12 jobs in protected exact-SHA workflow `33728502631` PASS; production controller PASS | **PASS** |
-| 3 | Remove quantity database metadata and approved orphan schemas | Not started | Not run | Required — Phase 4 blocked |
+| 3 | Remove quantity database metadata and approved orphan schemas | **In progress — local inventory ready** | Inventory contracts 20/20, live checks 24/24, wrapper tests 5/5 PASS; production inventory and cleanup not run | Required at each compatibility/cleanup checkpoint — Phase 4 blocked |
 | 4 | Source, documentation, test, and migration hygiene | Not started | Not run | Required — final acceptance |
 
 ## Phase 0 — Production Discovery and Approved Test-Tenant Remediation
@@ -211,15 +211,69 @@ and the actual deployed site is working fine”.
 overall manual acceptance is recorded as supplied; individual transaction
 checklist actions were not separately reported.
 
-Phase 2 is complete. Phase 3 is eligible but has not started and requires a
-separate explicit owner instruction. This sign-off authorizes no database
-cleanup or schema deletion.
+Phase 2 is complete. The owner explicitly started Phase 3 on 2026-09-03.
+The Phase 2 sign-off itself authorizes no database cleanup or schema deletion.
 
 ### Phase 3 — Database Cleanup
 
 Remove quantity-era public fields/permissions using expand-and-contract
 migrations. Archive and remove only individually approved quantity/orphan
 schemas. Never issue a broad tenant-schema drop.
+
+#### Discovery findings and staged release requirement
+
+The deployed Phase 2 image still maps `Company.inventory_mode` as an ORM field.
+Dropping its physical column now would break that image, including rollback.
+The existing recovery contract explicitly says image rollback does not reverse
+forward migrations. Therefore this phase requires a compatibility release
+before a separate column-removal release, not a single destructive deployment.
+
+`base_currency`, `tax_environment`, the currency catalogue, provisioning state,
+subscriptions, memberships, and serial feature keys are shared with the serial
+system. Preserve them and their existing validation/admin behavior. They are
+not automatically classified as quantity-only because they originated during
+the historical quantity project.
+
+| Checkpoint | Work | Required exit gate |
+|---|---|---|
+| 3.0 — Inventory | Read-only production registry, column/dependency, permission/grant, stale-feature, physical-schema and continuity evidence | Protected inventory PASS, every exception reviewed; no cleanup authorized by the report |
+| 3A — Compatibility | Remove runtime/ORM dependence on the redundant inventory-mode column while retaining the physical column, exact serial constraint, and a compatible database default; retain existing serial responses and shared setup | Old/new-image company creation, serial regression, ARM64, full suite, recovery and protected deployment PASS; owner manually verifies production |
+| 3B — Controlled cleanup | Archive and remove only the reviewed quantity permission/grant and stale-feature records; separately contract the redundant column only after deployed 3A no longer needs it | Fresh production inventory and backup/isolated restore; exact dependency review; reversible metadata proof; rollback to deployed 3A; protected deployment; owner manual PASS |
+| Any orphan schema | Classify individually if the new inventory finds one | Separate exact-target approval and backup/restore before any deletion; never infer authorization from the already-retired Company 2 |
+
+Checkpoint 3B must not be bundled into the first 3A deployment. The actual 3A
+SHA becomes the tested rollback target before a physical column is removed.
+Any archive retention/removal decision remains separate from its creation.
+
+#### Current implementation checklist — checkpoint 3.0 only
+
+- [x] Verify Phase 2 deployed SHA and owner PASS before starting Phase 3.
+- [x] Identify the 14 exact `auth.user` permission seeds in migrations 0022–0025.
+- [x] Identify the seven exact retired feature keys; preserve all other keys.
+- [x] Add a database-enforced read-only, repeatable-snapshot inventory with
+  bounded statement/lock waits, no customer names or permission assignees.
+- [x] Inspect physical schemas independently, including noncanonical
+  tenant-prefixed schemas, inactive companies, missing schemas and orphans.
+- [x] Inspect `inventory_mode` dependencies and report unexpected objects.
+- [x] Prepare a protected manual workflow that streams audited source into
+  the unchanged, exact-SHA ARM64 Phase 2 container without a checkout update,
+  image pull, deployment, migration, restart, or container-file copy on EC2.
+- [x] Finish local contracts, real PostgreSQL negative tests, exact deployed-
+  image execution, wrapper failure tests, and diff review.
+- [ ] Obtain explicit approval to push the inventory-only commit (`[skip ci]`).
+- [ ] Obtain protected approval and run the read-only production inventory.
+- [ ] Review current production candidates and exceptions before implementing
+  cleanup migrations.
+- [ ] Deploy compatibility checkpoint 3A and obtain owner manual production PASS.
+- [ ] Complete approved cleanup checkpoint 3B and owner manual production PASS.
+
+**Owner Phase 3 result:** `NOT RUN`.
+
+**Local evidence:** `tests/PHASE3_SERIAL_ONLY_METADATA_RESULTS.md`.
+
+**Current boundary:** no cleanup migration or schema deletion is implemented
+or executed. Phase 3 production facts must come from the new protected
+inventory, not assumptions based on the earlier Phase 0 snapshot.
 
 ### Phase 4 — Repository Hygiene
 
@@ -266,3 +320,7 @@ every environment has reached the required migration leaf.
 | 2026-09-03 | Owner explicitly authorized pushing Phase 2 commit `e44737f`; exact commit pushed to `main` | CI/CD workflow `33728502631` started |
 | 2026-09-03 | Phase 2 protected exact-SHA workflow verified | All 12 jobs succeeded, including ARM64, full regression, recovery, staging approval, publication, and EC2 deployment; production controller PASS at 07:39:52 UTC after continuity/operational gates |
 | 2026-09-03 | Owner reported the actual deployed site working fine | Phase 2 manual production PASS; Phase 2 complete; Phase 3 not started pending explicit instruction |
+| 2026-09-03 | Owner explicitly instructed “start phase 3” | Phase 3 started with read-only metadata discovery; production unchanged |
+| 2026-09-03 | Phase 3 dependency review | Deployed Phase 2 still reads `inventory_mode`; compatibility release required before column drop. Shared serial currency/tax/provisioning/subscription fields preserved |
+| 2026-09-03 | Phase 3 local inventory validation | 134/134 static/release contracts including 20/20 inventory contracts, 24/24 PostgreSQL inventory checks, 5/5 wrapper tests on host and Linux, and exact deployed Phase 2 image stdin execution PASS; disposable projects removed |
+| 2026-09-03 | Phase 3 read-only preparation boundary | Source scanner label false-positive corrected; shell guards made explicit after negative tests; no runtime/model/migration/serial SQL change; inventory-only push and protected production inspection require approval |

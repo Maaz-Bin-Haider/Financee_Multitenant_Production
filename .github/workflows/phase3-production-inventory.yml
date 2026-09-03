@@ -1,0 +1,72 @@
+name: Phase 3 read-only production inventory
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type INSPECT-PHASE3-READ-ONLY (no cleanup or deployment)"
+        required: true
+        type: string
+      expected_deployed_sha:
+        description: "Exact currently deployed Phase 2 image SHA"
+        required: true
+        type: string
+        default: e44737f1f740fa936e853a3d6bbbd068a1b6d89d
+
+permissions:
+  contents: read
+
+# Serialize with the normal protected deployment job, not merely other audits.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  inventory:
+    name: Read-only Phase 3 metadata and continuity inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      CONFIRMATION: ${{ inputs.confirmation }}
+      EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+      APP_DIR: ${{ secrets.EC2_APP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate source contracts and explicit inputs
+        run: |
+          set -euo pipefail
+          [[ "$CONFIRMATION" == INSPECT-PHASE3-READ-ONLY ]]
+          [[ "$EXPECTED_DEPLOYED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          bash -n deploy/phase3_inventory_remote.sh
+          python3 tests/phase3_metadata_inventory_contracts.py
+          python3 -m unittest tests.test_phase3_inventory_remote
+          sha256sum tenancy/management/commands/serial_only_phase3_audit.py
+
+      - name: Install production SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Stream audit into unchanged deployed image
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          set -euo pipefail
+          remote_script=$(< deploy/phase3_inventory_remote.sh)
+          printf -v remote_command 'bash -c %q -- %q %q %q' \
+            "$remote_script" "$APP_DIR" "$EXPECTED_DEPLOYED_SHA" "$GITHUB_SHA"
+          ssh -i ~/.ssh/id_deploy "$EC2_USER@$EC2_HOST" "$remote_command" \
+            < tenancy/management/commands/serial_only_phase3_audit.py \
+            | tee phase3-production-inventory.log
+
+      - name: Retain operational metadata only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase3-production-inventory
+          path: phase3-production-inventory.log
+          retention-days: 90

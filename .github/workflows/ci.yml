@@ -35,6 +35,8 @@ jobs:
       - run: python tests/phase0_serial_only_discovery_contracts.py
       - run: python tests/phase1_serial_only_creation_contracts.py
       - run: python tests/phase2_serial_runtime_removal_contracts.py
+      - run: python tests/phase3_metadata_inventory_contracts.py
+      - run: python -m unittest tests.test_phase3_inventory_remote
       - run: python -m unittest tests.test_phase2_static_retirement
       - run: python tests/phase27_release_gates.py
       - run: bash tests/phase27_rollback_simulation.sh
@@ -85,6 +87,18 @@ jobs:
         with:
           name: runtime-removal-gate-failure
           path: phase27-artifacts/runtime-removal
+
+  metadata-inventory-gate:
+    name: Phase 3 read-only metadata inventory gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash tests/ci_phase27_stack.sh metadata-inventory
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metadata-inventory-gate-failure
+          path: phase27-artifacts/metadata-inventory
 
   isolation-gate:
     name: Four-serial-company isolation gate
@@ -180,7 +194,7 @@ jobs:
   staging-release-approval:
     name: Product, engineering & operations staging approval
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [staging-security-gate, serial-gate, creation-freeze-gate, runtime-removal-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate]
+    needs: [staging-security-gate, serial-gate, creation-freeze-gate, runtime-removal-gate, metadata-inventory-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate]
     runs-on: ubuntu-latest
     environment: staging-release-approval
     steps:
@@ -192,7 +206,7 @@ jobs:
   publish:
     name: Publish signed-off multi-architecture image
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [checks, serial-gate, creation-freeze-gate, runtime-removal-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate, staging-security-gate, staging-release-approval]
+    needs: [checks, serial-gate, creation-freeze-gate, runtime-removal-gate, metadata-inventory-gate, isolation-gate, arm64-smoke, full-regression, recovery-gate, staging-security-gate, staging-release-approval]
     runs-on: ubuntu-latest
     permissions:
       contents: read

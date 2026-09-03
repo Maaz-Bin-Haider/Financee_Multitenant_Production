@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-gate="${1:?gate required: serial|creation-freeze|runtime-removal|isolation|arm64|full}"
+gate="${1:?gate required: serial|creation-freeze|runtime-removal|metadata-inventory|isolation|arm64|full}"
 case "$gate" in
-  serial|creation-freeze|runtime-removal|isolation|arm64|full) ;;
+  serial|creation-freeze|runtime-removal|metadata-inventory|isolation|arm64|full) ;;
   *) echo "unknown gate: $gate" >&2; exit 2 ;;
 esac
 # Never attach tests or their destructive cleanup to the default deploy project.
@@ -69,6 +69,18 @@ case "$gate" in
     ;;
   creation-freeze) "${compose[@]}" exec -T web python tests/phase1_serial_only_creation.py ;;
   runtime-removal) "${compose[@]}" exec -T web python tests/phase2_serial_runtime_removal.py ;;
+  metadata-inventory)
+    "${compose[@]}" exec -T -e PHASE3_TEST_DISPOSABLE=1 web \
+      python tests/phase3_metadata_inventory.py
+    # Prove the stdin-only audit works in the actual deployed Phase 2 image,
+    # where the new management command is not installed. No entrypoint runs.
+    docker run --rm -i --read-only --tmpfs /tmp \
+      --network "${test_project}_default" --env-file "$WEB_ENV_FILE" \
+      -e 'PGOPTIONS=-c default_transaction_read_only=on' --entrypoint python \
+      ghcr.io/maaz-bin-haider/financee-web:e44737f1f740fa936e853a3d6bbbd068a1b6d89d \
+      - --strict < tenancy/management/commands/serial_only_phase3_audit.py \
+      >"$artifact_dir/phase3-deployed-image-inventory.json"
+    ;;
   isolation) "${compose[@]}" exec -T web python tests/phase25_four_company_isolation.py ;;
   arm64)
     "${compose[@]}" exec -T web python tests/phase27_arm64_smoke.py
