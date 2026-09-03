@@ -54,14 +54,15 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def run(args, *, env=None, log=None, timeout=120):
+def run(args, *, env=None, log=None, timeout=120, input_text=None):
     # Do not inherit DB/Compose settings into a different environment.
     clean = {k: os.environ[k] for k in ("PATH", "HOME", "LANG", "LC_ALL") if k in os.environ}
     clean.update(env or {})
-    process = subprocess.Popen(args, env=clean, text=True, stdout=subprocess.PIPE,
+    process = subprocess.Popen(args, env=clean, text=True,
+                               stdin=subprocess.PIPE if input_text is not None else None, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, start_new_session=True)
     try:
-        stdout, stderr = process.communicate(timeout=timeout)
+        stdout, stderr = process.communicate(input=input_text, timeout=timeout)
     except BaseException as exc:
         # Stop the whole helper process group before attempting stack cleanup.
         # Otherwise a timed-out shell could leave a child compose command running.
@@ -219,7 +220,7 @@ def validate_config(config, before, project):
                 and network["name"].startswith(project + "_"), "Restore network is not isolated")
 
 
-def restore(before, bundle, evidence):
+def restore(before, bundle, evidence, *, verifier=None):
     work = Path(tempfile.mkdtemp(prefix="financee-phase3-recovery-"))
     project = "dbbackup_rehearsal_phase3_" + uuid.uuid4().hex
     env_file = work / "restore.env"
@@ -262,12 +263,18 @@ def restore(before, bundle, evidence):
                             "{{.Image}}|{{.HostConfig.Memory}}|{{.HostConfig.NanoCpus}}", cid])
             require(observed == f"{before[service]['image']}|{memory}|{nano}",
                     "Actual restore image/resource limits differ from approval")
-        for command, args in (("serial_only_phase3_audit", ["--strict"]),
-                              ("serial_only_phase0_audit", ["--include-continuity", "--strict-serial"])):
-            run([*compose, "exec", "-T", "-e", "PGOPTIONS=-c default_transaction_read_only=on",
-                 "web", "python", "manage.py", command, *args], env=restore_env,
-                log=evidence / f"restored-{command}.json", timeout=180)
-        return {"project": project, "restore_rto_seconds": int(result["RESTORE_RTO_SECONDS"])}
+        if verifier is None:
+            for command, args in (("serial_only_phase3_audit", ["--strict"]),
+                                  ("serial_only_phase0_audit", ["--include-continuity", "--strict-serial"])):
+                run([*compose, "exec", "-T", "-e", "PGOPTIONS=-c default_transaction_read_only=on",
+                     "web", "python", "manage.py", command, *args], env=restore_env,
+                    log=evidence / f"restored-{command}.json", timeout=180)
+            verification = {}
+        else:
+            # The caller supplies a reviewed verifier for the restored state.
+            # It runs before the same guaranteed, project-scoped cleanup below.
+            verification = {"verification": verifier(compose, restore_env)}
+        return {"project": project, "restore_rto_seconds": int(result["RESTORE_RTO_SECONDS"]), **verification}
     finally:
         if attempted:
             try:

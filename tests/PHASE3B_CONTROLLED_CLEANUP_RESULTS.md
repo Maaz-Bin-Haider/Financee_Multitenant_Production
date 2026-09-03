@@ -2,10 +2,12 @@
 
 **Date:** 2026-09-03
 
-**Boundary:** local implementation and synthetic validation only. No candidate
-push, inspection dispatch, deployment, production archive, permission deletion,
-feature rewrite, or physical column removal is authorized by this report.
-Phase 3B remains incomplete; Phase 4 remains blocked on owner post-cleanup PASS.
+**Boundary:** candidate `a70f8a1` was explicitly approved and pushed with
+`[skip ci]`. The separately authorized protected read-only production inspection
+passed in run `33773691381`. No deployment, production archive, permission
+deletion, feature rewrite, or physical column removal has run in this checkpoint.
+This report does not authorize those actions. Phase 3B remains incomplete;
+Phase 4 remains blocked on owner post-cleanup PASS.
 
 ## Entry evidence and design decision
 
@@ -43,8 +45,9 @@ stdin entry point also works inside the unmodified published 3A image.
   It also requires a managed backup reference dated within 30 minutes. **This
   timestamp check does not prove that a backup exists or was restored.** A future
   reviewed production wrapper must independently create/verify fresh encrypted
-  backup and isolated restore before invoking the command. That wrapper is not
-  implemented in this candidate; direct production invocation is not approved.
+  backup and isolated restore before invoking the command. That wrapper was
+  not part of `a70f8a1`; a subsequent local candidate is now documented in
+  `PHASE3B_EXECUTOR_RESULTS.md`. Direct production invocation is not approved.
 - A nonblocking advisory lock and table locks precede recomputation of the
   fingerprint. Lock waits are bounded at two seconds and individual statements
   at 30 seconds. The whole archive/delete/DDL/check operation is one transaction.
@@ -117,16 +120,17 @@ no-argument backup/restore path remains separate and unchanged in behavior.
 
 The proposed CI adds a mandatory cleanup-rehearsal job before staging approval
 and image publication. It pulls the named images only on the GitHub runner and
-uses synthetic data. Existing gates remain mandatory. The workflow is not yet
-run remotely for this candidate; `[skip ci]` is required for the proposed push.
+uses synthetic data. Existing gates remain mandatory. Full CI has not run
+remotely for this candidate; the approved push used `[skip ci]`. The separate
+inspection workflow's source-contract and transport tests did pass remotely.
 
 The separate manual-only `phase3b-cleanup-inspection.yml` requires protected
 production approval and shares deployment concurrency. It streams the reviewed
 source through the unchanged read-only transport into the exact 3A ARM64 image,
 then runs strict serial continuity and unchanged-container/health checks. There
-is **no apply/restore input or production write invocation**. The current
-production inventory lacks this command's exact grant-identity/column fingerprint;
-its counts cannot substitute for the new inspection and later target approval.
+is **no apply/restore input or production write invocation**. The successful run
+below captured this command's exact grant-identity/column fingerprint. It does
+not grant cleanup approval, and any later mutation must revalidate it under lock.
 
 ## Local validation
 
@@ -166,7 +170,7 @@ c4b64ac09c8f5040f05be0453713312d6fa2f2fc69ab09c9e8152b3cc558d9a8  cleanup-tests.
 a88eb79958520d5daa09c8f0141109c0bd3202a2bfad7471647692159c974636  synthetic-cleanup.log
 ```
 
-Tested source SHA-256:
+Tested source SHA-256 for the initial `a70f8a1` candidate:
 
 ```text
 96ab8615dffc7d240a0200349e61574a83fc962a10ebeb9bf1682f5d2ccce43f  tenancy/management/commands/serial_only_phase3_cleanup.py
@@ -178,16 +182,77 @@ An early local candidate had a Python syntax error in the restore INSERT
 argument list. It failed before cleanup, was fixed locally, and the disposable
 stack was removed. Subsequent runs passed. No production failure resulted.
 
+## Verified protected read-only production inspection
+
+The owner explicitly authorized pushing exact candidate
+`a70f8a11d1f55d7605e6b80f1164c63fe36c0dc6` and subsequently asked to retry.
+Before retrying, GitHub `main` was verified still at `962f36f`; the push then
+succeeded and a read-only check confirmed `main` at `a70f8a1` with no workflow
+runs for that SHA at that time. No force push or automatic deployment occurred.
+
+The owner separately authorized queueing the read-only inspection. No existing
+run was found; [run `33773691381`](https://github.com/Maaz-Bin-Haider/Financee_Multitenant_Production/actions/runs/33773691381)
+was dispatched from `main` at the exact approved SHA, with confirmation
+`INSPECT-PHASE3B-CLEANUP-STATE` and expected deployed SHA
+`497b6650ed678bc462f85de6bff14692bffd6ace`. Its pending approval was explicitly
+verified as the `production` environment. The agent did not submit that approval.
+The protected gate was approved externally and the owner reported it passed.
+
+GitHub reports every step successful, including the 22 source contracts,
+transport unit checks, streamed read-only inspection and artifact retention.
+The job completed at `2026-09-03T15:45:37Z`; the strict continuity snapshot was
+captured at `15:45:34.886809Z`. The downloaded evidence confirms:
+
+- Source SHA matches `a70f8a1`; deployed SHA remains the accepted 3A image.
+  The unchanged transport verified ARM64, healthy web, and unchanged web
+  container/image identity after inspection. This is not a fresh audit of every
+  other production container or a claim of a later live-site check.
+- One active, ready serial company and one registered serial v6 schema, with
+  24 tenant tables. No missing, orphan, invalid or non-serial schemas reported.
+- Exactly the 14 reviewed `auth.user` permissions, IDs 125–138, and 14 direct
+  grant records; zero group grants and zero retired feature occurrences. These
+  counts match the earlier inventory; counts alone do not prove unchanged
+  individual grant assignments. The new digest binds those exact assignments
+  without exporting assignees.
+- Archive absent and physical mode column still present. Successful execution
+  of the reviewed inspector validates its exact type/default/serial constraint,
+  known dependencies, target-table trigger/rule/RLS and permission-FK guards.
+  No exception was reported within that defined inspection scope.
+- Strict serial continuity passed with available continuity evidence, balanced
+  journal and consistent serial structure. This is a point-in-time result, not
+  a claim of unchanged balances while customers transact.
+- `PHASE3_INVENTORY_RESULT=PASS`, `PHASE3_PRODUCTION_CONTAINER_UNCHANGED=yes`,
+  `authorizes_cleanup=false`, and `PHASE3_CLEANUP_AUTHORIZED=no`.
+
+Inspected target-state SHA-256 (not an authorization token):
+
+```text
+f29440c28fb0acf2640e9a9794918d5adf932cf8a4a2932b0e9b9dacd114b4b4
+```
+
+The [retained artifact `9900997739`](https://github.com/Maaz-Bin-Haider/Financee_Multitenant_Production/actions/runs/33773691381/artifacts/9900997739)
+has 90-day retention. Downloaded operational evidence remains outside Git at
+`/tmp/phase3b-inspection-33773691381.fBa0mA/phase3b-cleanup-inspection.log`.
+No credentials, customer names, raw grant assignments or backup contents were
+added to the repository.
+
+```text
+c16657f0e7a83fa3dc2b15116544e5a2946d08ba4a6d6c6fb9680b8f6abacb4c  GitHub-reported artifact ZIP SHA-256
+1dd66988c7fa88f51ed1cc214001af89f0540e19bd6b032764668d2641680253  downloaded inspection log SHA-256
+```
+
 ## Remaining approval and execution gates
 
-1. Review the exact candidate diff, create a `[skip ci]` commit, and obtain
-   explicit authorization for that exact commit before pushing to `main`.
-2. Separately authorize/approve the read-only fingerprint inspection. Review its
-   result and any new exception; do not automatically adopt changed targets.
-3. Implement and locally test the reviewed production write/reversal transport,
+1. **Complete:** exact candidate push explicitly approved and verified; no
+   automatic CI/CD run started.
+2. **Complete:** separately authorized protected fingerprint inspection passed;
+   retained evidence and target digest reviewed. No cleanup authorized.
+3. **Locally complete; not released:** implement/test production write/reversal transport,
    including exact source/image checks, new verified backup/isolated restore,
    capacity/lock bounds, continuity/health and attended failure recovery. A
    previous backup or a plausibly named release string is insufficient.
+   See `PHASE3B_EXECUTOR_RESULTS.md` and `PHASE3B_MAINTENANCE_RUNBOOK.md` for
+   the local candidate, no-image-change maintenance gate and execution limits.
 4. Obtain exact-target cleanup authorization and required release/production
    approvals. Revalidate the fingerprint under lock immediately before deletion.
    Existing pre-cleanup Phase 3 metadata audit requires the retained column;

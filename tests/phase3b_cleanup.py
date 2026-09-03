@@ -135,6 +135,12 @@ def main():
         "unvalidated serial constraint": "ALTER TABLE public.tenancy_company DROP CONSTRAINT tenancy_company_valid_inventory_mode; ALTER TABLE public.tenancy_company ADD CONSTRAINT tenancy_company_valid_inventory_mode CHECK (inventory_mode='serial') NOT VALID",
         "unknown view dependency": "CREATE VIEW public.phase3b_dependency AS SELECT inventory_mode FROM public.tenancy_company",
         "unknown permission FK": "CREATE TABLE public.phase3b_fk (id int REFERENCES public.auth_permission(id))",
+        "unarchived permission extension": "ALTER TABLE public.auth_permission ADD COLUMN private_extension text DEFAULT 'must-not-be-lost'",
+        "unreviewed permission check": "ALTER TABLE public.auth_permission ADD CONSTRAINT phase3b_extra_check CHECK(id>0)",
+        "inherited permission table": "CREATE TABLE public.phase3b_permission_child () INHERITS(public.auth_permission)",
+        "direct grant cascade dependency": "CREATE TABLE public.phase3b_direct_fk (id int REFERENCES public.auth_user_user_permissions(id) ON DELETE CASCADE)",
+        "group grant cascade dependency": "CREATE TABLE public.phase3b_group_fk (id int REFERENCES public.auth_group_permissions(id) ON DELETE CASCADE)",
+        "feature update cascade dependency": "ALTER TABLE public.tenancy_company ADD CONSTRAINT phase3b_feature_key UNIQUE(id,disabled_features); CREATE TABLE public.phase3b_feature_fk (company_id bigint,features jsonb,FOREIGN KEY(company_id,features) REFERENCES public.tenancy_company(id,disabled_features) ON UPDATE CASCADE)",
         "unknown quantity feature": "UPDATE public.tenancy_company SET disabled_features='[\"quantity_custom\"]'::jsonb",
         "archive table collision": "CREATE TABLE public.tenancy_phase3b_retirement_archive (id int)",
         "orphan schema": "CREATE SCHEMA tenant_company_987654321",
@@ -200,6 +206,17 @@ def main():
     check("archive grants no PUBLIC privileges", sql("""SELECT EXISTS (SELECT 1 FROM pg_class c,
           aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a
           WHERE c.oid=%s::regclass AND a.grantee=0)""", [cleanup.ARCHIVE]) == [(False,)])
+    with transaction.atomic():
+        sql("ALTER TABLE public.tenancy_phase3b_retirement_archive ADD CONSTRAINT phase3b_archive_key UNIQUE(operation_key,state)")
+        sql("CREATE TABLE public.phase3b_archive_fk (operation_key text,state text,FOREIGN KEY(operation_key,state) REFERENCES public.tenancy_phase3b_retirement_archive(operation_key,state) ON UPDATE CASCADE)")
+        before_attempt = snapshot()
+        blocked = False
+        try:
+            mutate("restore", expected=applied["state_sha256"])
+        except CommandError:
+            blocked = True
+        check("archive-state cascade dependency blocks restore without mutation", blocked and snapshot() == before_attempt)
+        transaction.set_rollback(True)
     with transaction.atomic():
         sql("UPDATE public.tenancy_phase3b_retirement_archive SET payload_sha256=%s", ["0" * 64])
         blocked = False

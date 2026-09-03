@@ -20,9 +20,10 @@ spec.loader.exec_module(gate)
 
 
 def main():
-    if sys.argv[1:] not in ([], ["--cleanup-test"]):
-        raise SystemExit("Use no arguments for recovery, or --cleanup-test for the disposable cleanup proof")
+    if sys.argv[1:] not in ([], ["--cleanup-test"], ["--executor-test"]):
+        raise SystemExit("Use no arguments for recovery, --cleanup-test, or --executor-test (disposable only)")
     cleanup_test = sys.argv[1:] == ["--cleanup-test"]
+    executor_test = sys.argv[1:] == ["--executor-test"]
     os.umask(0o077)
     os.chdir(ROOT / "deploy")
     project = "dbbackup_rehearsal_phase3source_" + uuid.uuid4().hex
@@ -57,6 +58,11 @@ def main():
         gate.run([*compose, "up", "-d", "--wait", "--wait-timeout", "180", "db", "redis", "web"],
                  env=env, timeout=240, log=work / "synthetic-startup.log")
         print("SYNTHETIC_SOURCE_STARTUP=PASS", flush=True)
+        if executor_test:
+            sys.path.insert(0, str(ROOT))
+            from tests.phase3b_executor_local import exercise
+            exercise(gate, before, compose, env, env_file, override, passphrase, work)
+            return
         if cleanup_test:
             gate.run([*compose, "cp", str(ROOT / "tenancy/management/commands/serial_only_phase3_cleanup.py"),
                       "web:/app/tenancy/management/commands/serial_only_phase3_cleanup.py"], env=env)

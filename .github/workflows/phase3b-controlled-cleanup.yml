@@ -1,0 +1,118 @@
+name: Phase 3B protected metadata cleanup or reversal
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Explicitly reviewed operation (never automatic rollback)"
+        required: true
+        type: choice
+        options: [apply, restore]
+      confirmation:
+        description: "APPLY-PHASE3B-REVIEWED-METADATA or RESTORE-PHASE3B-ARCHIVED-METADATA"
+        required: true
+        type: string
+      expected_state_sha256:
+        description: "Exact separately reviewed read-only inspection fingerprint; no default"
+        required: true
+        type: string
+      expected_deployed_sha:
+        description: "Exact accepted 3A image SHA"
+        required: true
+        type: string
+        default: 497b6650ed678bc462f85de6bff14692bffd6ace
+      window_start_utc:
+        description: "Approved start YYYY-MM-DDTHH:MM:SSZ (window at most one hour)"
+        required: true
+        type: string
+      window_end_utc:
+        description: "Approved end YYYY-MM-DDTHH:MM:SSZ"
+        required: true
+        type: string
+      rollback_owner:
+        description: "Person attending execution and responsible for recovery decisions"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  rehearsal:
+    name: Synthetic executor and recovery safety tests (no production access)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate reviewed controls and exercise isolated executor transport
+        run: |
+          set -euo pipefail
+          python3 -m unittest tests.test_phase3_recovery_remote tests.test_phase3b_cleanup_remote tests.test_phase3_inventory_remote tests.test_phase2_static_retirement
+          python3 tests/phase3b_executor_contracts.py
+          for test in phase0_serial_only_discovery_contracts phase1_serial_only_creation_contracts phase2_serial_runtime_removal_contracts phase3_metadata_inventory_contracts phase3a_compatibility_contracts phase3b_cleanup_contracts phase27_release_gates phase28_release_gates phase29_security_contracts phase30_release_gates database_backup_contracts test_database_backup_retention test_database_backup_operations test_database_backup_restore_contracts; do
+            python3 "tests/$test.py"
+          done
+          bash tests/phase27_rollback_simulation.sh
+          docker pull ghcr.io/maaz-bin-haider/financee-web:497b6650ed678bc462f85de6bff14692bffd6ace
+          docker pull postgres:16
+          docker pull redis:7-alpine
+          python3 tests/phase3_recovery_local.py --cleanup-test
+          python3 tests/phase3_recovery_local.py --executor-test
+
+  maintenance:
+    name: Attended exact-state maintenance with fresh backup and isolated round-trip proof
+    needs: rehearsal
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      APP_DIR: ${{ secrets.EC2_APP_DIR }}
+      EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+      ACTION: ${{ inputs.action }}
+      EXPECTED_STATE: ${{ inputs.expected_state_sha256 }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+      WINDOW_START: ${{ inputs.window_start_utc }}
+      WINDOW_END: ${{ inputs.window_end_utc }}
+      ROLLBACK_OWNER: ${{ inputs.rollback_owner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble and validate exact reviewed source
+        run: |
+          set -euo pipefail
+          python3 deploy/phase3b_cleanup_bundle.py --source-sha "$GITHUB_SHA" --output "$RUNNER_TEMP/phase3b-bundle.py"
+          python3 "$RUNNER_TEMP/phase3b-bundle.py" --validate-bundle
+          sha256sum "$RUNNER_TEMP/phase3b-bundle.py"
+      - name: Install production SSH key
+        env:
+          DEPLOY_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+      - name: Stream approved operation without checkout update or image deployment
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          set -euo pipefail
+          printf -v remote_command 'app_dir=%q; app_dir="${app_dir:-$HOME/Financee_Multitenant_Production}"; sudo -n python3 - "$app_dir" %q %q %q %q %q %q %q %q' \
+            "$APP_DIR" "$EXPECTED_DEPLOYED_SHA" "$GITHUB_SHA" "$ACTION" "$EXPECTED_STATE" \
+            "$CONFIRMATION" "$WINDOW_START" "$WINDOW_END" "$ROLLBACK_OWNER"
+          ssh -i ~/.ssh/id_deploy "$EC2_USER@$EC2_HOST" "$remote_command" \
+            < "$RUNNER_TEMP/phase3b-bundle.py" | tee phase3b-maintenance.log
+      - name: Retain operational outcome only (raw evidence remains private on EC2)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase3b-maintenance
+          path: phase3b-maintenance.log
+          retention-days: 90

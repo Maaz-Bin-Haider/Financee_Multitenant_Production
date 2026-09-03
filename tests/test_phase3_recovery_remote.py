@@ -100,6 +100,9 @@ class RecoveryTests(unittest.TestCase):
         with self.assertRaisesRegex(gate.GateError, "timed out"):
             gate.run([sys.executable, "-c", "import time; time.sleep(10)"], timeout=0.03)
 
+    def test_reviewed_source_can_be_streamed_without_file_copy(self):
+        self.assertEqual(gate.run([sys.executable, "-"], input_text="print('synthetic-stream')"), "synthetic-stream")
+
     def test_process_does_not_inherit_production_connection_or_compose_environment(self):
         with patch.dict(os.environ, {"DB_PASSWORD": "private-sentinel", "COMPOSE_PROJECT_NAME": "production",
                                      "WEB_ENV_FILE": "/production.env"}):
@@ -230,6 +233,23 @@ class RecoveryTests(unittest.TestCase):
                                "database": {"bytes": 14000000}})
         with patch.object(gate, "run", side_effect=fake):
             gate.production_audits(BEFORE, self.evidence, "before")
+
+    def test_optional_restored_verifier_runs_before_guaranteed_cleanup(self):
+        for fail in (False, True):
+            bundle, _, _ = self.backup()
+            def verifier(compose, env):
+                self.assertFalse(any("down" in args for args, _ in self.calls))
+                self.assertIn("--project-name", compose)
+                self.assertIn("WEB_ENV_FILE", env)
+                if fail: raise gate.GateError("round-trip failed")
+                return {"result": "PASS"}
+            with patch.object(gate, "run", side_effect=self.restore_fake("success")):
+                if fail:
+                    with self.assertRaises(gate.GateError): gate.restore(BEFORE, bundle, self.evidence, verifier=verifier)
+                else:
+                    self.assertEqual(gate.restore(BEFORE, bundle, self.evidence, verifier=verifier)["verification"], {"result": "PASS"})
+                self.assertEqual(sum("down" in args for args, _ in self.calls), 1)
+                self.assertFalse(self.work.exists())
 
     def test_production_is_rechecked_on_failed_restore_without_reusing_restore_environment(self):
         app = self.root / "app"

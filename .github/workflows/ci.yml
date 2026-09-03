@@ -38,8 +38,10 @@ jobs:
       - run: python tests/phase3_metadata_inventory_contracts.py
       - run: python tests/phase3a_compatibility_contracts.py
       - run: python tests/phase3b_cleanup_contracts.py
+      - run: python tests/phase3b_executor_contracts.py
       - run: python -m unittest tests.test_phase3_inventory_remote
       - run: python -m unittest tests.test_phase3_recovery_remote
+      - run: python -m unittest tests.test_phase3b_cleanup_remote
       - run: python -m unittest tests.test_phase2_static_retirement
       - run: python tests/phase27_release_gates.py
       - run: bash tests/phase27_rollback_simulation.sh
@@ -131,6 +133,7 @@ jobs:
           docker pull postgres:16
           docker pull redis:7-alpine
           python3 tests/phase3_recovery_local.py --cleanup-test
+          python3 tests/phase3_recovery_local.py --executor-test
 
   isolation-gate:
     name: Four-serial-company isolation gate

@@ -120,6 +120,24 @@ def column_contract(cursor):
 
 
 def permission_dependencies(cursor):
+    # Archive/restore serializes these exact Django fields. Unknown columns,
+    # types, inheritance or custom checks cannot be silently discarded or run.
+    contracts = {
+        "public.auth_permission": {"id": "integer", "name": "character varying(255)",
+                                   "content_type_id": "integer", "codename": "character varying(100)"},
+        "public.auth_user_user_permissions": {"id": "bigint", "user_id": "integer", "permission_id": "integer"},
+        "public.auth_group_permissions": {"id": "bigint", "group_id": "integer", "permission_id": "integer"},
+    }
+    for table, expected in contracts.items():
+        cursor.execute("""SELECT attname,format_type(atttypid,atttypmod),attnotnull FROM pg_attribute
+            WHERE attrelid=%s::regclass AND attnum>0 AND NOT attisdropped""", [table])
+        columns = cursor.fetchall()
+        require({name: kind for name, kind, _ in columns} == expected and all(required for _, _, required in columns),
+                "unexpected permission/assignment table columns")
+    cursor.execute("""SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid=ANY(%s::regclass[])
+        AND contype NOT IN ('p','u','f')) OR EXISTS (SELECT 1 FROM pg_inherits
+        WHERE inhrelid=ANY(%s::regclass[]) OR inhparent=ANY(%s::regclass[]))""", [list(contracts)] * 3)
+    require(not cursor.fetchone()[0], "unexpected permission/assignment check or inheritance")
     cursor.execute("""SELECT c.conrelid::regclass::text,
         ARRAY(SELECT a.attname::text FROM unnest(c.conkey) WITH ORDINALITY x(n,i)
               JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=x.n ORDER BY x.i),
@@ -170,6 +188,16 @@ def state(cursor):
     require(cursor.fetchone()[0] == 0, "unreviewed metadata trigger")
     cursor.execute("SELECT count(*) FROM pg_rewrite WHERE ev_class=ANY(%s::regclass[])", [tables])
     require(cursor.fetchone()[0] == 0, "unreviewed metadata rule")
+    # Internal FK triggers are not custom triggers. Reject unreviewed incoming
+    # references that could cascade assignment deletion or archive-state changes.
+    cursor.execute("""SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE contype='f'
+        AND confrelid=ANY(%s::regclass[]))""", [tables[2:]])
+    require(not cursor.fetchone()[0], "unexpected assignment/archive foreign-key dependency")
+    cursor.execute("""SELECT EXISTS (SELECT 1 FROM pg_constraint c JOIN pg_attribute a
+        ON a.attrelid=c.confrelid AND a.attnum=ANY(c.confkey)
+        WHERE c.contype='f' AND c.confrelid='public.tenancy_company'::regclass
+        AND a.attname='disabled_features' AND NOT a.attisdropped)""")
+    require(not cursor.fetchone()[0], "unexpected feature-list foreign-key dependency")
     col = column_contract(cursor)
     permission_dependencies(cursor)
     companies = registry(cursor, col is not None)

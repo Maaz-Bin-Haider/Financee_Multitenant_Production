@@ -5,9 +5,10 @@
 **Status:** Fresh protected production inventory and current-image production
 backup/isolated recovery PASS. Recovery-only commit `962f36f` was explicitly
 approved, pushed, and run under separate protected approval. The owner subsequently
-confirmed the live site works. A reversible cleanup command and tests are now
-local candidates, documented in `PHASE3B_CONTROLLED_CLEANUP_RESULTS.md`; no
-automatic cleanup migration is introduced. No production business/database
+confirmed the live site works. A reversible cleanup candidate `a70f8a1` was
+subsequently approved/pushed, and its protected read-only exact-state inspection
+`33773691381` passed, documented in `PHASE3B_CONTROLLED_CLEANUP_RESULTS.md`.
+No automatic cleanup migration is introduced. No production business/database
 cleanup or application deployment has run in 3B; only the backup and disposable
 recovery resources were created, with the disposable resources removed afterward.
 
@@ -225,7 +226,9 @@ The owner's initial “its passed” reported the workflow result. The subsequen
 “yes it working fine” records the owner's manual live-site PASS after recovery,
 not final 3B acceptance or independently observed transaction-by-transaction
 verification. Controlled cleanup is now a locally tested candidate, but production
-execution remains unauthorized and its guarded write wrapper unimplemented.
+execution remains unauthorized. Its guarded write wrapper has subsequently
+been prepared/tested locally under separate owner authorization; see
+`PHASE3B_EXECUTOR_RESULTS.md`. No production execution is implied.
 This successful recovery establishes readiness to prepare it, not permission to
 remove records or reuse this recovery point indefinitely. Evidence freshness and
 exact cleanup preconditions must be checked again at destructive execution.
@@ -273,6 +276,14 @@ exact cleanup preconditions must be checked again at destructive execution.
    all execution-time preconditions; an older inventory cannot authorize newly
    appearing records or dependencies. Serial continuity and health must pass
    afterward. The owner then manually verifies production before Phase 4.
+
+The subsequent executor candidate implements this as no-image-change attended
+maintenance: its dedicated runner job performs full regression, core failure,
+executor recovery and release-contract tests before protected production
+approval; the actual-host image/backup/round-trip checks precede the live write.
+It does not publish another application image or claim an image staging release.
+This implementation refinement and remaining approvals are documented in
+`PHASE3B_EXECUTOR_RESULTS.md` and `../PHASE3B_MAINTENANCE_RUNBOOK.md`.
 
 No tenant-schema drop is planned based on the old inventory. Any newly found
 orphan requires independent classification and exact-target authorization;
