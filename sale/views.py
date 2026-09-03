@@ -64,9 +64,8 @@ def _sale_payload_matches_current(sale_id, data, sale_date):
 
 @login_required
 def sales(request):
-    from . import quantity_views
-    from tenancy.capabilities import dispatch_inventory_view
-    return dispatch_inventory_view(request, _serial_sales, quantity_views.sales)
+    from tenancy.capabilities import serial_inventory_view
+    return serial_inventory_view(request, _serial_sales)
 
 
 def _serial_sales(request):
@@ -465,11 +464,8 @@ def _serial_sales(request):
 
 @login_required
 def get_sale(request):
-    from . import quantity_views
-    from tenancy.capabilities import dispatch_inventory_view
-    return dispatch_inventory_view(
-        request, _serial_get_sale, quantity_views.get_sale
-    )
+    from tenancy.capabilities import serial_inventory_view
+    return serial_inventory_view(request, _serial_get_sale)
 
 
 def _serial_get_sale(request):
@@ -643,9 +639,6 @@ def get_item_by_serial_for_sale(serial):
 
 @login_required
 def sale_lookup_serial(request, serial: str):
-    from . import quantity_views
-    if quantity_views.is_quantity(request):
-        return quantity_views.serial_check(request)
     """
     AJAX endpoint: GET /sale/lookup/<serial>/
     Returns the item_name (and purchase_price) for a single serial so the
@@ -662,9 +655,6 @@ def sale_lookup_serial(request, serial: str):
 
 @login_required
 def sale_bulk_serial_lookup(request):
-    from . import quantity_views
-    if quantity_views.is_quantity(request):
-        return quantity_views.serial_check(request)
     """
     AJAX endpoint: POST /sale/bulk-lookup/
     Body: {"raw": "<pasted text>"}  OR  {"serials": ["s1","s2",...]}
@@ -789,11 +779,8 @@ def sale_bulk_serial_lookup(request):
 
 @login_required
 def get_sale_summary(request):
-    from . import quantity_views
-    from tenancy.capabilities import dispatch_inventory_view
-    return dispatch_inventory_view(
-        request, _serial_get_sale_summary, quantity_views.get_sale_summary
-    )
+    from tenancy.capabilities import serial_inventory_view
+    return serial_inventory_view(request, _serial_get_sale_summary)
 
 
 def _serial_get_sale_summary(request):

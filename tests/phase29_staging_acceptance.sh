@@ -118,6 +118,8 @@ run_gate serial-t4-t5 \
   "${compose[@]}" exec -T web python tests/phase24_serial_matrix.py
 run_gate serial-only-creation-freeze \
   "${compose[@]}" exec -T web python tests/phase1_serial_only_creation.py
+run_gate serial-only-runtime-removal \
+  "${compose[@]}" exec -T web python tests/phase2_serial_runtime_removal.py
 run_gate four-serial-t6-security \
   "${compose[@]}" exec -T web python tests/phase25_four_company_isolation.py
 run_gate t7-platform-capacity-preflight \
@@ -142,6 +144,7 @@ payload = {
     "coverage": {
         "T4_serial": "PASS",
         "T5_serial_only_creation": "PASS",
+        "serial_only_runtime_removal": "PASS",
         "T6_four_serial_isolation": "PASS",
         "T7_platform_capacity_preflight": "PASS",
         "T8_encrypted_recovery": "enforced-by-recovery-gate",

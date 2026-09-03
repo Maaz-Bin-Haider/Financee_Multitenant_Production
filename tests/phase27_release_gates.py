@@ -18,6 +18,7 @@ mandatory_publish_gates = {
     "checks",
     "serial-gate",
     "creation-freeze-gate",
+    "runtime-removal-gate",
     "isolation-gate",
     "arm64-smoke",
     "full-regression",

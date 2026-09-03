@@ -38,7 +38,7 @@
 9. [Database design & ER diagrams](#-database-design--er-diagrams)
 10. [Backend deep-dive](#-backend-deep-dive)
 11. [Frontend](#-frontend)
-12. [The two schema families (serial & quantity)](#-the-two-schema-families)
+12. [Serial-only runtime](#-serial-only-runtime)
 13. [Deployment](#-deployment)
 14. [CI/CD pipeline](#-cicd-pipeline)
 15. [Backups & disaster recovery](#-backups--disaster-recovery)
@@ -55,7 +55,7 @@
 
 It is built for the way real small businesses actually work: **buy stock → sell it → handle returns → collect and pay money → close the month → read the reports** — with correct double-entry bookkeeping enforced at every single step, not as an afterthought.
 
-> **The defining architectural choice:** Django handles *only* HTTP. **All business logic — accounting, inventory, FIFO costing, returns, ledgers, reports — lives inside PostgreSQL** as stored functions, triggers, and views. This makes the financial core auditable, atomic, and impossible to bypass from application code.
+> **The defining architectural choice:** Django handles *only* HTTP. **All business logic — accounting, serial inventory, returns, ledgers, and reports — lives inside PostgreSQL** as stored functions, triggers, and views. This makes the financial core auditable, atomic, and impossible to bypass from application code.
 
 ---
 
@@ -69,7 +69,7 @@ Most off-the-shelf accounting tools force a business into one of two bad corners
 | 🔓 **Shared databases** where a query bug can leak Company A's data into Company B | **Hard schema isolation** — each company is a separate PostgreSQL schema |
 | 🐛 **Business logic scattered in application code** where a developer can post an unbalanced journal | Accounting lives in the **database** with balance-enforcing triggers |
 | 📦 **Inventory & accounting bolted together loosely**, drifting out of sync | Every stock movement and every rupee move through the **same atomic SQL transaction** |
-| 🌍 **One-size-fits-all** — can't handle both serialized goods (phones/IMEI) and bulk goods (kilos/boxes) | **Two schema families**: serial-tracked *and* quantity/FIFO, chosen per company |
+| 🔎 **Weak unit traceability** for serialized goods such as phones and IMEIs | Every physical unit is tracked through its complete serial lifecycle |
 
 Financee exists to give a small operator a **trustworthy, isolated, low-cost** accounting backbone they can host once and resell to many clients with confidence.
 
@@ -84,7 +84,6 @@ For the **business owner** using Financee:
 - 🔁 **Returns done right.** Sale/purchase returns restore the exact original cost basis; serials can't be double-returned; a sold serial can't be un-purchased.
 - 📊 **Reports that mean something.** Ledgers, trial balance, receivables/payables, cash ledger, stock & serial reports, monthly reports, and sales analytics — all computed from the same authoritative ledger.
 - 📎 **Document trail.** Attach the scanned invoice (image + PDF) to any sale, purchase, return, payment, receipt, or contra.
-- 🌐 **Multi-currency & tax ready** (quantity companies): foreign invoices, realized exchange gain/loss, inclusive/exclusive tax, and discounts.
 
 For the **operator** running the platform:
 
@@ -285,7 +284,7 @@ erDiagram
         int id PK
         string name UK
         string schema_name "tenant_company_<id>"
-        string inventory_mode "serial | quantity (immutable)"
+        string inventory_mode "serial (locked; field retires in Phase 3)"
         string tax_environment "tax | non_tax"
         string provisioning_state "pending|provisioning|ready|failed"
         bool is_active
@@ -410,7 +409,7 @@ erDiagram
     }
 ```
 
-> The **serial family** tracks every physical unit by serial number (`PurchaseUnits` → `SoldUnits`), so cost of goods sold and returns are exact per-unit. The **quantity family** replaces serials with **FIFO cost layers** and `stockmovements` while keeping the identical journal/ledger backbone. See [the two schema families](#-the-two-schema-families).
+> The serial runtime tracks every physical unit by serial number (`PurchaseUnits` → `SoldUnits`), so cost of goods sold and returns are exact per-unit.
 
 ### Key SQL entry points (functions, not views)
 
@@ -424,7 +423,7 @@ erDiagram
 
 | App | Responsibility |
 |---|---|
-| `tenancy` | Company registry, membership, schema switching, provisioning, SQL rollout, subscriptions, feature flags, quantity views |
+| `tenancy` | Company registry, membership, schema switching, serial provisioning and SQL rollout, subscriptions, feature flags |
 | `authentication` | Login/logout, current-user JSON, login rate limit, permission seeding |
 | `home` | Dashboard page + dashboard JSON APIs |
 | `parties` · `items` | Master data + autocomplete |
@@ -474,25 +473,18 @@ flowchart LR
 
 ---
 
-## 🔀 Serial-only schema transition
+## 🔀 Serial-only runtime
 
-Financee provisions the **serial schema family only**. The quantity column below
-documents legacy source that remains temporarily during the phased removal; it
-cannot be selected or provisioned for a Company.
+Financee serves and provisions the **serial schema family only**. Every item is
+tracked per physical serial number through purchase, sale, return, stock, and
+reporting workflows. Company creation is locked to serial in the admin, model,
+provisioning commands, and public database constraint.
 
-| | 📱 **Serial family** | 📦 **Quantity family** |
-|---|---|---|
-| **Tracks** | Every unit by serial number (IMEI, etc.) | Bulk quantities with FIFO cost layers |
-| **Inventory** | `PurchaseUnits` → `SoldUnits` | `stockmovements` + FIFO allocations |
-| **Precision** | 1 unit | `numeric(18,3)`; Pieces/Boxes whole, Kg/g/L/m up to 3 dp |
-| **Warehouses** | Single | Multi-warehouse + transfers + physical counts |
-| **Tax / currency** | Base | Inclusive/exclusive tax, discounts, multi-currency + realized FX gain/loss |
-| **Status** | ✅ Production registry verified serial-only | Removal in progress; no production tenant |
-| **Template** | `tenant_template.sql` (v6) | `quantity_tenant_template.sql` (v22) |
-
-New companies are **serial-only**. Quantity-company creation is blocked in the
-admin, model, provisioning commands, and public database constraint while the
-remaining inactive quantity runtime is removed in later consolidation phases.
+The former quantity HTTP routes, dispatchers, templates, static assets,
+dashboard branches, and startup SQL maintenance are retired. Historical
+quantity schema descriptors, SQL artifacts, migrations, and permissions remain
+temporarily so Phase 3 can identify and remove database metadata safely; none
+of them is reachable as an application runtime.
 
 ---
 
@@ -507,20 +499,20 @@ flowchart TB
     end
     subgraph start["Every web container start (entrypoint.sh)"]
         W1[wait for Postgres] --> W2[sync baked static → shared volume]
-        W2 --> W3[manage.py migrate  — public only]
+        W2 --> RS[remove allowlisted retired quantity assets only]
+        RS --> W3[manage.py migrate  — public only]
         W3 --> W4[apply_sql_all_tenants production_hardening.sql --family serial]
         W4 --> W5[apply_sql_all_tenants tenant_indexes.sql --family serial]
-        W5 --> W6[apply quantity reporting + hardening --family quantity]
-        W6 --> W7[exec gunicorn]
+        W5 --> W6[exec gunicorn]
     end
     SEED -.-> start
     style SEED fill:#4169E1,color:#fff
-    style W7 fill:#092E20,color:#fff
+    style W6 fill:#092E20,color:#fff
 ```
 
 - **Host:** AWS **EC2 `t4g.medium`** — ARM64 Graviton, 2 vCPU / 4 GiB. Postgres, Redis, web, and nginx all co-located; DB tuned accordingly (`shared_buffers=768MB`, `work_mem=4MB`, etc.).
 - **TLS:** domain `financee-swisstech.com` on **Cloudflare (proxied)**, Full-strict mode, **Cloudflare Origin Certificate** on nginx (15-yr, no certbot/renewal). The 443 listener lives in `docker-compose.tls.yml`, auto-added by the deploy scripts once `origin.pem` exists on the host — so HTTP-only deploys never break before the cert is installed.
-- **Static:** collected at image build; entrypoint syncs the baked tree into the shared volume so nginx serves current hashed assets after every deploy.
+- **Static:** collected at image build; entrypoint syncs the baked tree into the shared volume so nginx serves current hashed assets after every deploy. A fixed allowlist removes retired quantity assets and their hashed/compressed variants without clearing older serial assets. The previous image repopulates its own assets on rollback.
 - **Ports:** only 22 / 80 / 443 open; Postgres & Redis stay internal to the Docker network.
 
 Full step-by-step (fresh EC2 → running stack → CI/CD → HTTPS) is in **`DEPLOYMENT_GUIDE.md`**.
@@ -536,13 +528,14 @@ flowchart TB
     P[push / PR] --> CH[✅ checks<br/>compile · django check · missing-migration guard<br/>phase 27–30 release contracts · backup contracts]
     P --> SG[🧪 serial-gate]
     P --> CFG[🧪 creation-freeze-gate<br/>serial-only at every creation boundary]
+    P --> RRG[🧪 runtime-removal-gate<br/>retired routes 404 · serial continuity]
     P --> IG[🧪 isolation-gate<br/>4 serial companies · leakage]
     P --> AS[💪 arm64-smoke<br/>build + run under ARM64]
     P --> FR[🧪 full-regression]
     P --> RG[🔐 recovery-gate<br/>encrypted backup + restore + rollback]
 
     CH & RG --> SS[🛡️ staging-security-gate<br/>exact-image staging + 18 contracts + UAT]
-    SS & SG & CFG & IG & AS & FR --> AP{{"🧑‍⚖️ staging-release-approval<br/>protected environment (main only)"}}
+    SS & SG & CFG & RRG & IG & AS & FR --> AP{{"🧑‍⚖️ staging-release-approval<br/>protected environment (main only)"}}
     AP --> PUB[📦 publish<br/>multi-arch image → GHCR<br/>tag = commit SHA + latest]
     PUB --> DEP{{"🚀 deploy to EC2<br/>manual approval · DEPLOY_ENABLED=true"}}
     DEP --> SH[phase30_foundation_deploy.sh<br/>SHA-pinned pull · recreate · health-check<br/>auto-rollback on failure · tenant SQL]
@@ -555,8 +548,9 @@ flowchart TB
 
 1. **checks** — compile, `manage.py check`, `makemigrations --check` (fails if a model change lacks its migration), phase release-contract gates, backup contracts, `pip check`.
 2. **Parallel gates** — serial regression, serial-only creation freeze,
-   four-serial-company isolation, **ARM64 execution smoke**, full active serial
-   production-stack regression, and encrypted backup/restore/rollback rehearsal.
+   retired-runtime negative-route checks, four-serial-company isolation,
+   **ARM64 execution smoke**, full active serial production-stack regression,
+   and encrypted backup/restore/rollback rehearsal.
 3. **staging-security-gate** — boots an isolated production-like stack, verifies exact-source image identity, runs 18 static security contracts + UAT.
 4. **staging-release-approval** — a **protected GitHub environment** (product/eng/ops sign-off) on `main` pushes only.
 5. **publish** — the *exact tested* multi-arch image (`linux/amd64` + `linux/arm64`) is pushed to **GHCR** tagged with the commit SHA + `latest`.
@@ -598,7 +592,7 @@ The suite runs **inside the running `web` container** (not the host venv), again
 | `test_system.py` | SQL business functions per tenant |
 | `test_http.py` | Django client over real views / permissions / templates |
 | `test_transaction_lifecycle_deep.py` | Serial lifecycle stress (purchase→sale→return→resale, mixed invoices, return guards); **intentionally fails** on duplicate returns / invalid serial transitions |
-| quantity + isolation + capacity | FIFO, multi-warehouse, tax/currency, 4-company leakage, 100k SKUs / 5M movements / 100 sessions |
+| serial isolation + capacity | Four-company leakage/concurrency and the t4g.medium 100-session capacity preflight |
 
 Latest full run: **all modules pass, 0 XFAIL.**
 
@@ -659,7 +653,7 @@ Financee_Multitenant_Production/
 │   ├── models.py           #   Company, Membership, Currency, subscriptions, billing
 │   ├── provisioning.py     #   post_save → materialize schema
 │   ├── utils.py            #   schema helpers (validated + quoted)
-│   ├── schema_families.py  #   serial vs quantity family registry
+│   ├── schema_families.py  #   serial runtime + retired-family cleanup descriptor
 │   ├── features.py         #   per-company feature flags
 │   ├── sql/                #   tenant_template.sql + idempotent patches (34 files)
 │   └── management/commands/#   apply_sql_all_tenants, provision_tenant, release_preflight …

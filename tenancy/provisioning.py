@@ -1,9 +1,8 @@
-"""Transactional, schema-family-aware tenant provisioning."""
+"""Transactional serial-tenant provisioning."""
 
 from django.db import connection, transaction
 
 from .models import (
-    INVENTORY_MODE_QUANTITY,
     INVENTORY_MODE_SERIAL,
     PROVISIONING_FAILED,
     PROVISIONING_PROVISIONING,
@@ -21,18 +20,10 @@ from .utils import (
 
 def _read_template(family_key: str) -> str:
     definition = schema_family(family_key)
-    sql = definition.template_path.read_text(encoding="utf-8")
-    for upgrade_path in definition.bootstrap_paths:
-        # Fresh quantity tenants are composed from the stable base template
-        # plus ordered family upgrades. Each file remains the authoritative,
-        # independently deployable upgrade for existing schemas.
-        sql += "\n" + upgrade_path.read_text(encoding="utf-8")
-    return sql
+    return definition.template_path.read_text(encoding="utf-8")
 
 
-def _assert_provisioned(
-    cur, definition, base_currency_code, tax_environment="non_tax"
-):
+def _assert_provisioned(cur, definition):
     """Raise inside the provisioning transaction if the family is incomplete."""
     for table in definition.required_tables:
         cur.execute("SELECT to_regclass(%s)", [table])
@@ -55,28 +46,10 @@ def _assert_provisioned(
         if cur.fetchone() is None:
             raise RuntimeError("required_function_missing")
 
-    if definition.key == INVENTORY_MODE_QUANTITY:
-        cur.execute(
-            """
-            SELECT family, version, base_currency_code, tax_environment
-              FROM tenant_schema_metadata
-             WHERE id = true
-            """
-        )
-        row = cur.fetchone()
-        if (
-            not row
-            or row[0] != definition.key
-            or int(row[1]) < definition.required_version
-            or row[2] != base_currency_code
-            or row[3] != tax_environment
-        ):
-            raise RuntimeError("metadata_verification_failed")
-    else:
-        cur.execute("SELECT version FROM tenant_schema_version WHERE id = true")
-        row = cur.fetchone()
-        if not row or int(row[0]) < definition.required_version:
-            raise RuntimeError("metadata_verification_failed")
+    cur.execute("SELECT version FROM tenant_schema_version WHERE id = true")
+    row = cur.fetchone()
+    if not row or int(row[0]) < definition.required_version:
+        raise RuntimeError("metadata_verification_failed")
 
 
 def provision_schema(
@@ -84,8 +57,6 @@ def provision_schema(
     force: bool = False,
     *,
     family: str = "serial",
-    base_currency_code: str = "PKR",
-    tax_environment: str = "non_tax",
 ) -> bool:
     """Create one physical tenant schema from its registered family template."""
     validate_schema_name(schema_name)
@@ -107,20 +78,7 @@ def provision_schema(
             cur.execute(f"SET search_path TO {tenant_path}")
             try:
                 cur.execute(template_sql)
-                if definition.key == INVENTORY_MODE_QUANTITY:
-                    cur.execute(
-                        """
-                        UPDATE tenant_schema_metadata
-                           SET base_currency_code = %s,
-                               tax_environment = %s,
-                               applied_at = CURRENT_TIMESTAMP
-                         WHERE id = true
-                        """,
-                        [base_currency_code, tax_environment],
-                    )
-                _assert_provisioned(
-                    cur, definition, base_currency_code, tax_environment
-                )
+                _assert_provisioned(cur, definition)
             finally:
                 cur.execute(f"SET search_path TO {PUBLIC_SCHEMA}")
     return True
@@ -140,8 +98,6 @@ def provision_company(company: Company) -> bool:
         created = provision_schema(
             company.schema_name,
             family=company.inventory_mode,
-            base_currency_code=company.base_currency_id,
-            tax_environment=company.tax_environment,
         )
     except Exception:
         Company.objects.filter(pk=company.pk).update(

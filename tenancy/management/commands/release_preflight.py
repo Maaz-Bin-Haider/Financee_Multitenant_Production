@@ -7,7 +7,7 @@ import json
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 
-from tenancy.models import Company, PROVISIONING_READY
+from tenancy.models import Company, INVENTORY_MODE_SERIAL, PROVISIONING_READY
 from tenancy.schema_families import schema_family
 from tenancy.schema_verification import verify_company_schema
 from tenancy.utils import reset_search_path, set_search_path
@@ -18,7 +18,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--require-family", action="append", choices=("serial", "quantity"),
+            "--require-family", action="append", choices=("serial",),
             default=[], help="Fail unless at least one active tenant has this family.",
         )
         parser.add_argument("--json", action="store_true")
@@ -31,6 +31,11 @@ class Command(BaseCommand):
         ).order_by("id")
         try:
             for company in companies:
+                if company.inventory_mode != INVENTORY_MODE_SERIAL:
+                    raise CommandError(
+                        f"Unsupported inventory mode for Company ID {company.pk}; "
+                        "only serial tenants may pass release preflight."
+                    )
                 definition = schema_family(company.inventory_mode)
                 verification = verify_company_schema(company, use_cache=False)
                 families.add(company.inventory_mode)
@@ -85,13 +90,7 @@ class Command(BaseCommand):
                                 actual_contract, sort_keys=True, default=str
                             ).encode()
                         ).hexdigest()
-                        if company.inventory_mode == "serial":
-                            cursor.execute("SELECT get_trial_balance_json()")
-                        else:
-                            cursor.execute(
-                                "SELECT quantity_run_report("
-                                "'trial_balance','{\"limit\":1}'::jsonb)"
-                            )
+                        cursor.execute("SELECT get_trial_balance_json()")
                         row["safe_probe"] = cursor.fetchone()[0] is not None
                     row["ok"] = row["ok"] and row["safe_probe"]
                     expected = family_fingerprints.setdefault(

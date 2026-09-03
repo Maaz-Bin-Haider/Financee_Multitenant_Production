@@ -40,6 +40,8 @@ if [ -d /app/static_build ]; then
     cp -a /app/static_build/. /app/staticfiles/ 2>/dev/null || true
 fi
 
+python deploy/retire_quantity_static.py
+
 echo "[entrypoint] applying public-schema migrations ..."
 python manage.py migrate --no-input
 
@@ -48,14 +50,6 @@ python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql --fa
 
 echo "[entrypoint] applying required tenant indexes ..."
 python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql --family serial
-
-echo "[entrypoint] applying required quantity reporting SQL ..."
-python manage.py apply_sql_all_tenants \
-    tenancy/sql/quantity_reports_dashboards.sql --family quantity
-
-echo "[entrypoint] refreshing required quantity hardening SQL ..."
-python manage.py apply_sql_all_tenants \
-    tenancy/sql/quantity_platform_controls.sql --family quantity
 
 echo "[entrypoint] starting: $*"
 exec "$@"

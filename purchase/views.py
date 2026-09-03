@@ -680,11 +680,8 @@ def _purchase_payload_matches_current(purchase_id, data, purchase_date):
 
 @login_required
 def purchasing(request):
-    from . import quantity_views
-    from tenancy.capabilities import dispatch_inventory_view
-    return dispatch_inventory_view(
-        request, _serial_purchasing, quantity_views.purchasing
-    )
+    from tenancy.capabilities import serial_inventory_view
+    return serial_inventory_view(request, _serial_purchasing)
 
 
 def _serial_purchasing(request):
@@ -1084,11 +1081,8 @@ def _serial_purchasing(request):
 
 @login_required
 def get_purchase(request):
-    from . import quantity_views
-    from tenancy.capabilities import dispatch_inventory_view
-    return dispatch_inventory_view(
-        request, _serial_get_purchase, quantity_views.get_purchase
-    )
+    from tenancy.capabilities import serial_inventory_view
+    return serial_inventory_view(request, _serial_get_purchase)
 
 
 def _serial_get_purchase(request):
@@ -1192,12 +1186,8 @@ def _serial_get_purchase(request):
 
 @login_required
 def get_purchase_summary(request):
-    from . import quantity_views
-    from tenancy.capabilities import dispatch_inventory_view
-    return dispatch_inventory_view(
-        request, _serial_get_purchase_summary,
-        quantity_views.get_purchase_summary,
-    )
+    from tenancy.capabilities import serial_inventory_view
+    return serial_inventory_view(request, _serial_get_purchase_summary)
 
 
 def _serial_get_purchase_summary(request):
@@ -1276,9 +1266,6 @@ def _serial_get_purchase_summary(request):
 # ---------------------------------------------------------------------------
 @login_required
 def purchase_serial_check(request):
-    from . import quantity_views
-    if quantity_views.is_quantity(request):
-        return quantity_views.serial_check(request)
     if not request.user.has_perm("auth.view_purchase"):
         return JsonResponse({"success": False, "message": "Permission denied."})
  

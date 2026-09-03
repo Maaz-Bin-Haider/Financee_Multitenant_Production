@@ -29,7 +29,7 @@ explicit production PASS for the current phase.
 |---|---|---|---|---|
 | 0 | Production discovery, baseline, and approved test-tenant remediation | **PASS** | Production and restored strict audits, fresh remote backup, cleanup, preflight, and health PASS | **PASS** |
 | 1 | Close quantity-company creation | **PASS** | Local gates and protected exact-SHA workflow `33636045130` PASS; production deployed without rollback | **PASS** |
-| 2 | Remove quantity runtime and replace CI coverage | Not started | Not run | Required — Phase 3 blocked |
+| 2 | Remove quantity runtime and replace CI coverage | **Local candidate ready; production pending** | Static, full regression, isolation, recovery, ARM64, and staging PASS; protected exact-SHA CI/CD pending | Required — Phase 3 blocked |
 | 3 | Remove quantity database metadata and approved orphan schemas | Not started | Not run | Required — Phase 4 blocked |
 | 4 | Source, documentation, test, and migration hygiene | Not started | Not run | Required — final acceptance |
 
@@ -165,13 +165,41 @@ Phase 0 proves the production registry contains no conflicting rows.
 **Evidence reference:** workflow run `33636045130` and
 `tests/PHASE1_SERIAL_ONLY_CREATION_RESULTS.md`
 
-Phase 2 remains unstarted and requires a separate explicit owner instruction.
+Phase 2 was explicitly started by the owner on 2026-09-02.
 
 ### Phase 2 — Runtime Removal
 
 Remove quantity dispatch, routes, views, templates, static assets, SQL rollout,
 and entrypoint work. Replace quantity and mixed-family CI jobs with four-serial-
 tenant isolation, lifecycle, recovery, security, and ARM64 gates.
+
+#### Implementation checklist
+
+- [x] Remove quantity request dispatch while retaining the serial payload guard.
+- [x] Remove quantity routes, HTTP adapters, templates, and static assets.
+- [x] Remove quantity dashboard, attachment, feature, and security branches.
+- [x] Remove quantity SQL maintenance from container startup.
+- [x] Restrict supported tenant SQL rollout and release preflight to serial.
+- [x] Make the retired schema descriptor fail closed with no enabled paths.
+- [x] Remove dormant quantity lifecycle code from active isolation coverage.
+- [x] Add mandatory static and live-stack Phase 2 removal gates to CI.
+- [x] Pass the focused static contract and isolated live-stack route gate.
+- [x] Remove only allowlisted retired files from the persistent static volume;
+  verify rollback repopulates old assets and serial cached files survive.
+- [x] Prove the 12 serial document implementations, 212 serial UI source files,
+  and 17 serial SQL/bootstrap files match deployed Phase 1.
+- [x] Pass Django/migration checks and complete serial regression.
+- [x] Pass four-serial isolation, full active suite, ARM64, recovery, and staging.
+- [x] Review and commit the exact Phase 2 diff locally.
+- [ ] Obtain explicit owner authorization before pushing to GitHub `main`.
+- [ ] Pass protected exact-SHA CI/CD and production deployment.
+- [ ] Owner manually verifies production and records Phase 2 PASS.
+
+**Local evidence:** `tests/PHASE2_SERIAL_ONLY_RUNTIME_RESULTS.md`.
+
+**Owner Phase 2 result:** `NOT RUN` — Phase 1's earlier manual PASS does not
+count as Phase 2 verification. No Phase 2 push or production deployment is
+authorized by the local test results alone.
 
 ### Phase 3 — Database Cleanup
 
@@ -214,3 +242,10 @@ every environment has reached the required migration leaf.
 | 2026-09-02 | Phase 1 local candidate validation | Static/release contracts 90/90; serial 51/51; creation freeze 15/15; isolation 16/16; full suite, ARM64, recovery, and staging PASS; production unchanged |
 | 2026-09-02 | Phase 1 protected workflow `33636045130` deployed exact commit `102e55e` | All required CI/CD and post-deployment checks PASS; ARM64 production deployment completed without rollback |
 | 2026-09-02 | Owner manually verified the live site after Phase 1 deployment | Phase 1 PASS; Phase 2 remains unstarted pending explicit instruction |
+| 2026-09-02 | Owner explicitly instructed “start phase 2” | Phase 2 runtime removal started; production unchanged pending all local and protected gates |
+| 2026-09-02 | Phase 2 focused runtime-removal gate | Static contracts and isolated live PostgreSQL/Django route gate PASS; retired paths return 404; fresh serial tenant and serial pages remain healthy |
+| 2026-09-03 | Phase 2 resumed after usage interruption | Lost completion result was not assumed; full active suite rerun and captured, 21/21 modules PASS |
+| 2026-09-03 | Local test harness safety correction | Default-project volume cleanup blocked by safety review; unique disposable project/private environment implemented; full and ARM64 runs PASS |
+| 2026-09-03 | Production-Python preservation contracts | Version-specific AST formatting false failure replaced with independent exact-source hashes; 114/114 release/static contracts and 71/71 backup contracts PASS under Python 3.12 |
+| 2026-09-03 | Phase 2 recovery and static rollback rehearsal | Synthetic encrypted restore RTO 43s; deployed Phase 1 image compatibility PASS; re-upgrade removes retired assets and preserves serial cache; disposable stacks removed |
+| 2026-09-03 | Phase 2 local staging and diff review | Serial 51/51, creation 15/15, runtime removal 13/13, isolation 16/16, security 5/5, continuity and capacity preflight PASS; no schema/migration/serial SQL changes; push and production gates pending |

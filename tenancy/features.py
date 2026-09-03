@@ -76,26 +76,10 @@ FEATURE_GROUPS = {
             "invoice_register": "Invoice Register",
         },
     },
-    "purchase_reports": {
-        "label": "Purchase Reports",
-        "modes": ("quantity",),
-        "subs": {},
-    },
     "opening_stock": {"label": "Opening Stock", "subs": {}},
     "opening_cash": {"label": "Opening Cash (Set Opening)", "subs": {}},
     "excel_export": {"label": "CSV / Excel export buttons", "subs": {}},
     "attachments": {"label": "Document attachments (image / PDF upload)", "subs": {}},
-    "quantity_controls": {
-        "label": "Quantity inventory controls",
-        "modes": ("quantity",),
-        "subs": {
-            "warehouses": "Warehouses",
-            "transfers": "Warehouse transfers",
-            "counts": "Physical counts and adjustments",
-            "tax": "Tax-code administration",
-            "audit": "Immutable audit log",
-        },
-    },
 }
 
 
@@ -144,11 +128,6 @@ FEATURE_PATH_PREFIXES = (
     ("/opening-stock/", "opening_stock"),
     ("/set-opening/", "opening_cash"),
     ("/attachments/", "attachments"),
-    ("/warehouses/quantity/", "quantity_controls.warehouses"),
-    ("/transfers/", "quantity_controls.transfers"),
-    ("/physical-counts/", "quantity_controls.counts"),
-    ("/purchase/quantity-tax-codes/", "quantity_controls.tax"),
-    ("/quantity-audit/", "quantity_controls.audit"),
 )
 
 

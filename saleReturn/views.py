@@ -730,11 +730,8 @@ def _sale_return_payload_matches_current(return_id, data, return_date):
 
 @login_required
 def createSaleReturn(request):
-    from . import quantity_views
-    from tenancy.capabilities import dispatch_inventory_view
-    return dispatch_inventory_view(
-        request, _serial_create_sale_return, quantity_views.sale_returns
-    )
+    from tenancy.capabilities import serial_inventory_view
+    return serial_inventory_view(request, _serial_create_sale_return)
 
 
 def _serial_create_sale_return(request):
@@ -930,10 +927,6 @@ def _serial_create_sale_return(request):
 
 @login_required
 def sale_return_lookup(request,serial:str):
-    from . import quantity_views
-    if quantity_views.is_quantity(request):
-        return quantity_views.serial_check(request)
-
     #validating Serial Number
     try:
         serial = str(serial)
@@ -958,11 +951,8 @@ def sale_return_lookup(request,serial:str):
 
 @login_required  
 def get_sale_return(request):
-    from . import quantity_views
-    from tenancy.capabilities import dispatch_inventory_view
-    return dispatch_inventory_view(
-        request, _serial_get_sale_return, quantity_views.get_sale_return
-    )
+    from tenancy.capabilities import serial_inventory_view
+    return serial_inventory_view(request, _serial_get_sale_return)
 
 
 def _serial_get_sale_return(request):
@@ -1066,12 +1056,8 @@ def _serial_get_sale_return(request):
 
 @login_required
 def get_sale_return_summary(request):
-    from . import quantity_views
-    from tenancy.capabilities import dispatch_inventory_view
-    return dispatch_inventory_view(
-        request, _serial_get_sale_return_summary,
-        quantity_views.get_sale_return_summary,
-    )
+    from tenancy.capabilities import serial_inventory_view
+    return serial_inventory_view(request, _serial_get_sale_return_summary)
 
 
 def _serial_get_sale_return_summary(request):

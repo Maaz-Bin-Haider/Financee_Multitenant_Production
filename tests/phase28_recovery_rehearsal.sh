@@ -10,7 +10,7 @@ restore_project="phase28_restore_$run_tag"
 source_project=${source_project//-/_}
 restore_project=${restore_project//-/_}
 current_image="financee-phase28-current:${GITHUB_SHA:-local}"
-old_image="${PHASE28_OLD_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:4474d2a99be089c8d97c6640ffa29698577f3ff6}"
+old_image="${PHASE28_OLD_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:102e55e857bbffa8bd4318e6afaec42e048c8e67}"
 work_dir=$(mktemp -d)
 artifact_dir="${PHASE28_ARTIFACT_DIR:-$repo_root/phase28-artifacts}"
 mkdir -p "$artifact_dir"
@@ -168,6 +168,8 @@ echo "==> Applying forward migrations and proving serial-only creation"
     >"$artifact_dir/forward-preflight.txt"
 
 echo "==> Verifying previous production image against forward-applied database"
+"${restore_compose[@]}" exec -T web python -c \
+    'from pathlib import Path; Path("/app/staticfiles/js/phase2-serial-cache-sentinel.012345abcdef.js").write_text("preserved-serial-cache")'
 docker pull "$old_image"
 WEB_IMAGE="$old_image" "${restore_compose[@]}" up -d --no-deps web
 restore_web=$("${restore_compose[@]}" ps -q web)
@@ -177,6 +179,11 @@ for _ in $(seq 1 90); do
 done
 [[ "$(docker inspect -f '{{.State.Health.Status}}' "$restore_web")" = healthy ]]
 WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T web python manage.py check
+WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T web python manage.py release_preflight \
+    >"$artifact_dir/old-image-preflight.txt"
+WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T web python -c \
+    'from pathlib import Path; p=Path("/app/staticfiles"); assert list((p/"js").glob("quantity_*.js")); print("PASS: old image repopulates its retired static assets")' \
+    >"$artifact_dir/old-image-static.txt"
 WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T db psql \
     -U financee -d financee -Atc \
     "SELECT inventory_mode || ':' || count(*) FROM tenancy_company GROUP BY inventory_mode ORDER BY inventory_mode" \
@@ -205,6 +212,9 @@ done
 [[ "$(docker inspect -f '{{.State.Health.Status}}' "$restore_web")" = healthy ]]
 WEB_IMAGE="$current_image" "${restore_compose[@]}" exec -T web \
     python manage.py release_preflight >"$artifact_dir/final-preflight.txt"
+WEB_IMAGE="$current_image" "${restore_compose[@]}" exec -T web python -c \
+    'from pathlib import Path; p=Path("/app/staticfiles"); assert not list((p/"js").glob("quantity_*.js")); assert not list((p/"css").glob("quantity_*.css")); assert (p/"js/phase2-serial-cache-sentinel.012345abcdef.js").read_text()=="preserved-serial-cache"; print("PASS: retired static assets removed; serial cached asset preserved")' \
+    >"$artifact_dir/final-static-retirement.txt"
 
 bash tests/phase27_rollback_simulation.sh \
     >"$artifact_dir/failed-health-rollback.txt"

@@ -119,38 +119,23 @@
             <a href="{% url 'purchaseReturn:create_purchase_return' %}" class="{% if request.resolver_match.url_name == 'create_purchase_return' %}active{% endif %}">
                 <i class="fa-solid fa-rotate-right"></i> Purchase Return
             </a>
-            {% if is_quantity_company and features.quantity_controls.enabled and features.quantity_controls.subs.transfers and perms.auth.view_warehouse_transfer %}
-            <a href="{% url 'quantity_transfers:page' %}" class="{% if request.resolver_match.namespace == 'quantity_transfers' %}active{% endif %}">
-                <i class="fa-solid fa-truck-ramp-box"></i> Warehouse Transfers
-            </a>
-            {% endif %}
-            {% if is_quantity_company and features.quantity_controls.enabled and features.quantity_controls.subs.warehouses and perms.auth.view_warehouse %}
-            <a href="{% url 'quantity_warehouses:page' %}" class="{% if request.resolver_match.url_name == 'page' and request.resolver_match.namespace == 'quantity_warehouses' %}active{% endif %}">
-                <i class="fa-solid fa-warehouse"></i> Warehouses
-            </a>
-            {% endif %}
-            {% if is_quantity_company and features.quantity_controls.enabled and features.quantity_controls.subs.counts and perms.auth.view_physical_count %}
-            <a href="{% url 'quantity_counts:page' %}" class="{% if request.resolver_match.namespace == 'quantity_counts' %}active{% endif %}">
-                <i class="fa-solid fa-clipboard-check"></i> Physical Counts
-            </a>
-            {% endif %}
             <a href="{% url 'items:itemsDash' %}" class="{% if request.resolver_match.namespace == 'items' %}active{% endif %}">
                 <i class="fa-solid fa-box"></i> Items
             </a>
             <a href="{% url 'parties:partiesDash' %}" class="{% if request.resolver_match.namespace == 'parties' %}active{% endif %}">
                 <i class="fa-solid fa-users"></i> Parties
             </a>
-            {% if not is_quantity_company and features.accounts_reports.enabled %}
+            {% if features.accounts_reports.enabled %}
             <a href="{% url 'accountsReports:cash_ledger' %}" class="{% if request.resolver_match.url_name == 'cash_ledger' %}active{% endif %}">
                 <i class="fa-solid fa-book-open"></i> Accounts Reports
             </a>
             {% endif %}
-            {% if not is_quantity_company and features.stock_reports.enabled %}
+            {% if features.stock_reports.enabled %}
             <a href="{% url 'accountsReports:stock_summary' %}" class="{% if request.resolver_match.url_name == 'stock_summary' %}active{% endif %}">
                 <i class="fa-solid fa-warehouse"></i> Stock Reports
             </a>
             {% endif %}
-            {% if not is_quantity_company and features.monthly_reports.enabled %}
+            {% if features.monthly_reports.enabled %}
             <a href="{% url 'accountsReports:monthly_position_report' %}" class="{% if request.resolver_match.url_name == 'monthly_position_report' or request.resolver_match.url_name == 'monthly_income_report' %}active{% endif %}">
                 <i class="fa-solid fa-chart-pie"></i> Monthly Reports
             </a>
@@ -170,18 +155,10 @@
                 <i class="fa-solid fa-calendar-check"></i> Month-End Close
             </a>
             {% endif %}
-            {% if not is_quantity_company and features.sales_reports.enabled %}
+            {% if features.sales_reports.enabled %}
             {% if perms.auth.can_view_sales_summary or perms.auth.can_view_product_profitability or ... %}
             <a href="{% url 'sales_reports:sales_reports' %}" class="{% if request.resolver_match.url_name == 'sales_reports' %}active{% endif %}">
                 <i class="fa-solid fa-chart-line"></i> Sales Reports
-            </a>
-            {% endif %}
-            {% endif %}
-            {% if is_quantity_company %}
-            {% if features.accounts_reports.enabled or features.stock_reports.enabled or features.sales_reports.enabled or features.purchase_reports.enabled %}
-            <a href="{% url 'quantity_reports:index' %}" class="{% if request.resolver_match.namespace == 'quantity_reports' %}active{% endif %}">
-                <i class="fa-solid fa-chart-column"></i>
-                <span>Quantity Reports</span>
             </a>
             {% endif %}
             {% endif %}
@@ -199,7 +176,7 @@
             {% if request.tenant_company %}
             <div class="user_name company_name"><i class="fa-solid fa-building"></i>  <span id="companyname">{{ request.tenant_company.name }}</span></div>
             <div class="user_name company-mode" aria-label="Inventory mode">
-              <i class="fa-solid {% if is_quantity_company %}fa-layer-group{% else %}fa-barcode{% endif %}"></i>
+              <i class="fa-solid fa-barcode"></i>
               <span>{{ request.tenant_company.get_inventory_mode_display }}</span>
             </div>
             {% endif %}

@@ -33,9 +33,7 @@ import os
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 
-from tenancy.models import (
-    Company, INVENTORY_MODE_QUANTITY, INVENTORY_MODE_SERIAL,
-)
+from tenancy.models import Company, INVENTORY_MODE_SERIAL
 from tenancy.schema_families import family_for_sql_file, schema_family
 from tenancy.schema_verification import verify_company_schema
 from tenancy.utils import (
@@ -52,9 +50,7 @@ class Command(BaseCommand):
         parser.add_argument("sql_file", help="Path to the .sql file to execute.")
         parser.add_argument(
             "--family",
-            # Phase 1 closes Company creation only. Keep both legacy rollout
-            # families until the entrypoint/runtime removal in Phase 2.
-            choices=[INVENTORY_MODE_SERIAL, INVENTORY_MODE_QUANTITY],
+            choices=[INVENTORY_MODE_SERIAL],
             default=None,
             help=(
                 "Target schema family. Must agree with the controlled SQL "
@@ -89,6 +85,8 @@ class Command(BaseCommand):
             registered_family = family_for_sql_file(sql_path)
         except ValueError as exc:
             raise CommandError(str(exc)) from exc
+        if registered_family != INVENTORY_MODE_SERIAL:
+            raise CommandError("Only serial tenant SQL rollout is supported.")
         requested_family = opts["family"] or registered_family
         if requested_family != registered_family:
             raise CommandError(
@@ -138,24 +136,6 @@ class Command(BaseCommand):
                     cur.execute(f"SET search_path TO {search_path_for(schema)}")
                     try:
                         cur.execute(sql_text)
-                        if (
-                            schema != PUBLIC_SCHEMA
-                            and requested_family == INVENTORY_MODE_QUANTITY
-                        ):
-                            company = companies_by_schema[schema]
-                            cur.execute(
-                                """
-                                UPDATE tenant_schema_metadata
-                                   SET base_currency_code = %s,
-                                       tax_environment = %s,
-                                       applied_at = CURRENT_TIMESTAMP
-                                 WHERE id = true
-                                """,
-                                [
-                                    company.base_currency_id,
-                                    company.tax_environment,
-                                ],
-                            )
                     finally:
                         cur.execute(f"SET search_path TO {previous}")
                 if schema != PUBLIC_SCHEMA:

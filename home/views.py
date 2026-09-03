@@ -456,8 +456,6 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.http import require_GET
 from datetime import date, timedelta
-from tenancy.capabilities import inventory_mode
-from tenancy.models import INVENTORY_MODE_QUANTITY
 
 
 # ---------------------------------------------------------------------------
@@ -486,16 +484,6 @@ def _json_denied():
     return JsonResponse({"status": "denied", "data": None}, status=403)
 
 
-def _quantity_dashboard(request, key, filters=None):
-    """Run the quantity dashboard contract; return None for serial tenants."""
-    if inventory_mode(request) != INVENTORY_MODE_QUANTITY:
-        return None
-    return _run_pg_function(
-        "SELECT quantity_dashboard(%s, %s::jsonb);",
-        [key, json.dumps(filters or {})],
-    )
-
-
 # ---------------------------------------------------------------------------
 # Dashboard HTML View
 # ---------------------------------------------------------------------------
@@ -517,9 +505,7 @@ def api_dash_sales_today(request):
     """Today's sales KPIs: revenue, invoice count, gross profit."""
     if not request.user.has_perm("auth.view_dash_sales_profit"):
         return _json_denied()
-    data = _quantity_dashboard(request, "sales_today")
-    if data is None:
-        data = _run_pg_function("SELECT fn_dash_sales_today_kpi();")
+    data = _run_pg_function("SELECT fn_dash_sales_today_kpi();")
     return _json_ok(data)
 
 
@@ -538,21 +524,12 @@ def api_dash_sales_chart(request):
     date_to = request.GET.get("to")
 
     if date_from and date_to:
-        data = _quantity_dashboard(
-            request, "sales_chart", {"from": date_from, "to": date_to}
+        data = _run_pg_function(
+            "SELECT fn_dash_sales_range(%s::date, %s::date);",
+            [date_from, date_to],
         )
-        if data is None:
-            data = _run_pg_function(
-                "SELECT fn_dash_sales_range(%s::date, %s::date);",
-                [date_from, date_to],
-            )
     else:
-        data = _quantity_dashboard(
-            request, "sales_chart",
-            {"from": str(date.today() - timedelta(days=6)), "to": str(date.today())},
-        )
-        if data is None:
-            data = _run_pg_function("SELECT fn_dash_sales_last7days();")
+        data = _run_pg_function("SELECT fn_dash_sales_last7days();")
 
     return _json_ok(data or [])
 
@@ -568,9 +545,7 @@ def api_dash_stock_kpi(request):
     """Stock summary KPIs."""
     if not request.user.has_perm("auth.view_dash_stock_overview"):
         return _json_denied()
-    data = _quantity_dashboard(request, "stock_kpi")
-    if data is None:
-        data = _run_pg_function("SELECT fn_dash_stock_kpi();")
+    data = _run_pg_function("SELECT fn_dash_stock_kpi();")
     return _json_ok(data)
 
 
@@ -581,9 +556,7 @@ def api_dash_low_stock(request):
     if not request.user.has_perm("auth.view_dash_stock_overview"):
         return _json_denied()
     threshold = int(request.GET.get("threshold", 5))
-    data = _quantity_dashboard(request, "low_stock", {"threshold": threshold})
-    if data is None:
-        data = _run_pg_function("SELECT fn_dash_low_stock_items(%s);", [threshold])
+    data = _run_pg_function("SELECT fn_dash_low_stock_items(%s);", [threshold])
     return _json_ok(data or [])
 
 
@@ -595,9 +568,9 @@ def api_dash_fast_moving(request):
         return _json_denied()
     days = int(request.GET.get("days", 30))
     limit = int(request.GET.get("limit", 10))
-    data = _quantity_dashboard(request, "fast_moving", {"days": days, "limit": limit})
-    if data is None:
-        data = _run_pg_function("SELECT fn_dash_fast_moving_items(%s, %s);", [days, limit])
+    data = _run_pg_function(
+        "SELECT fn_dash_fast_moving_items(%s, %s);", [days, limit]
+    )
     return _json_ok(data or [])
 
 
@@ -608,9 +581,7 @@ def api_dash_stale_stock(request):
     if not request.user.has_perm("auth.view_dash_stock_overview"):
         return _json_denied()
     days = int(request.GET.get("days", 30))
-    data = _quantity_dashboard(request, "stale_stock", {"days": days})
-    if data is None:
-        data = _run_pg_function("SELECT fn_dash_stale_stock(%s);", [days])
+    data = _run_pg_function("SELECT fn_dash_stale_stock(%s);", [days])
     return _json_ok(data or [])
 
 
@@ -628,15 +599,10 @@ def api_dash_top_customers(request):
     limit = int(request.GET.get("limit", 5))
     date_from = request.GET.get("from") or None
     date_to = request.GET.get("to") or None
-    data = _quantity_dashboard(request, "top_customers", {
-        "limit": limit, **({"from": date_from} if date_from else {}),
-        **({"to": date_to} if date_to else {}),
-    })
-    if data is None:
-        data = _run_pg_function(
-            "SELECT fn_dash_top_customers(%s, %s::date, %s::date);",
-            [limit, date_from, date_to],
-        )
+    data = _run_pg_function(
+        "SELECT fn_dash_top_customers(%s, %s::date, %s::date);",
+        [limit, date_from, date_to],
+    )
     return _json_ok(data or [])
 
 
@@ -649,15 +615,10 @@ def api_dash_top_vendors(request):
     limit = int(request.GET.get("limit", 5))
     date_from = request.GET.get("from") or None
     date_to = request.GET.get("to") or None
-    data = _quantity_dashboard(request, "top_vendors", {
-        "limit": limit, **({"from": date_from} if date_from else {}),
-        **({"to": date_to} if date_to else {}),
-    })
-    if data is None:
-        data = _run_pg_function(
-            "SELECT fn_dash_top_vendors(%s, %s::date, %s::date);",
-            [limit, date_from, date_to],
-        )
+    data = _run_pg_function(
+        "SELECT fn_dash_top_vendors(%s, %s::date, %s::date);",
+        [limit, date_from, date_to],
+    )
     return _json_ok(data or [])
 
 
@@ -672,9 +633,7 @@ def api_dash_receivables_aging(request):
     """Receivables aging buckets: overdue / medium-risk / fresh."""
     if not request.user.has_perm("auth.view_dash_receivables_aging"):
         return _json_denied()
-    data = _quantity_dashboard(request, "receivables_aging")
-    if data is None:
-        data = _run_pg_function("SELECT fn_dash_receivables_aging();")
+    data = _run_pg_function("SELECT fn_dash_receivables_aging();")
     return _json_ok(data or {})
 
 
@@ -690,9 +649,7 @@ def api_dash_recent_transactions(request):
     if not request.user.has_perm("auth.view_dash_recent_transactions"):
         return _json_denied()
     limit = int(request.GET.get("limit", 10))
-    data = _quantity_dashboard(request, "recent_transactions", {"limit": limit})
-    if data is None:
-        data = _run_pg_function("SELECT fn_dash_recent_transactions(%s);", [limit])
+    data = _run_pg_function("SELECT fn_dash_recent_transactions(%s);", [limit])
     return _json_ok(data or [])
 
 
@@ -707,9 +664,7 @@ def api_dash_expense_kpi(request):
     """Expense KPIs: today / this month / this year."""
     if not request.user.has_perm("auth.view_dash_expense_tracking"):
         return _json_denied()
-    data = _quantity_dashboard(request, "expense_kpi")
-    if data is None:
-        data = _run_pg_function("SELECT fn_dash_expense_kpi();")
+    data = _run_pg_function("SELECT fn_dash_expense_kpi();")
     return _json_ok(data)
 
 
@@ -722,15 +677,10 @@ def api_dash_expense_categories(request):
     limit = int(request.GET.get("limit", 5))
     date_from = request.GET.get("from") or None
     date_to = request.GET.get("to") or None
-    data = _quantity_dashboard(request, "expense_categories", {
-        "limit": limit, **({"from": date_from} if date_from else {}),
-        **({"to": date_to} if date_to else {}),
-    })
-    if data is None:
-        data = _run_pg_function(
-            "SELECT fn_dash_top_expense_categories(%s, %s::date, %s::date);",
-            [limit, date_from, date_to],
-        )
+    data = _run_pg_function(
+        "SELECT fn_dash_top_expense_categories(%s, %s::date, %s::date);",
+        [limit, date_from, date_to],
+    )
     return _json_ok(data or [])
 
 
@@ -743,15 +693,10 @@ def api_dash_expense_descriptions(request):
     limit = int(request.GET.get("limit", 5))
     date_from = request.GET.get("from") or None
     date_to = request.GET.get("to") or None
-    data = _quantity_dashboard(request, "expense_descriptions", {
-        "limit": limit, **({"from": date_from} if date_from else {}),
-        **({"to": date_to} if date_to else {}),
-    })
-    if data is None:
-        data = _run_pg_function(
-            "SELECT fn_dash_top_expense_descriptions(%s, %s::date, %s::date);",
-            [limit, date_from, date_to],
-        )
+    data = _run_pg_function(
+        "SELECT fn_dash_top_expense_descriptions(%s, %s::date, %s::date);",
+        [limit, date_from, date_to],
+    )
     return _json_ok(data or [])
 
 
@@ -766,9 +711,7 @@ def api_dash_smart_alerts(request):
     """Smart alert signals: negative cash, no sales, stale receivables, risky customers."""
     if not request.user.has_perm("auth.view_dash_smart_alerts"):
         return _json_denied()
-    data = _quantity_dashboard(request, "alerts")
-    if data is None:
-        data = _run_pg_function("SELECT fn_dash_smart_alerts();")
+    data = _run_pg_function("SELECT fn_dash_smart_alerts();")
     return _json_ok(data or [])
 
 

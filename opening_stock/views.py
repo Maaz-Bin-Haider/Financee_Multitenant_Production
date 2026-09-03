@@ -5,8 +5,6 @@ from django.db import DatabaseError, connection
 from django.http import JsonResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from tenancy.models import INVENTORY_MODE_QUANTITY
-from tenancy.capabilities import reject_serial_payload
 
 VIEW_PERM      = "auth.view_opening_stock"
 CREATE_PERM    = "auth.create_opening_stock"
@@ -21,30 +19,19 @@ def _as_dict(row):
     return data
 
 
-def _is_quantity(request):
-    company = getattr(request, "tenant_company", None)
-    return bool(company and company.inventory_mode == INVENTORY_MODE_QUANTITY)
-
-
 @login_required
 def opening_stock_page(request):
     """Render the Opening Stock onboarding section."""
     if not request.user.has_perm(VIEW_PERM):
         messages.error(request, "Access Denied!")
         return redirect("home:home")
-    quantity_mode = _is_quantity(request)
     return render(
         request,
-        (
-            "opening_stock_templates/quantity_opening_stock_template.html"
-            if quantity_mode
-            else "opening_stock_templates/opening_stock_template.html"
-        ),
+        "opening_stock_templates/opening_stock_template.html",
         {
             "can_create":  request.user.has_perm(CREATE_PERM),
             "can_delete":  request.user.has_perm(DELETE_PERM),
             "can_reclass": request.user.has_perm(RECLASS_PERM),
-            "quantity_mode": quantity_mode,
             "base_currency": getattr(
                 getattr(request, "tenant_company", None), "base_currency", None
             ),
@@ -67,12 +54,10 @@ def create_opening_stock(request):
 
     items = body.get("items") or []
     if not items:
-        message = (
-            "Add at least one SKU and warehouse quantity."
-            if _is_quantity(request)
-            else "Add at least one item with serials."
+        return JsonResponse(
+            {"status": "error", "message": "Add at least one item with serials."},
+            status=400,
         )
-        return JsonResponse({"status": "error", "message": message}, status=400)
 
     payload_data = {
         "as_of_date":    body.get("as_of_date") or None,
@@ -81,23 +66,10 @@ def create_opening_stock(request):
         "created_by_id": request.user.id,
         "items":         items,
     }
-    if _is_quantity(request):
-        try:
-            reject_serial_payload(body)
-        except ValueError as exc:
-            return JsonResponse(
-                {"status": "error", "message": str(exc)}, status=400
-            )
-        payload_data["description"] = body.get("description") or body.get("notes")
     payload = json.dumps(payload_data)
     try:
         with connection.cursor() as cursor:
-            function = (
-                "quantity_create_opening_stock"
-                if _is_quantity(request)
-                else "create_opening_stock"
-            )
-            cursor.execute(f"SELECT {function}(%s::jsonb);", [payload])
+            cursor.execute("SELECT create_opening_stock(%s::jsonb);", [payload])
             data = _as_dict(cursor.fetchone())
     except (DatabaseError, TypeError, ValueError):
         return JsonResponse(
@@ -116,11 +88,7 @@ def list_opening_stock(request):
         return JsonResponse([], safe=False, status=403)
     try:
         with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT quantity_opening_stock_list();"
-                if _is_quantity(request)
-                else "SELECT get_opening_stock_loads_json();"
-            )
+            cursor.execute("SELECT get_opening_stock_loads_json();")
             row = cursor.fetchone()
         data = row[0] if row and row[0] is not None else []
         if isinstance(data, str):
@@ -140,14 +108,7 @@ def opening_stock_details(request):
     except (TypeError, ValueError):
         return JsonResponse({"error": "Invalid id."}, status=400)
     with connection.cursor() as cursor:
-        cursor.execute(
-            (
-                "SELECT quantity_opening_stock_details(%s);"
-                if _is_quantity(request)
-                else "SELECT get_opening_stock_load_details(%s);"
-            ),
-            [load_id],
-        )
+        cursor.execute("SELECT get_opening_stock_load_details(%s);", [load_id])
         data = _as_dict(cursor.fetchone())
     if not data:
         return JsonResponse({"error": "Opening stock entry not found."}, status=404)
@@ -167,13 +128,7 @@ def delete_opening_stock(request):
         return JsonResponse({"status": "error", "message": "Invalid id."}, status=400)
     try:
         with connection.cursor() as cursor:
-            if _is_quantity(request):
-                cursor.execute(
-                    "SELECT quantity_reverse_opening_stock(%s,CURRENT_DATE,%s);",
-                    [load_id, request.user.id],
-                )
-            else:
-                cursor.execute("SELECT delete_opening_stock(%s);", [load_id])
+            cursor.execute("SELECT delete_opening_stock(%s);", [load_id])
             data = _as_dict(cursor.fetchone())
     except DatabaseError:
         return JsonResponse(
@@ -196,11 +151,6 @@ def check_serials(request):
 
     Returns {success, results:{serial:{status:'ok'|'in_stock'|'ever_existed'}}}.
     """
-    if _is_quantity(request):
-        return JsonResponse(
-            {"success": False, "message": "Serial validation is unavailable."},
-            status=404,
-        )
     if not request.user.has_perm(VIEW_PERM):
         return JsonResponse({"success": False, "message": "Permission denied."})
     if request.method != "POST":
@@ -235,11 +185,7 @@ def opening_balance_status(request):
     if not request.user.has_perm(VIEW_PERM):
         return JsonResponse({"error": "Access denied."}, status=403)
     with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT quantity_opening_balance_status();"
-            if _is_quantity(request)
-            else "SELECT get_opening_balance_status_json();"
-        )
+        cursor.execute("SELECT get_opening_balance_status_json();")
         data = _as_dict(cursor.fetchone())
     return JsonResponse(data, safe=False)
 
@@ -254,11 +200,7 @@ def reclassify_opening_balance(request):
     payload = json.dumps({"created_by_id": request.user.id})
     with connection.cursor() as cursor:
         cursor.execute(
-            (
-                "SELECT quantity_reclassify_opening_balance(%s::jsonb);"
-                if _is_quantity(request)
-                else "SELECT reclassify_opening_balance_to_capital(%s::jsonb);"
-            ),
+            "SELECT reclassify_opening_balance_to_capital(%s::jsonb);",
             [payload],
         )
         data = _as_dict(cursor.fetchone())

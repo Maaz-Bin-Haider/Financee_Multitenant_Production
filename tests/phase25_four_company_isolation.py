@@ -28,10 +28,8 @@ from django.test import Client, RequestFactory  # noqa: E402
 from financee.security import rate_limit_response  # noqa: E402
 from tenancy.middleware import TenantSchemaMiddleware  # noqa: E402
 from tenancy.models import (  # noqa: E402
-    Company, Currency, Membership, INVENTORY_MODE_QUANTITY,
-    INVENTORY_MODE_SERIAL, PROVISIONING_READY,
+    Company, Currency, Membership, INVENTORY_MODE_SERIAL, PROVISIONING_READY,
 )
-from tenancy.report_catalog import QUANTITY_REPORTS  # noqa: E402
 from tenancy.schema_verification import verify_company_schema  # noqa: E402
 from tenancy.utils import set_search_path  # noqa: E402
 
@@ -84,107 +82,6 @@ def call(conn, function, payload):
     return decoded(scalar(
         conn, f"SELECT {function}(%s::jsonb)", [json.dumps(payload)]
     ))
-
-
-def setup_quantity(conn, suffix, user_id):
-    unit = scalar(conn, "SELECT unit_id FROM units_of_measure WHERE code='PCS'")
-    product = call(conn, "quantity_create_product", {
-        "product_name": f"P25 Product {suffix}", "category": "Isolation",
-        "user_id": user_id,
-    })
-    variant = call(conn, "quantity_create_variant", {
-        "product_id": product, "sku": f"P25-{TAG}-{suffix}",
-        "brand": "Financee", "model": suffix, "color": "Black",
-        "storage": "256GB", "ram": "8GB", "region": "Global",
-        "condition": "New", "unit_id": unit, "user_id": user_id,
-    })
-    source = call(conn, "quantity_create_warehouse", {
-        "warehouse_code": f"S{suffix}", "warehouse_name": f"Source {suffix}",
-        "user_id": user_id,
-    })
-    destination = call(conn, "quantity_create_warehouse", {
-        "warehouse_code": f"D{suffix}",
-        "warehouse_name": f"Destination {suffix}", "user_id": user_id,
-    })
-    return variant, source, destination
-
-
-def quantity_lifecycle(company, user, suffix):
-    conn = sql_conn(company.schema_name)
-    try:
-        variant, source, destination = setup_quantity(conn, suffix, user.pk)
-        purchase = call(conn, "quantity_create_purchase", {
-            "idempotency_key": f"P25-{TAG}-{suffix}-P",
-            "invoice_date": "2026-07-20", "vendor_name": f"Vendor {suffix}",
-            "purchase_type": "credit", "created_by_id": user.pk,
-            "items": [{"variant_id": variant, "warehouse_id": source,
-                       "quantity": "12", "unit_cost_base": "100"}],
-        })
-        purchase_line = scalar(
-            conn, "SELECT purchase_line_id FROM purchase_lines "
-                  "WHERE purchase_invoice_id=%s", [purchase["purchase_invoice_id"]]
-        )
-        sale = call(conn, "quantity_create_sale", {
-            "idempotency_key": f"P25-{TAG}-{suffix}-S",
-            "invoice_date": "2026-07-21", "customer_name": f"Customer {suffix}",
-            "sale_type": "credit", "created_by_id": user.pk,
-            "items": [{"variant_id": variant, "warehouse_id": source,
-                       "quantity": "5", "unit_price_base": "170"}],
-        })
-        sale_line = scalar(
-            conn, "SELECT sale_line_id FROM sale_lines WHERE sale_invoice_id=%s",
-            [sale["sale_invoice_id"]],
-        )
-        call(conn, "quantity_create_sale_return", {
-            "idempotency_key": f"P25-{TAG}-{suffix}-SR",
-            "return_date": "2026-07-22", "customer_name": f"Customer {suffix}",
-            "created_by_id": user.pk,
-            "items": [{"source_sale_line_id": sale_line,
-                       "destination_warehouse_id": source, "quantity": "1"}],
-        })
-        call(conn, "quantity_create_purchase_return", {
-            "idempotency_key": f"P25-{TAG}-{suffix}-PR",
-            "return_date": "2026-07-22", "vendor_name": f"Vendor {suffix}",
-            "created_by_id": user.pk,
-            "items": [{"source_purchase_line_id": purchase_line, "quantity": "1"}],
-        })
-        call(conn, "quantity_create_transfer", {
-            "idempotency_key": f"P25-{TAG}-{suffix}-T",
-            "transfer_date": "2026-07-23", "source_warehouse_id": source,
-            "destination_warehouse_id": destination, "created_by_id": user.pk,
-            "items": [{"variant_id": variant, "quantity": "2"}],
-        })
-        count = call(conn, "quantity_create_physical_count", {
-            "idempotency_key": f"P25-{TAG}-{suffix}-C",
-            "count_date": "2026-07-24", "cutoff_date": "2026-07-24",
-            "warehouse_id": destination, "created_by_id": user.pk,
-            "items": [{"variant_id": variant, "counted_quantity": "2",
-                       "reason": "Phase 25"}],
-        })
-        scalar(conn, "SELECT quantity_approve_physical_count(%s,%s)",
-               [count["count_id"], user.pk])
-        report_markers = []
-        for report in QUANTITY_REPORTS:
-            payload = decoded(scalar(
-                conn, "SELECT quantity_run_report(%s,'{}'::jsonb)", [report.key]
-            ))
-            if not isinstance(payload.get("rows"), list):
-                report_markers.append(report.key)
-        balance = scalar(
-            conn, "SELECT COALESCE(sum(on_hand_quantity),0) FROM stock_balances "
-                  "WHERE variant_id=%s", [variant],
-        )
-        trial = scalar(conn, "SELECT COALESCE(sum(debit-credit),0) FROM journal_lines")
-        conn.cursor().execute("SET search_path TO public")
-        path = scalar(conn, "SELECT current_schema()")
-        return {
-            "mode": "quantity", "suffix": suffix, "balance": str(balance),
-            "trial": str(trial), "report_failures": report_markers,
-            "schema_after": path, "sale_id": sale["sale_invoice_id"],
-            "marker": f"P25-{TAG}-{suffix}",
-        }
-    finally:
-        conn.close()
 
 
 def serial_lifecycle(company, user, suffix):
@@ -252,16 +149,11 @@ def http_probe(company, user, state):
     client = Client(SERVER_NAME="localhost")
     client.force_login(user)
     home = client.get("/home/")
-    if company.inventory_mode == INVENTORY_MODE_QUANTITY:
-        report = client.get("/quantity-reports/api/trial_balance/")
-        export = client.get("/quantity-reports/export/trial_balance.csv")
-        expected = (200, 200)
-    else:
-        report = client.get("/accountsReports/trial-balance/")
-        export = client.get(
-            "/sales-reports/api/summary/?from=2026-07-01&to=2026-07-31"
-        )
-        expected = (200, 200)
+    report = client.get("/accountsReports/trial-balance/")
+    export = client.get(
+        "/sales-reports/api/summary/?from=2026-07-01&to=2026-07-31"
+    )
+    expected = (200, 200)
     missing = client.get("/attachments/sale/999999999/")
     logout = client.get("/authentication/logout/")
     return {
@@ -428,7 +320,7 @@ def main():
         mismatch = Company(
             pk=companies[2].pk, name=companies[2].name,
             schema_name=companies[2].schema_name,
-            inventory_mode=INVENTORY_MODE_QUANTITY,
+            inventory_mode="quantity",
             base_currency=companies[2].base_currency,
             tax_environment=companies[2].tax_environment,
         )

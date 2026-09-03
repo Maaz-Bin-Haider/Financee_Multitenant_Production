@@ -32,6 +32,7 @@ MODULES = [
     "test_company_metadata.py",
     "test_company_setup.py",
     "../phase1_serial_only_creation.py",
+    "../phase2_serial_runtime_removal.py",
     "../phase24_serial_matrix.py",
     "../phase25_four_company_isolation.py",
     "test_http.py",
