@@ -2,12 +2,13 @@
 
 **Date:** 2026-09-03
 
-**Boundary:** candidate `a70f8a1` was explicitly approved and pushed with
-`[skip ci]`. The separately authorized protected read-only production inspection
-passed in run `33773691381`. No deployment, production archive, permission
-deletion, feature rewrite, or physical column removal has run in this checkpoint.
-This report does not authorize those actions. Phase 3B remains incomplete;
-Phase 4 remains blocked on owner post-cleanup PASS.
+**Historical candidate boundary:** candidate `a70f8a1` was explicitly approved
+and pushed with `[skip ci]`, and protected read-only run `33773691381` passed.
+The subsequently strengthened final source `bc5cdce` passed inspection
+`33879212477`; protected apply run `33887331226` later completed with
+`confirmed_committed`, and the owner accepted the live site. See
+`PHASE3B_PRODUCTION_RESULTS.md` for authoritative production evidence. This
+candidate report by itself did not authorize those later actions.
 
 ## Entry evidence and design decision
 
@@ -147,7 +148,7 @@ not grant cleanup approval, and any later mutation must revalidate it under lock
 | Existing recovery/inventory/static-retirement unit tests | 24/24 PASS on the same image |
 | Historical Phase 0 recovery contracts / failed-health rollback simulation | 22/22 PASS / PASS |
 | Workflow YAML, embedded shell, Python syntax and whitespace checks | PASS |
-| Current candidate GitHub CI, staging, production execution and manual post-cleanup acceptance | NOT RUN / NOT APPROVED |
+| Candidate-stage GitHub execution and manual acceptance | Not run at this checkpoint; subsequently PASS in run `33887331226` and owner check, documented in `PHASE3B_PRODUCTION_RESULTS.md` |
 
 The local published ARM64 web image ID is
 `sha256:6cb14f877396118ccdae4b75f0bdef95861276e8bd1d31802acf86e8a1b8c6bc`.
@@ -241,21 +242,18 @@ c16657f0e7a83fa3dc2b15116544e5a2946d08ba4a6d6c6fb9680b8f6abacb4c  GitHub-reporte
 1dd66988c7fa88f51ed1cc214001af89f0540e19bd6b032764668d2641680253  downloaded inspection log SHA-256
 ```
 
-## Remaining approval and execution gates
+## Subsequent approval and execution completion
 
 1. **Complete:** exact candidate push explicitly approved and verified; no
    automatic CI/CD run started.
-2. **Complete:** separately authorized protected fingerprint inspection passed;
-   retained evidence and target digest reviewed. No cleanup authorized.
-3. **Locally complete; not released:** implement/test production write/reversal transport,
-   including exact source/image checks, new verified backup/isolated restore,
-   capacity/lock bounds, continuity/health and attended failure recovery. A
-   previous backup or a plausibly named release string is insufficient.
-   See `PHASE3B_EXECUTOR_RESULTS.md` and `PHASE3B_MAINTENANCE_RUNBOOK.md` for
-   the local candidate, no-image-change maintenance gate and execution limits.
-4. Obtain exact-target cleanup authorization and required release/production
-   approvals. Revalidate the fingerprint under lock immediately before deletion.
-   Existing pre-cleanup Phase 3 metadata audit requires the retained column;
-   post-cleanup checks must use the new inspector plus strict Phase 0 continuity.
-5. After an approved successful cleanup, stop for the owner's manual production
-   check. Only that later checkpoint can complete 3B and permit Phase 4.
+2. **Complete at candidate stage:** separately authorized protected fingerprint
+   inspection passed; retained evidence and target digest were reviewed. That
+   read-only result did not itself authorize cleanup.
+3. **Complete later:** the strengthened write/reversal transport passed final
+   local tests and protected read-only inspection `33879212477` from exact
+   source `bc5cdce`.
+4. **Complete later:** the owner authorized the exact target, action, attending
+   owner and window. Protected run `33887331226` revalidated the fingerprint,
+   created and restored a fresh backup, proved recovery, and committed once.
+5. **Complete later:** final continuity/health passed and the owner reported the
+   live site online and working. See `PHASE3B_PRODUCTION_RESULTS.md`.

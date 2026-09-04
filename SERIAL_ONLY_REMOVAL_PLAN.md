@@ -30,7 +30,7 @@ explicit production PASS for the current phase.
 | 0 | Production discovery, baseline, and approved test-tenant remediation | **PASS** | Production and restored strict audits, fresh remote backup, cleanup, preflight, and health PASS | **PASS** |
 | 1 | Close quantity-company creation | **PASS** | Local gates and protected exact-SHA workflow `33636045130` PASS; production deployed without rollback | **PASS** |
 | 2 | Remove quantity runtime and replace CI coverage | **PASS** | Local gates and all 12 jobs in protected exact-SHA workflow `33728502631` PASS; production controller PASS | **PASS** |
-| 3 | Remove quantity database metadata and approved orphan schemas | **In progress — 3A accepted; 3B recovery accepted; exact-state inspection PASS** | 3A workflow `33736055610` all 14 jobs PASS; 3B inventory `33755059375`, recovery `33760176723` and cleanup-state inspection `33773691381` PASS | Owner confirmed live site working after recovery; separate post-cleanup 3B check required — Phase 4 blocked |
+| 3 | Remove quantity database metadata and approved orphan schemas | **PASS** | 3A workflow `33736055610`; 3B inventory/recovery; strengthened inspection `33879212477`; protected cleanup `33887331226` with `confirmed_committed` and final checks PASS | **PASS — owner confirmed the live site online and working after cleanup** |
 | 4 | Source, documentation, test, and migration hygiene | Not started | Not run | Required — final acceptance |
 
 ## Phase 0 — Production Discovery and Approved Test-Tenant Remediation
@@ -266,14 +266,15 @@ Any archive retention/removal decision remains separate from its creation.
   cleanup migrations.
 - [x] Obtain owner manual site confirmation after the read-only inventory.
 - [x] Deploy compatibility checkpoint 3A and obtain owner manual production PASS.
-- [ ] Complete approved cleanup checkpoint 3B and owner manual production PASS.
+- [x] Complete approved cleanup checkpoint 3B and owner manual production PASS.
 
 **Owner checkpoint 3.0 result:** `PASS` — the owner reported “the site is live
 and fine” after the protected inventory. This records the supplied site check,
 not independently observed transaction-by-transaction verification.
 
-**Overall Phase 3 result:** `IN PROGRESS` — compatibility deployed and accepted;
-controlled cleanup remains.
+**Overall Phase 3 result:** `PASS` — compatibility deployed and accepted; the
+exact protected cleanup committed with final checks PASS, followed by the
+owner's required live-site PASS on 2026-09-04.
 
 **Local and production evidence:** `tests/PHASE3_SERIAL_ONLY_METADATA_RESULTS.md`.
 
@@ -289,19 +290,16 @@ its reported dependencies identify only the expected serial constraint. The
 strict continuity audit passed with a balanced journal. The ARM64 web container
 and image remained unchanged and healthy; no cleanup was authorized or run.
 
-**Current boundary:** an explicitly invoked, reversible cleanup command and
-synthetic tests were pushed as approved candidate `a70f8a1`; its protected
-read-only production inspection passed. No production cleanup has executed.
+**Current boundary:** the explicitly invoked reversible cleanup completed under
+protected run `33887331226` from exact source `bc5cdce`, after strengthened
+read-only inspection `33879212477`, fresh encrypted backup and isolated
+apply/reversal proof. The result was `confirmed_committed`; final continuity and
+health checks passed, and the owner accepted the live site afterward.
 No automatic cleanup migration is introduced. Checkpoint 3A is deployed at
 `497b6650ed678bc462f85de6bff14692bffd6ace` and owner-accepted. Its compatibility
-work retains the physical inventory-mode column and serial constraint, adds a
-guarded database default, and removes Django's dependency on that column.
-The owner authorized starting 3B after confirming the reported appearance
-difference was absent in incognito. A fresh read-only inventory passed;
-the old 08:19 snapshot above is historical, not current cleanup authorization.
-Any push and protected deployment require separate approval. Checkpoint 3B still
-requires fresh inventory and backup/restore evidence plus exact-target approval
-before deleting permissions, grants, columns, or schemas.
+work removed Django's dependency before the physical column was retired. No
+application image, tenant schema, serial business data, historical migration, or
+host checkout changed during 3B. Phase 4 is not started or authorized.
 
 **Checkpoint 3A evidence:** `tests/PHASE3A_COMPATIBILITY_RESULTS.md`.
 
@@ -322,7 +320,7 @@ before deleting permissions, grants, columns, or schemas.
 - [x] Obtain protected-production approval and deploy the exact tested image.
 - [x] STOP: owner manually checks production and explicitly records 3A PASS.
 - [x] Obtain owner authorization to start separate 3B discovery/preparation.
-- [ ] Review a separate 3B cleanup candidate with fresh evidence.
+- [x] Review a separate 3B cleanup candidate with fresh evidence.
 
 **Owner checkpoint 3A result:** `PASS` — 2026-09-03. The owner reported all
 functionality working, initially raised a background-color concern, then
@@ -351,18 +349,18 @@ No frontend change was made; the precise normal-browser cause was not proven.
 - [x] Review the successful inspection and retained exact-state fingerprint.
 - [x] Implement/test the separately approved local
   production execution wrapper, including verified operation-time recovery.
-- [ ] Run and review the strengthened candidate's protected read-only inspection;
+- [x] Run and review the strengthened candidate's protected read-only inspection;
   final review added guards for incoming assignment/archive/feature-list foreign
   keys, so the old `a70f8a1` inspection alone does not complete this gate.
-- [ ] Approve the exact executor commit for push, then pass dedicated maintenance
+- [x] Approve the exact executor commit for push, then pass dedicated maintenance
   runner tests and its protected production gate (no application image release).
-- [ ] Complete actual-host current-image backup/isolated round-trip rehearsal
+- [x] Complete actual-host current-image backup/isolated round-trip rehearsal
   inside that separately approved operation before any production mutation;
   local tests and a backup-reference timestamp alone do not satisfy this gate.
-- [ ] Obtain fresh production backup/isolated restore evidence and exact-target
+- [x] Obtain fresh production backup/isolated restore evidence and exact-target
   cleanup approval; revalidate preconditions at execution, not only discovery.
-- [ ] Run the separately approved cleanup/release and verify continuity/health.
-- [ ] STOP: owner manually verifies production and records checkpoint 3B PASS.
+- [x] Run the separately approved cleanup/release and verify continuity/health.
+- [x] STOP: owner manually verifies production and records checkpoint 3B PASS.
 
 Detailed preparation and unresolved safety decisions are recorded in
 `tests/PHASE3B_CLEANUP_RESULTS.md`. No archive or tenant-schema removal is
@@ -400,19 +398,28 @@ column/dependency guards and strict serial continuity passed. Target-state diges
 The report expressly does not authorize cleanup. The owner reported the workflow
 passed; no new manual post-cleanup acceptance is implied.
 
-The production write wrapper is now implemented and tested locally following
-explicit preparation authorization. It remains unapproved for push/execution.
-Any eventual cleanup must revalidate the digest under lock and
-obtain fresh verified backup/restore evidence. Fresh-install retirement of historical
-quantity seeds remains Phase 4 work; this operational candidate does not silently
-rewrite migration history or claim that fresh installs are fully consolidated.
+**Strengthened inspection and execution:** `PASS` — the final dependency-guarded
+source `bc5cdce` passed protected read-only run `33879212477` and reconfirmed the
+same target digest against unchanged 3A. Separately authorized protected apply
+run `33887331226` passed its 8m54s runner rehearsal, created and verified fresh
+backup `db-backup-20260904T155103Z`, restored it with actual production image
+identities, proved the isolated apply/reverse/apply round trip (50s restore RTO),
+and committed the exact live transaction once. The retained result reports
+`mutation_outcome=confirmed_committed`, final checks PASS and contracted-state
+digest `129d702094a015931d8cb7f79a12838a54cecb6d5a281ec570a075870d8e8f32`.
+The owner then reported the live site online and working. Full evidence is in
+`tests/PHASE3B_PRODUCTION_RESULTS.md`.
+
+Fresh-install retirement of historical quantity seeds remains Phase 4 work;
+this operational cleanup did not rewrite migration history or claim that fresh
+installs are fully consolidated.
 Candidate and inspection evidence: `tests/PHASE3B_CONTROLLED_CLEANUP_RESULTS.md`.
 Executor evidence: `tests/PHASE3B_EXECUTOR_RESULTS.md`; attended procedure:
 `PHASE3B_MAINTENANCE_RUNBOOK.md`. This no-image-change operation uses a dedicated
 full-regression/recovery runner gate plus protected maintenance approval instead
 of publishing/deploying another image. Existing application-release gates are
-unchanged. The executor never automatically retries or reverses an uncertain
-write and always requires a later owner manual production check.
+unchanged. The executor did not automatically retry, reverse, deploy, or restart
+production; the required owner manual production check is now recorded PASS.
 
 ### Phase 4 — Repository Hygiene
 
@@ -484,3 +491,8 @@ every environment has reached the required migration leaf.
 | 2026-09-03 | Owner authorized local preparation/testing of the protected cleanup executor | Added exact-source streamed controller, fresh-backup/isolated round-trip gates, explicit maintenance window/owner, durable uncertain-outcome handling and manual-only protected workflow; no production access or execution in this step |
 | 2026-09-03 | Final local guard review expanded inspection preconditions | Reject unreviewed assignment/archive/feature-list FK cascades and permission-table extensions/custom checks/inheritance; archive/apply/restore/transaction bodies unchanged; 68 negative/positive core checks PASS; a fresh protected inspection of this candidate is required before cleanup approval |
 | 2026-09-03 | Final executor candidate local validation | ARM64: 200 release contracts, 71 backup contracts, 46 controller/transport units, 68 cleanup checks and all 21 serial modules PASS; encrypted apply/reversal round trips and original recovery path PASS; exact disposable resources removed; no production access, push or execution |
+| 2026-09-04 | Final executor commit explicitly authorized and pushed | Exact `bc5cdce` pushed to `main` with `[skip ci]`; remote SHA verified; no automatic CI/CD or deployment run |
+| 2026-09-04 | Strengthened protected read-only inspection `33879212477` | Exact final-source dependency/table guards, target digest, serial continuity and unchanged deployed 3A container PASS; no write authorized by inspection |
+| 2026-09-04 | Owner authorized exact cleanup scope and named attended owner/window | Digest `f29440c...14b4b4`, action `apply`, owner `Maaz`, approved 15:30–16:30 UTC; protected approval remained separate |
+| 2026-09-04 | Protected cleanup run `33887331226` | Runner rehearsal PASS; fresh encrypted backup and actual-image isolated apply/reverse/apply PASS; exact live transaction `confirmed_committed`; final continuity/health PASS; no image deployment or restart |
+| 2026-09-04 | Owner reported “yes the site is online fine” after cleanup | Checkpoint 3B and overall Phase 3 manual production PASS; Phase 4 remains unstarted pending explicit instruction |

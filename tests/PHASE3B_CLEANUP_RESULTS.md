@@ -2,15 +2,13 @@
 
 **Date:** 2026-09-03
 
-**Status:** Fresh protected production inventory and current-image production
-backup/isolated recovery PASS. Recovery-only commit `962f36f` was explicitly
-approved, pushed, and run under separate protected approval. The owner subsequently
-confirmed the live site works. A reversible cleanup candidate `a70f8a1` was
-subsequently approved/pushed, and its protected read-only exact-state inspection
-`33773691381` passed, documented in `PHASE3B_CONTROLLED_CLEANUP_RESULTS.md`.
-No automatic cleanup migration is introduced. No production business/database
-cleanup or application deployment has run in 3B; only the backup and disposable
-recovery resources were created, with the disposable resources removed afterward.
+**Historical preparation status:** Fresh protected production inventory and
+current-image backup/isolated recovery passed before cleanup. The later final
+source `bc5cdce` passed strengthened inspection `33879212477`; protected apply
+run `33887331226` then reported `confirmed_committed` with final checks PASS,
+and the owner accepted the live site. Phase 3B's authoritative production
+closeout is `PHASE3B_PRODUCTION_RESULTS.md`. No automatic cleanup migration or
+application deployment was introduced.
 
 **Required rollback image:** deployed and owner-accepted 3A
 `497b6650ed678bc462f85de6bff14692bffd6ace`.
@@ -225,10 +223,10 @@ separate direct inspection of each raw host log.
 The owner's initial “its passed” reported the workflow result. The subsequent
 “yes it working fine” records the owner's manual live-site PASS after recovery,
 not final 3B acceptance or independently observed transaction-by-transaction
-verification. Controlled cleanup is now a locally tested candidate, but production
-execution remains unauthorized. Its guarded write wrapper has subsequently
-been prepared/tested locally under separate owner authorization; see
-`PHASE3B_EXECUTOR_RESULTS.md`. No production execution is implied.
+verification. At this preparation checkpoint the controlled cleanup remained
+unauthorized. It was later completed only after the additional approvals and
+gates recorded in `PHASE3B_PRODUCTION_RESULTS.md`; see also
+`PHASE3B_EXECUTOR_RESULTS.md`.
 This successful recovery establishes readiness to prepare it, not permission to
 remove records or reuse this recovery point indefinitely. Evidence freshness and
 exact cleanup preconditions must be checked again at destructive execution.

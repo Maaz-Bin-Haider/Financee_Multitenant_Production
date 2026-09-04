@@ -2,12 +2,18 @@
 
 ## Current boundary
 
-This is a **local, unapproved execution candidate**. Preparing this runbook does
-not authorize a push, workflow dispatch, cleanup, reversal, or deployment.
-No production cleanup has run. Production remains the accepted 3A image
-`497b6650ed678bc462f85de6bff14692bffd6ace` on the ARM64 t4g.medium host.
-After any approved production cleanup, stop for the owner's manual live-site
-verification before completing Phase 3B or beginning Phase 4.
+The reviewed first apply completed successfully on 2026-09-04 in protected run
+`33887331226` from exact source `bc5cdce`. Its outcome was
+`confirmed_committed`; final checks passed, and the owner subsequently reported
+the live site online and working. Phase 3B is complete. Production remains on
+the accepted 3A image `497b6650ed678bc462f85de6bff14692bffd6ace` on the ARM64
+t4g.medium host because this was a no-image-change operation.
+
+This runbook remains authoritative for evidence interpretation and any future
+attended reversal. The completed apply is not standing authorization to rerun,
+restore, remove the archive, or begin Phase 4. Any reversal requires a fresh
+read-only applied-state digest, explicit restore authorization, a new backup and
+isolated proof, a new attended window, and separate protected approval.
 
 This operation does not deploy an image. It streams reviewed maintenance source
 into the existing environment and executes the checksum-pinned transactional
@@ -46,6 +52,15 @@ No schema, customer account, membership, currency/tax/subscription field,
 serial feature, serial document or tenant business object is targeted.
 The archive remains in place for attended reversal; deleting it requires a
 separate retention decision and is not implemented here.
+
+The final strengthened source `bc5cdce` was separately inspected by protected
+read-only run `33879212477`, which reconfirmed the same target digest and passed
+the added incoming-FK/table-contract guards. Protected apply run `33887331226`
+then created verified backup `db-backup-20260904T155103Z`, passed actual-image
+isolated apply/reverse/apply recovery with a 50-second restore RTO, committed
+once, and produced final contracted-state digest
+`129d702094a015931d8cb7f79a12838a54cecb6d5a281ec570a075870d8e8f32`.
+See `tests/PHASE3B_PRODUCTION_RESULTS.md` for the exact closeout evidence.
 
 ## Approvals before dispatch
 

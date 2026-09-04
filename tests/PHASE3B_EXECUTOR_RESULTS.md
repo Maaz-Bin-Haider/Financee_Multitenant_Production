@@ -2,10 +2,12 @@
 
 **Date:** 2026-09-03
 
-**Scope:** the owner authorized preparing and testing the protected executor
-locally. No push, production dispatch, cleanup, reversal or deployment was
-authorized or performed in this work. Phase 3B is still incomplete; the owner
-must manually verify production after an eventual approved cleanup.
+**Original scope:** the owner authorized preparing and testing the protected
+executor locally. That preparation did not itself authorize production work.
+Subsequently, exact source `bc5cdce` passed the required strengthened read-only
+inspection and separately authorized protected apply run `33887331226` completed
+with `confirmed_committed`; the owner then accepted the live site. The final
+production record is `PHASE3B_PRODUCTION_RESULTS.md`.
 
 The accepted read-only target evidence is in `PHASE3B_CONTROLLED_CLEANUP_RESULTS.md`:
 run `33773691381`, source `a70f8a1`, deployed image `497b665`, target digest
@@ -117,7 +119,7 @@ run must additionally verify a new remote backup and actual host image IDs.
 | Controller/recovery/inventory/static-retirement unit tests | 46/46 PASS on ARM64 Linux/Python 3.12.14 |
 | Encrypted apply and reversal round trips, default recovery path | PASS; final-source evidence recorded below |
 | Syntax, workflow YAML/embedded shell, whitespace checks | PASS |
-| Production execution / GitHub maintenance workflow | NOT RUN; separate exact approvals required |
+| Production execution / GitHub maintenance workflow | Subsequently PASS in protected run `33887331226`; see `PHASE3B_PRODUCTION_RESULTS.md` |
 
 The local PostgreSQL image is 16.15; the inspected production host reported
 16.14. No equivalence is assumed from tags: the production controller pins
@@ -196,10 +198,12 @@ gate. The actual production-image recovery/round-trip rehearsal runs after that
 approval but **before** any live mutation. This is a documented refinement of
 the earlier image-release/staging plan, not a bypass of production approval.
 
-Next: review the exact local diff and authorize its `[skip ci]` push. Run and
-review the stronger protected read-only inspector. Separately approve the exact
-cleanup scope/digest, provide the attended UTC window and
-rollback owner, then authorize workflow dispatch and protected execution.
-Any changed target state, failed rehearsal, unresolved reviewer concern or
-expired window stops the operation. No blanket future cleanup authority is
-inferred. After an approved cleanup, STOP for owner manual production PASS.
+Those subsequent gates completed on 2026-09-04: exact source `bc5cdce` was
+pushed with `[skip ci]`, strengthened protected inspection `33879212477` passed,
+and the owner separately approved the exact scope, window, attending owner and
+workflow. Protected run `33887331226` passed rehearsal and actual-host recovery,
+reported `confirmed_committed`, and passed final checks. The owner then reported
+the live site online and working. See `PHASE3B_PRODUCTION_RESULTS.md`.
+
+No blanket future cleanup, reversal, archive deletion or Phase 4 authority is
+inferred from that one completed operation.
