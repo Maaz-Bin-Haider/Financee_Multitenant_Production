@@ -24,6 +24,7 @@ from django.core.management.base import CommandError
 from django.db import DatabaseError, connection, transaction
 from django.test.utils import CaptureQueriesContext
 from tenancy.management.commands import serial_only_phase3_cleanup as cleanup
+from tenancy.management.commands import serial_only_phase4_audit as phase4_audit
 from tenancy.management.commands.serial_only_phase0_audit import _schema_structure
 from tenancy.models import Company
 
@@ -260,6 +261,16 @@ def main():
     current = snapshot()
     check("apply is idempotent with a freshly inspected state", mutate()["archive_state"] == "applied" and snapshot() == current)
     check("strict serial continuity still passes after contraction", json.loads(capture_audit())["ready_for_phase_1"])
+    phase4_entry = phase4_audit.inspect()
+    check("Phase 4 entry audit accepts exact post-cleanup migration and serial state",
+          phase4_entry["mode"] == "database-enforced-read-only"
+          and not phase4_entry["authorizes_migration_replacement"]
+          and phase4_entry["tenancy_leaf"] == "0009_inventory_mode_compatibility"
+          and phase4_entry["authentication_leaf"] == "0025_add_quantity_platform_permissions"
+          and phase4_entry["archive_state"] == "applied"
+          and not phase4_entry["inventory_mode_column_present"]
+          and phase4_entry["retired_permission_count"] == 0
+          and phase4_entry["retired_feature_occurrences"] == 0)
     print(f"{sum(RESULTS)}/{len(RESULTS)} Phase 3B cleanup checks passed", flush=True)
     return 0 if all(RESULTS) else 1
 

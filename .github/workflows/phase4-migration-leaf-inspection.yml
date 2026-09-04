@@ -1,0 +1,72 @@
+name: Phase 4 read-only migration-leaf inspection
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type INSPECT-PHASE4-MIGRATION-LEAVES (no changes)"
+        required: true
+        type: string
+      expected_deployed_sha:
+        description: "Exact accepted deployed image SHA"
+        required: true
+        type: string
+        default: 497b6650ed678bc462f85de6bff14692bffd6ace
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  inspection:
+    name: Read-only Phase 4 migration and post-cleanup entry gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      CONFIRMATION: ${{ inputs.confirmation }}
+      EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+      APP_DIR: ${{ secrets.EC2_APP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate inspected source and transport
+        run: |
+          set -euo pipefail
+          [[ "$CONFIRMATION" == INSPECT-PHASE4-MIGRATION-LEAVES ]]
+          [[ "$EXPECTED_DEPLOYED_SHA" == 497b6650ed678bc462f85de6bff14692bffd6ace ]]
+          python3 tests/phase4_repository_hygiene_contracts.py
+          python3 -m unittest tests.test_phase4_inventory_remote
+          bash -n deploy/phase4_inventory_remote.sh
+          python3 -m py_compile tenancy/management/commands/serial_only_phase4_audit.py
+          sha256sum tenancy/management/commands/serial_only_phase4_audit.py
+      - name: Install production SSH key
+        env:
+          DEPLOY_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+      - name: Stream database-enforced read-only inspection
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          set -euo pipefail
+          remote_script=$(< deploy/phase4_inventory_remote.sh)
+          printf -v remote_command 'bash -c %q -- %q %q %q' \
+            "$remote_script" "$APP_DIR" "$EXPECTED_DEPLOYED_SHA" "$GITHUB_SHA"
+          ssh -i ~/.ssh/id_deploy "$EC2_USER@$EC2_HOST" "$remote_command" \
+            < tenancy/management/commands/serial_only_phase4_audit.py \
+            | tee phase4-migration-leaf-inspection.log
+      - name: Retain operational counts and fingerprints only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase4-migration-leaf-inspection
+          path: phase4-migration-leaf-inspection.log
+          retention-days: 90

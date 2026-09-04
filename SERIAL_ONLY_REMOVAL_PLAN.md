@@ -31,7 +31,7 @@ explicit production PASS for the current phase.
 | 1 | Close quantity-company creation | **PASS** | Local gates and protected exact-SHA workflow `33636045130` PASS; production deployed without rollback | **PASS** |
 | 2 | Remove quantity runtime and replace CI coverage | **PASS** | Local gates and all 12 jobs in protected exact-SHA workflow `33728502631` PASS; production controller PASS | **PASS** |
 | 3 | Remove quantity database metadata and approved orphan schemas | **PASS** | 3A workflow `33736055610`; 3B inventory/recovery; strengthened inspection `33879212477`; protected cleanup `33887331226` with `confirmed_committed` and final checks PASS | **PASS — owner confirmed the live site online and working after cleanup** |
-| 4 | Source, documentation, test, and migration hygiene | Not started | Not run | Required — final acceptance |
+| 4 | Source, documentation, test, and migration hygiene | **In progress — read-only migration-leaf entry gate validated locally** | Phase 4 contracts, real PostgreSQL audit fixture and complete preservation gates PASS; protected production inspection not dispatched | Required after each 4A/4B release and at final acceptance |
 
 ## Phase 0 — Production Discovery and Approved Test-Tenant Remediation
 
@@ -427,6 +427,81 @@ Remove inactive quantity source, tests, and active documentation; update all
 runbooks; then use Django's supported migration replacement process only after
 every environment has reached the required migration leaf.
 
+Phase 4 started on 2026-09-04 after the owner instructed “continue” following
+the recorded Phase 3 PASS. This instruction starts local discovery and
+implementation only; it does not authorize a push, protected inspection,
+deployment, migration-history write, archive removal, or production change.
+
+#### Non-negotiable Phase 4 boundary
+
+- Preserve every serial business quantity/count field, serial SQL function,
+  report, route, template and test. The ordinary word “quantity” is not itself
+  evidence that a component belongs to the retired company family.
+- Preserve the Phase 3B archive and its inspected restore tooling until a later
+  explicit archive-retention decision. Repository hygiene is not authorization
+  to destroy the reversal path.
+- Preserve Phase 0–3 operational evidence and the serial-only regression,
+  isolation, backup/recovery, ARM64 and security gates.
+- Delete only source, SQL, tests and active design/runbook material proven to be
+  owned exclusively by the retired quantity-company family.
+- Do not rewrite or delete applied migration history in one release.
+
+#### Checkpoint 4.0 — protected read-only entry gate
+
+- [x] Inventory remaining quantity-family files and distinguish them from
+  serial line quantities and retained reversal evidence.
+- [x] Prepare a database-enforced read-only audit for the exact pre-squash
+  leaves `tenancy.0009` and `authentication.0025`.
+- [x] Require the Phase 3B archive to remain checksummed and `applied`, the
+  physical mode column and retired permissions/features to remain absent, and
+  every registered/physical tenant schema to be canonical active ready serial.
+- [x] Reuse strict serial continuity and pin the unchanged healthy ARM64 3A
+  image/container before and after the streamed audit.
+- [x] Pass local contracts and hostile transport tests, including the real
+  PostgreSQL post-cleanup/reversal fixture and complete serial suite.
+- [ ] Review the exact local diff and obtain approval for a `[skip ci]` push.
+- [ ] Separately authorize and pass the protected read-only production audit.
+- [ ] Review retained operational counts/fingerprint. The audit expressly sets
+  `authorizes_migration_replacement=false`; its PASS is evidence, not authority.
+
+#### Checkpoint 4A — first migration-replacement release
+
+Following Django 6.0's supported process, create serial-only squashed replacement
+migrations while **the old migration files remain** beside them. Existing
+instances can finish the original chain; new installations use the replacements.
+
+- [ ] Generate and independently review squashed `tenancy` and `authentication`
+  replacements from the exact audited leaves.
+- [ ] Remove quantity-only SQL templates/patches, inactive quantity test modules,
+  obsolete result/design documents and retired static cleanup code.
+- [ ] Remove the inactive quantity schema-family registry and temporary runtime
+  inventory-mode compatibility API without changing serial behavior.
+- [ ] Update active README, runbooks, CI and tests to describe and enforce the
+  serial-only system; retain Phase 3B reversal tooling and evidence.
+- [ ] Prove a fresh database uses only the squashed serial state and never creates
+  the retired column or permissions; prove a database with the original leaves
+  produces a no-op migration plan and retains its data.
+- [ ] Pass full serial, four-company isolation, security, backup/recovery,
+  ARM64 and production-like staging gates.
+- [ ] Review, approve, publish and deploy the exact 4A image through normal
+  protected CI/CD. Stop for owner manual production PASS.
+
+#### Checkpoint 4B — transition replacements and final retirement
+
+Only after every environment has run the 4A release and a new read-only audit
+confirms the replacement migration records may the transition complete.
+
+- [ ] Remove the old replaced migration files, update dependencies to the
+  squashed migrations, and remove `replaces` so each becomes a normal migration.
+- [ ] Validate `migrate --prune` on restored and synthetic databases before any
+  separately approved pruning of obsolete migration-table rows.
+- [ ] Reprove fresh install, upgraded original history, rollback compatibility,
+  serial continuity, backup/restore and all mandatory CI/CD gates.
+- [ ] Deploy exact 4B through protected production approval; verify migration
+  plan, application health and serial continuity.
+- [ ] STOP: owner manually verifies the real production system and records final
+  Phase 4 PASS. Only then is the serial-only consolidation plan complete.
+
 ## Audit Trail
 
 | Date | Event | Result |
@@ -496,3 +571,6 @@ every environment has reached the required migration leaf.
 | 2026-09-04 | Owner authorized exact cleanup scope and named attended owner/window | Digest `f29440c...14b4b4`, action `apply`, owner `Maaz`, approved 15:30–16:30 UTC; protected approval remained separate |
 | 2026-09-04 | Protected cleanup run `33887331226` | Runner rehearsal PASS; fresh encrypted backup and actual-image isolated apply/reverse/apply PASS; exact live transaction `confirmed_committed`; final continuity/health PASS; no image deployment or restart |
 | 2026-09-04 | Owner reported “yes the site is online fine” after cleanup | Checkpoint 3B and overall Phase 3 manual production PASS; Phase 4 remains unstarted pending explicit instruction |
+| 2026-09-04 | Owner instructed “continue” after Phase 3 closeout | Phase 4 local discovery and entry-gate preparation started; no push, protected inspection, migration replacement or production change authorized |
+| 2026-09-04 | Phase 4 repository/migration boundary review | Serial line quantities and Phase 3B reversal tooling retained; obsolete family source targeted separately; Django 6.0 requires a two-release squash transition |
+| 2026-09-04 | Phase 4 entry-gate local validation | 14/14 Phase 4 and 285/285 complete static/release/backup contracts, 51/51 units and 69/69 PostgreSQL cleanup/audit checks PASS; published 3A restart and complete serial suite PASS; exact disposable project removed |

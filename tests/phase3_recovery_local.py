@@ -64,8 +64,16 @@ def main():
             exercise(gate, before, compose, env, env_file, override, passphrase, work)
             return
         if cleanup_test:
-            gate.run([*compose, "cp", str(ROOT / "tenancy/management/commands/serial_only_phase3_cleanup.py"),
-                      "web:/app/tenancy/management/commands/serial_only_phase3_cleanup.py"], env=env)
+            for command in (
+                "serial_only_phase3_cleanup.py",
+                "serial_only_phase4_audit.py",
+            ):
+                gate.run([
+                    *compose,
+                    "cp",
+                    str(ROOT / "tenancy/management/commands" / command),
+                    "web:/app/tenancy/management/commands/" + command,
+                ], env=env)
             gate.run([*compose, "cp", str(ROOT / "tests"), "web:/app/"], env=env)
             for test in ("tests/phase1_serial_only_creation.py", "tests/suite/test_company_metadata.py"):
                 gate.run([*compose, "exec", "-T", "web", "python", test], env=env,
