@@ -55,9 +55,23 @@ and requires that commit to be an ancestor of the ref; the remote wrapper still
 refuses to proceed unless it matches the running container. Nothing needs
 repinning after a release.
 
-### Open by design
+### The migration-record prune — decided: skipped
 
-- `migrate --prune` of the 36 stale rows: separately approved, one-way.
+Production keeps 34 inert historical `django_migrations` rows. `migrate --prune`
+would remove them, and `serial_only_phase4c_prune` implements that guarded and
+**reversibly** (it archives the rows first). It was proven on real PostgreSQL and
+then deliberately not run.
+
+The reason is a hazard found while building it: a rollback attempted against a
+pruned database does not fail cleanly. The `authentication` replacement is pure
+`RunPython`, so it re-applies and re-records before the `tenancy` replacement
+dies on `CREATE TABLE`, leaving a half-applied history and an app that will not
+start. `restore` repairs that, but the trap would exist for anyone rolling back
+without knowing. Removing 34 inert rows is not worth it.
+
+If it is ever run: `inspect` first for the digest, then `apply` with the typed
+confirmation and a backup reference under 30 minutes old. Never plain
+`migrate --prune`, which is also refused project-wide and must be per-app.
 - `tests/serial_api_compat.py` and the pre-3B fixture reconstruction stay while
   the Phase 3B cleanup rehearsal needs a pre-3B database from the 3A image.
 

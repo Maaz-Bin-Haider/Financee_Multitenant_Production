@@ -13,9 +13,11 @@ explicit production PASS for the current phase.
 **STATUS: COMPLETE.** All phases 0–4 carry an owner production PASS. The
 quantity-company family is retired in runtime, database and repository, and the
 serial-only squashed migrations are deployed as ordinary initial migrations.
-One operational item remains open by design and is recorded at the end of the
-Phase 4B section: the separately approved one-way `migrate --prune`. The audit's
-recurring pin staleness has been fixed — it now discovers its own state.
+Nothing remains open. The audit's recurring pin staleness was fixed — it now
+discovers its own state — and the optional `migrate --prune` was built, proven
+reversible, and then **deliberately not executed**: see "Checkpoint 4C" below.
+Production keeps 34 inert historical `django_migrations` rows, which affect no
+code, schema or behaviour.
 
 ## Non-Negotiable Safety Contract
 
@@ -871,3 +873,38 @@ audit, so the first work is that audit, not the deletions.
 | 2026-09-07 | All three states and drift proven against real PostgreSQL | The disposable fixture now discovers pre-4A, post-4A and pruned histories, produces three distinct state digests, and fails closed on an unrecognised one. The simulations capture and restore the real rows and then verify the restoration, after an earlier version left the estate broken and failed the post-cleanup suite. Fixture 73/73 -> 78/78; Phase 4 contracts 29 -> 36 |
 | 2026-09-07 | Audit-pin fix released as `39dc506` and verified end to end | Protected run `34119715853` dispatched with **only** the confirmation string, both new inputs empty. It resolved the deployed SHA to `39dc506` from the run's own commit, cross-checked it against the running container, and reported `history_state=post-4A` with `replacements_recorded=true` and `replaced_rows_retained=true` -- discovered, not declared. `PHASE4_EXPECT_STATE=<discover>`, container unchanged, authorizes nothing. No repinning will be needed on future releases |
 | 2026-09-07 | Production confirmed un-pruned and structurally unchanged across the 4B release | `replaced_rows_retained=true` is direct evidence that no `migrate --prune` has run, so the rollback path to 4A remains intact. Structure fingerprint `b764c48d…` and archive digest are identical to the pre-4B audit; the continuity fingerprint differs, which is expected on a live system with real business activity, and the journal remains balanced |
+
+
+## Checkpoint 4C — the migration-record prune, built and deliberately not run
+
+The plan assumed pruning the 34 replaced `django_migrations` rows was a one-way
+door. It is not: those rows are `(app, name, applied)` tuples, so archiving them
+before removal makes the operation reversible, and restoring them restores the
+rollback path with them.
+
+`serial_only_phase4c_prune` was built to the Phase 3B standard — read-only
+`inspect` that authorizes nothing; `apply` and `restore` each requiring the typed
+confirmation, the exact digest from a fresh inspect, and a managed backup
+reference under 30 minutes old. `apply` archives the exact rows, runs Django's
+own per-app `migrate --prune`, and verifies precisely those rows and no others
+were removed. Proven on real PostgreSQL: `tests/phase4c_prune.py` 17/17,
+including every refusal path and a full apply → restore → reapply → restore round
+trip returning the estate byte-identical.
+
+**A hazard found while building it decided the outcome.** A rollback attempted
+against a pruned database does not fail cleanly. The `authentication`
+replacement is pure `RunPython`, so it re-applies and re-records its 26 rows
+before the `tenancy` replacement dies on `CREATE TABLE`, leaving a half-applied
+history and an application that will not start. Measured
+(`tests/phase4c_prune_rollback.sh`): before pruning the 4A rollback target
+starts cleanly; after pruning it is refused and leaves 28 rows; after restoring
+it starts cleanly again from a repaired 36. `restore` is therefore a reset
+rather than an insert, so it repairs the damaged state as well as the clean one,
+and `inspect` reports on a damaged history instead of refusing it.
+
+**Owner decision (2026-09-07): skip the prune.** The benefit is 34 inert
+bookkeeping rows; the cost is turning the standard rollback path into a trap
+that corrupts the migration history until someone runs the restore. The tooling
+is retained as a proven, reversible capability should the rows ever need
+reclaiming — it is not wired into CI and has never been executed against
+production.

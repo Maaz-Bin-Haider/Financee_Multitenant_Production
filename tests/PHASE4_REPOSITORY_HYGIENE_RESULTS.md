@@ -786,3 +786,45 @@ carries all 36 migration rows and its rollback path to the 4A release.
    in place. The Phase 3B cleanup rehearsal still needs a pre-3B database, which
    only the 3A image produces. This is cleanup, not a correctness gap — every
    gate passes with them present.
+
+
+---
+
+# Checkpoint 4C — prune built, proven reversible, deliberately not run
+
+`serial_only_phase4c_prune` removes the 34 replaced `django_migrations` rows
+under the Phase 3B guard pattern, and archives them first so the operation is
+reversible rather than the one-way door the plan assumed.
+
+- `tests/phase4c_prune.py` — **17/17** on real PostgreSQL: every refusal path
+  (missing/wrong confirmation, stale digest, missing/expired backup reference),
+  exact 34-row removal, and a full apply → restore → reapply → restore round trip
+  returning the estate byte-identical.
+- `tests/phase4c_prune_rollback.sh` — **6/6**, and the reason the prune was
+  skipped.
+
+## The hazard
+
+A rollback against a pruned database does not fail cleanly:
+
+```text
+after 4B:          authentication=26  tenancy=10
+after prune:       authentication=1   tenancy=1
+after 4A attempt:  authentication=27  tenancy=1     ← crashed midway
+```
+
+The `authentication` replacement is pure `RunPython`, so it re-applies and
+re-records its rows before the `tenancy` replacement dies on `CREATE TABLE`,
+leaving a half-applied history and an application that will not start. `restore`
+is therefore a reset rather than an insert, so it repairs that state as well as
+the clean pruned one, and `inspect` reports on a damaged history rather than
+refusing it. Measured: before pruning the 4A rollback target starts cleanly;
+after pruning it is refused and leaves 28 rows; after restoring it starts
+cleanly again from a repaired 36.
+
+## Decision
+
+**Skipped (owner, 2026-09-07).** The benefit is 34 inert bookkeeping rows that
+affect no code, schema or behaviour. The cost is turning the standard rollback
+path into a trap. The tooling is retained as a proven, reversible capability; it
+is not wired into CI and has never touched production.
