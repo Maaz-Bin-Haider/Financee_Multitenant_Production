@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import io
-import importlib
 import os
 import sys
 import time
@@ -20,7 +19,6 @@ django.setup()
 
 from django.core.management import call_command, get_commands, load_command_class  # noqa: E402
 from django.db import DatabaseError, connection, transaction  # noqa: E402
-from django.db.migrations.loader import MigrationLoader  # noqa: E402
 
 from financee.admin_site import financee_admin_site  # noqa: E402
 from tenancy.admin import CompanyAdmin, CompanyAdminForm  # noqa: E402
@@ -125,48 +123,11 @@ def main():
             f"legacy_present={legacy_present} contracted={contracted} {definition}",
         )
 
-        if company is not None:
-            migration = importlib.import_module(
-                "tenancy.migrations.0008_serial_only_company_creation"
-            )
-            precondition_blocked = False
-            with transaction.atomic():
-                if not legacy_present:
-                    # Reconstruct the historical fixture only in this rolled-back
-                    # test transaction so 0008's original guard remains covered.
-                    with connection.cursor() as cursor:
-                        cursor.execute("ALTER TABLE public.tenancy_company ADD COLUMN inventory_mode varchar(16) NOT NULL DEFAULT 'serial'")
-                        cursor.execute("ALTER TABLE public.tenancy_company ADD CONSTRAINT tenancy_company_valid_inventory_mode CHECK (inventory_mode='serial')")
-                with connection.cursor() as cursor:
-                    cursor.execute(
-                        "ALTER TABLE tenancy_company DROP CONSTRAINT "
-                        "tenancy_company_valid_inventory_mode"
-                    )
-                with connection.cursor() as cursor:
-                    cursor.execute("UPDATE public.tenancy_company SET inventory_mode='quantity' WHERE id=%s", [company.pk])
-                try:
-                    # Once the checkpoint 4A squash is applied, Django removes
-                    # the replaced nodes from the graph, so the historical node
-                    # cannot be addressed through the default loader. Load the
-                    # real migration files with replacements disabled so 0008's
-                    # original guard stays covered on both images.
-                    historical_apps = MigrationLoader(
-                        connection, replace_migrations=False
-                    ).project_state(
-                        [("tenancy", "0007_company_provisioning_state")]
-                    ).apps
-                    migration.require_serial_registry(historical_apps, None)
-                except RuntimeError as exc:
-                    precondition_blocked = (
-                        str(company.pk) in str(exc)
-                        and company.name not in str(exc)
-                    )
-                transaction.set_rollback(True)
-            company.refresh_from_db()
-            check(
-                "migration precondition blocks conflicting IDs without names",
-                precondition_blocked,
-            )
+        # Checkpoint 4B deleted migration 0008 along with the rest of the
+        # replaced chain, so its registry precondition no longer exists to
+        # exercise. The guarantee it enforced is now structural: the only
+        # migration on disk cannot create the retired column at all, which
+        # tests/phase4b_migration_transition.sh proves on a real database.
 
         admin_obj = CompanyAdmin(Company, financee_admin_site)
         check(

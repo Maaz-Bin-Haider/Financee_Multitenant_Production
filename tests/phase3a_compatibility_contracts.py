@@ -8,18 +8,18 @@ def read(path):
     return (ROOT / path).read_text()
 
 model = read("tenancy/models.py")
-migration = read("tenancy/migrations/0009_inventory_mode_compatibility.py")
-tree = ast.parse(migration)
+squashed = read("tenancy/migrations/0001_serial_only.py")
 workflow = read(".github/workflows/ci.yml")
 stack = read("tests/ci_phase27_stack.sh")
 live = read("tests/phase3a_compatibility.py")
-old = read("tests/phase3a_old_image.py")
+# Checkpoint 4B retired tests/phase3a_old_image.py with the Phase 2 image it
+# pinned: that image declares inventory_mode as a concrete ORM field and
+# cannot run against a 4B database. Rollback compatibility is now proven
+# against the actual rollback target by the 4B transition proof.
+transition = read("tests/phase4b_migration_transition.sh")
 recovery = read("tests/phase28_recovery_rehearsal.sh")
 company = next(n for n in ast.parse(model).body if isinstance(n, ast.ClassDef) and n.name == "Company")
 concrete = {t.id for n in company.body if isinstance(n, ast.Assign) for t in n.targets if isinstance(t, ast.Name)}
-sql = [n.args[0].value for n in ast.walk(tree) if isinstance(n, ast.Call)
-       and isinstance(n.func, ast.Attribute) and n.func.attr == "execute" and n.args
-       and isinstance(n.args[0], ast.Constant) and isinstance(n.args[0].value, str)]
 query_dependencies = []
 query_sources = [path for path in (ROOT / "tenancy").rglob("*.py") if "migrations" not in path.parts]
 query_sources += [ROOT / path for path in (
@@ -36,6 +36,16 @@ for path in query_sources:
                 query_dependencies.append(f"{path.relative_to(ROOT)}:{node.lineno}")
 checks = {
     "inventory mode is no longer a concrete Company field": "inventory_mode" not in concrete,
+    "checkpoint 4B removed the replaced migrations and the replaces marker":
+        sorted(p.name for p in (ROOT / "tenancy/migrations").glob("*.py"))
+        == ["0001_serial_only.py", "__init__.py"]
+        and sorted(p.name for p in (ROOT / "authentication/migrations").glob("*.py"))
+        == ["0001_serial_only.py", "__init__.py"]
+        and "initial = True" in squashed
+        and "replaces = [" not in squashed,
+    "the squashed migration cannot create the retired column":
+        "inventory_mode" not in squashed.split("operations = [", 1)[1]
+        and "quantity" not in squashed.split("operations = [", 1)[1].lower(),
     "temporary 3A compatibility API is fully retired":
         "def get_inventory_mode_display(self)" not in model
         and "_requested_inventory_mode" not in model
@@ -43,53 +53,47 @@ checks = {
     "no supported path can express a retired mode":
         "inventory_mode" not in model and "INVENTORY_MODE" not in model,
     "live test proves the retired keyword is rejected at construction":
-        "TypeError" in live and "construction rejects" in live,
+        "retired_mode_rejected" in live and "construction rejects" in live,
     "shared currency tax and provisioning constraints remain":
         all(name in concrete for name in ("base_currency", "tax_environment", "provisioning_state", "disabled_features"))
         and "tenancy_company_valid_tax_environment" in model and "tenancy_company_valid_provisioning_state" in model,
-    "state-only removal is paired with guarded reversible expansion":
-        "migrations.SeparateDatabaseAndState" in migration
-        and "database_operations=[migrations.RunPython(forwards, backwards)]" in migration
-        and "state_operations=[" in migration and "migrations.RemoveField" in migration,
-    "expansion executes no destructive SQL or data update":
-        not any(any(token in statement.upper() for token in ("DROP COLUMN", "DROP CONSTRAINT", "DROP SCHEMA", "DELETE FROM", "UPDATE PUBLIC", "TRUNCATE")) for statement in sql),
-    "migration preserves exact validated serial constraint":
-        "pg_get_expr(conbin, conrelid)" in migration
-        and 'constraint[:3] != ("c", True, False)' in migration
-        and "inventory_mode::text='serial'::text" in migration,
-    "migration blocks unexpected type nullability default and nonserial rows":
-        'column != ("character varying(16)", True, expected_default)' in migration
-        and "inventory_mode IS DISTINCT FROM 'serial'" in migration,
-    "migration waits are bounded and table is locked during validation":
-        "lock_timeout = '2s'" in migration and "statement_timeout = '30s'" in migration
-        and "IN ACCESS EXCLUSIVE MODE" in migration and "atomic = True" in migration,
     "existing serial SQL rollout no longer filters an ORM legacy column":
         "inventory_mode=" not in read("tenancy/management/commands/apply_sql_all_tenants.py"),
     "runtime and active test discovery have no legacy ORM-column query": not query_dependencies,
     "continuity audit handles legacy-column presence and absence explicitly":
         "has_legacy_mode" in read("tenancy/management/commands/serial_only_phase0_audit.py")
         and "legacy_modes.get" in read("tenancy/management/commands/serial_only_phase0_audit.py"),
-    "migration and absent-column tests are restricted to disposable stacks":
-        'PHASE3A_TEST_DISPOSABLE' in live and 'PHASE3A_TEST_DISPOSABLE' in old
-        and "transaction.set_rollback(True)" in live,
-    "old deployed image actually creates and edits a company":
-        "Company.objects.create" in old and "company.save(update_fields" in old
-        and "e44737f1f740fa936e853a3d6bbbd068a1b6d89d" in stack,
-    "new image checks application SQL with physical column removed":
-        "DROP COLUMN inventory_mode" in live and "CaptureQueriesContext" in live
+    "the live proof is restricted to disposable stacks":
+        'PHASE3A_TEST_DISPOSABLE' in live
+        # The live proof no longer performs destructive DDL, so it cleans up its
+        # own fixtures explicitly instead of relying on transaction rollback.
+        and "DROP SCHEMA IF EXISTS" in live
+        and "finally:" in live,
+    "rollback compatibility is proven against the actual rollback target":
+        not (ROOT / "tests/phase3a_old_image.py").exists()
+        and "phase3a_old_image" not in stack
+        and "before pruning, rolling back to 4A applies no migration" in transition
+        and "before pruning, rolling back to 3A applies no migration" in transition,
+    "live proof asserts no application SQL touches the retired column":
+        "CaptureQueriesContext" in live
         and "queries.captured_queries" in live
-        and 'not hasattr(company, "inventory_mode")' in live,
+        and "no_retired_mode_attribute(company)" in live
+        and "the retired column is absent from the registry" in live,
     "compatibility is mandatory for staging and publication":
         workflow.count("metadata-inventory-gate, compatibility-gate,") == 2,
     "ARM64 executes new compatibility tests":
         "phase3a_compatibility.py" in stack.split("  arm64)", 1)[1].split("  full)", 1)[0],
-    "recovery rollback targets the actually deployed image and tests old-image creation":
-        # Checkpoint 3A is the deployed image, so it is the rollback target.
-        # The Phase 2 image still declares inventory_mode as a concrete ORM
-        # field and cannot run against a post-3B or fresh 4A database.
-        'old_image="${PHASE28_OLD_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:497b6650ed678bc462f85de6bff14692bffd6ace}"'
+    "recovery rollback targets the 4A release and rebuilds the real history":
+        # Checkpoint 4B deleted the replaced migration files, so no pre-4A image
+        # recognises a 4B database: Django drops a replacement from
+        # applied_migrations when the migrations it replaces are absent. The
+        # rollback target is therefore the 4A release, and the estate must be
+        # seeded through 3A and 4A so it retains the replaced rows that make a
+        # rollback possible at all.
+        'old_image="${PHASE28_OLD_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00}"'
         in recovery
-        and "Phase 3A Old Image Serial" in recovery
+        and "seed_3a_image=" in recovery
+        and "Seeding the estate through the 3A and 4A releases" in recovery
         and "tenant_schema_version" in recovery,
 }
 for name, ok in checks.items():

@@ -16,8 +16,11 @@ utils = read("tenancy/utils.py")
 attachments = read("attachments/views.py")
 nginx = read("deploy/nginx/financee_common.conf")
 company = read("tenancy/models.py")
-creation_migration = read("tenancy/migrations/0008_serial_only_company_creation.py")
-compatibility = read("tenancy/migrations/0009_inventory_mode_compatibility.py")
+# Checkpoint 4B deleted the replaced migration files. The serial-only registry
+# guarantee now lives in the squashed migration, which never creates the retired
+# column or its constraint at all -- strictly stronger than the check constraint
+# it supersedes.
+squashed_migration = read("tenancy/migrations/0001_serial_only.py")
 admin = read("tenancy/admin.py")
 workflow = read(".github/workflows/ci.yml")
 preflight = read("tenancy/management/commands/release_preflight.py")
@@ -61,9 +64,15 @@ checks = {
     "company registry is serial only":
         "inventory_mode" not in company
         and "INVENTORY_MODE" not in company
-        and 'condition=models.Q(inventory_mode="serial")' in creation_migration
-        and "expected validated serial-only constraint required" in compatibility
-        and "DROP CONSTRAINT" not in compatibility,
+        # The squash cannot express the retired column in any operation, so no
+        # database it builds can hold a non-serial company.
+        and "inventory_mode"
+        not in squashed_migration.split("operations = [", 1)[1]
+        and "quantity"
+        not in squashed_migration.split("operations = [", 1)[1].lower()
+        and "replaces" not in squashed_migration.split("class Migration", 1)[1]
+        .split("operations = [", 1)[0]
+        .replace("`replaces` is removed", ""),
     "company admin exposes no inventory family":
         "inventory_mode" not in admin,
     "release verifies every tenant and safe report":

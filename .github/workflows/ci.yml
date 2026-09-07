@@ -136,19 +136,20 @@ jobs:
           python3 tests/phase3_recovery_local.py --cleanup-test
           python3 tests/phase3_recovery_local.py --executor-test
 
-  migration-replacement-gate:
-    name: Checkpoint 4A migration-replacement proof
+  migration-transition-gate:
+    name: Checkpoint 4B migration-transition proof
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Prove fresh-install and original-leaves migration paths
+      - name: Prove fresh install, no-op upgrade, prune and rollback safety
         run: |
           set -euo pipefail
           docker pull ghcr.io/maaz-bin-haider/financee-web:497b6650ed678bc462f85de6bff14692bffd6ace
-          docker build -f deploy/Dockerfile -t ghcr.io/maaz-bin-haider/financee-web:latest .
-          chmod +x tests/phase4a_migration_proof.sh
-          tests/phase4a_migration_proof.sh
+          docker pull ghcr.io/maaz-bin-haider/financee-web:a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00
+          docker build -f deploy/Dockerfile -t financee-web:4b-local .
+          chmod +x tests/phase4b_migration_transition.sh
+          tests/phase4b_migration_transition.sh
 
   isolation-gate:
     name: Four-serial-company isolation gate

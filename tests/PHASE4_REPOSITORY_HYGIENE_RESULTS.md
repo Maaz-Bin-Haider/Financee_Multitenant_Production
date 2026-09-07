@@ -661,3 +661,72 @@ instruction. Its scope:
 `deploy/phase4_inventory_remote.sh` still pin the superseded deployed SHA
 `497b665` and will fail closed. Repin them to `a4f915f…` before dispatching
 4B's confirmation audit.
+
+
+---
+
+# Checkpoint 4B — the migration transition (2026-09-07)
+
+## 4B.0 — precondition audit
+
+The protected audit was broken by our own 4A release: it pinned the superseded
+deployed SHA and required the exact pre-squash chain, which production
+legitimately no longer has. It gained a `--stage`: `entry` keeps the 4.0
+semantics, `transition` requires the chain **plus** both recorded replacements.
+Protected run **`34084347071` PASS** against deployed `a4f915f` with
+`replacements_recorded=true`. Diffed against the pre-4A audit, the tenant
+structure fingerprint, continuity fingerprint and archive digest are all
+identical — the 4A release was provably inert on tenant data.
+
+## 4B.1 — the transition
+
+- All 9 `tenancy` and 25 `authentication` replaced files deleted; `replaces`
+  removed from both squashes, which are now ordinary initial migrations. No
+  migration outside those apps referenced them.
+- The 14 retired permission codenames the deleted migrations created are frozen
+  into `tests/retired_permissions_reference.json`, so the Phase 3 audit and
+  Phase 3B cleanup catalogues keep an **independent** cross-check rather than
+  the tooling agreeing with itself.
+- `tests/phase3a_compatibility.py` lost its migration half with the migration it
+  tested, and kept the application half that is still true.
+- `tests/phase3a_old_image.py` and `tests/phase4a_migration_proof.sh` retired
+  with the premises they tested.
+
+## Three migration findings, all proven rather than assumed
+
+`tests/phase4b_migration_transition.sh` (CI gate `migration-transition-gate`):
+
+1. **A project-wide prune is refused.** Django requires per-app invocation:
+   `migrate tenancy --prune`, `migrate authentication --prune`.
+2. **Pruning is a one-way door.** Django drops a replacement from
+   `applied_migrations` when the migrations it replaces are absent, *even though
+   the replacement's own row exists*. After pruning, every `replaces`-carrying
+   image — including the 4A rollback target — re-plans the whole initial
+   migration and PostgreSQL refuses it. Measured: before pruning, rollback to
+   both 4A and 3A applies no migration; after pruning, rollback to 4A is
+   refused while 4B itself stays a no-op. **4B must therefore deploy without
+   pruning.** A contract asserts nothing in the deployment path prunes.
+3. **The 4A release cannot be skipped.** The same rule forward: a database still
+   on the original chain has no replacement record, so the 4B release treats its
+   own migration as unapplied and is refused. Production already ran 4A.
+
+A corollary the recovery gate exposed: a **fresh** 4B install has no pre-4B
+rollback path at all, because it never had the replaced rows. Only an upgraded
+database retains one. The Phase 28 rehearsal now seeds its estate through the 3A
+and 4A releases so it models production's real history, and its rollback target
+moved from 3A to the 4A release.
+
+## Local validation — all green
+
+Static: every contract gate, 8/8 hostile wrapper tests, 3/3 backup modules,
+rollback simulation, `compileall`.
+Containers: serial · creation-freeze · runtime-removal · metadata-inventory ·
+compatibility · isolation · full regression · ARM64 · 3B cleanup (73/73) · 3B
+executor · **4B migration transition (30/30)** · Phase 28 encrypted recovery
+(RTO 44s, RPO 0s).
+
+## Remaining
+
+Push, release and deploy 4B through protected CI/CD **without pruning**, then
+the owner's manual production verification and the final Phase 4 PASS. Pruning
+stays a separate, later, separately approved one-way step.

@@ -23,8 +23,10 @@ admin = read("tenancy/admin.py")
 provisioning = read("tenancy/provisioning.py")
 command = read("tenancy/management/commands/provision_tenant.py")
 retry = read("tenancy/management/commands/retry_tenant_provisioning.py")
-migration = read("tenancy/migrations/0008_serial_only_company_creation.py")
-compatibility = read("tenancy/migrations/0009_inventory_mode_compatibility.py")
+# Checkpoint 4B deleted the replaced migration files. The creation freeze is no
+# longer expressed as a database check constraint added by 0008 and preserved by
+# 0009; it is now structural — the only migration on disk cannot create the
+# column at all, so no row can carry a non-serial value.
 squashed = read("tenancy/migrations/0001_serial_only.py")
 workflow = read(".github/workflows/ci.yml")
 stack = read("tests/ci_phase27_stack.sh")
@@ -43,15 +45,14 @@ checks = {
     "model cannot express a non-serial company":
         "quantity" not in models.lower()
         and "def clean(self):" in models,
-    "physical serial constraint retained independently of ORM state":
-        'condition=models.Q(inventory_mode="serial")' in migration
-        and "migrations.SeparateDatabaseAndState" in compatibility
-        and "expected validated serial-only constraint required" in compatibility
-        and "DROP CONSTRAINT" not in compatibility,
-    "squashed replacement replaces the exact retired creation history":
-        "('tenancy', '0008_serial_only_company_creation')" in squashed
-        and "('tenancy', '0009_inventory_mode_compatibility')" in squashed
-        and "replaces = [" in squashed,
+    "only the squashed serial-only migration remains on disk":
+        sorted(p.name for p in (ROOT / "tenancy/migrations").glob("*.py"))
+        == ["0001_serial_only.py", "__init__.py"]
+        and sorted(p.name for p in (ROOT / "authentication/migrations").glob("*.py"))
+        == ["0001_serial_only.py", "__init__.py"],
+    "the squash is now an ordinary initial migration":
+        "initial = True" in squashed
+        and "replaces = [" not in squashed,
     "squashed replacement never recreates the retired column":
         "inventory_mode" not in squashed.split("operations = [", 1)[1]
         and "quantity" not in squashed.split("operations = [", 1)[1].lower(),
@@ -69,13 +70,12 @@ checks = {
     "retry provisioning carries no retired mode branch":
         "inventory_mode" not in retry
         and "company.provisioning_state not in" in retry,
-    "migration inspects registry before replacing constraint":
-        "Company.objects.exclude(inventory_mode=\"serial\")" in migration
-        and migration.index("migrations.RunPython(require_serial_registry")
-        < migration.index("migrations.RemoveConstraint"),
-    "migration preserves the existing constraint name":
-        migration.count("tenancy_company_valid_inventory_mode") == 2
-        and "condition=models.Q(inventory_mode=\"serial\")" in migration,
+    "the squash retains the serial accounting-setup constraints":
+        "tenancy_company_valid_tax_environment" in squashed
+        and "tenancy_company_valid_provisioning_state" in squashed
+        and "tenancy_company_valid_inventory_mode" not in squashed,
+    "no migration on disk can express the retired column":
+        "inventory_mode" not in squashed.split("operations = [", 1)[1],
     "mandatory creation-freeze gate replaces quantity gate":
         "creation-freeze-gate:" in workflow
         and "quantity-gate:" not in workflow

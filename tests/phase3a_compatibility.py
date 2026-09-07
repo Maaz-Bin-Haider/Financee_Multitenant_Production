@@ -1,8 +1,21 @@
 #!/usr/bin/env python3
-"""3A migration/column-independence proof on a uniquely disposable stack only."""
+"""Serial application proof that no retired inventory mode survives anywhere.
+
+Checkpoint 4B deleted the replaced migration files, so the migration-level half
+of this proof — driving `0009_inventory_mode_compatibility` forwards and
+backwards through the real executor, and its fail-closed negative cases —
+retired with the migration it tested. Its file name is kept because several
+contract-pinned CI wiring points reference it.
+
+What remains is the part that is still true and still worth proving on a live
+stack: a serial company can be created, administered and used end to end while
+no retired mode exists in the model API, the admin, the database, or any SQL the
+application emits.
+
+Disposable stacks only.
+"""
 from __future__ import annotations
 
-import importlib
 import io
 import json
 import os
@@ -17,40 +30,20 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "financee.settings")
 import django
 django.setup()
 
-import psycopg2
 from django.contrib.auth import get_user_model
-from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.core.management import call_command
-from django.db import DatabaseError, connection, transaction
-from django.db.migrations.executor import MigrationExecutor
-from django.db.migrations.loader import MigrationLoader
+from django.db import connection, transaction
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from tenancy.admin import CompanyAdminForm
 from tenancy.models import Company, Membership
 from tenancy.schema_verification import verify_company_schema
-from tenancy.management.commands.serial_only_phase3_audit import digest
-from tenancy.management.commands.serial_only_phase0_audit import _schema_structure
+from tests.serial_api_compat import (
+    no_retired_mode_attribute,
+    retired_mode_rejected,
+)
 
-MIGRATION = importlib.import_module("tenancy.migrations.0009_inventory_mode_compatibility")
-OLD = [("tenancy", "0008_serial_only_company_creation")]
-NEW = [("tenancy", "0009_inventory_mode_compatibility")]
 RESULTS = []
-
-
-def historical_executor():
-    """Executor that addresses the real migration files, ignoring the squash.
-
-    Once the checkpoint 4A replacement `tenancy/0001_serial_only.py` is fully
-    applied, Django removes the replaced nodes from the default graph, so 0008
-    and 0009 can no longer be addressed or executed through it. Loading with
-    replacements disabled keeps this migration-level proof working on both the
-    pre-squash and post-squash images until checkpoint 4B deletes the replaced
-    files -- at which point this helper and the proof retire together.
-    """
-    executor = MigrationExecutor(connection)
-    executor.loader = MigrationLoader(connection, replace_migrations=False)
-    return executor
 
 
 def check(name, ok):
@@ -64,209 +57,101 @@ def sql(statement, params=None):
         return cursor.fetchall() if cursor.description else []
 
 
-def snapshot():
-    data = []
-    for table in ("tenancy_company", "tenancy_currency", "auth_permission",
-                  "auth_user_user_permissions", "auth_group_permissions",
-                  "tenancy_membership"):
-        data.append(sql(f'SELECT to_jsonb(t) FROM public."{table}" t ORDER BY to_jsonb(t)::text'))
-    return digest(data)
-
-
-def constraint():
-    return sql("""SELECT oid, pg_get_constraintdef(oid), convalidated FROM pg_constraint
-                  WHERE conrelid='public.tenancy_company'::regclass
-                    AND conname='tenancy_company_valid_inventory_mode'""")
-
-
-def default():
-    return sql("""SELECT column_default FROM information_schema.columns
-                  WHERE table_schema='public' AND table_name='tenancy_company'
-                    AND column_name='inventory_mode'""")
-
-
-def call_migration(function):
-    with connection.schema_editor() as editor:
-        function(None, editor)
-
-
-def ensure_pre_squash_contract():
-    """Recreate the exact post-0009 physical contract when it is absent.
-
-    Migration 0009 is a *replaced* migration. A fresh checkpoint 4A install runs
-    the squashed replacement instead, so the retired column it guards is never
-    created -- which is the whole point of 4A. This proof is still required for
-    databases that are on the original chain, so on a fresh install the exact
-    contract 0009 leaves behind is reconstructed first: a non-null
-    varchar(16) column defaulting to 'serial' with the validated serial-only
-    check constraint. django_migrations already records 0009 as applied, so the
-    real executor can then be driven forwards and backwards as before.
-
-    Disposable stacks only -- the module refuses to run anywhere else.
-    """
-    if default():
-        return False
-    sql("ALTER TABLE public.tenancy_company "
-        "ADD COLUMN inventory_mode varchar(16) NOT NULL DEFAULT 'serial'")
-    sql("ALTER TABLE public.tenancy_company "
-        "ADD CONSTRAINT tenancy_company_valid_inventory_mode "
-        "CHECK (inventory_mode='serial')")
-    return True
-
-
 def main():
-    reconstructed = ensure_pre_squash_contract()
-    check("pre-squash column contract is available for the 0009 proof",
-          default() == [("'serial'::character varying",)]
-          and len(constraint()) == 1)
-    if reconstructed:
-        print("NOTE: fresh checkpoint 4A database; the retired 0009 column "
-              "contract was reconstructed on this disposable stack.", flush=True)
-    baseline = snapshot()
-    original_constraint = constraint()
-    check("physical legacy column has exact serial database default",
-          default() == [("'serial'::character varying",)])
-    try:
-        Company._meta.get_field("inventory_mode")
-        check("Company has no concrete inventory-mode field", False)
-    except FieldDoesNotExist:
-        check("Company has no concrete inventory-mode field", True)
-    state = historical_executor().loader.project_state(NEW).apps.get_model("tenancy", "Company")
-    check("migration state omits only legacy field/constraint",
-          "inventory_mode" not in {f.name for f in state._meta.fields}
-          and {c.name for c in state._meta.constraints} == {
-              "tenancy_company_valid_tax_environment", "tenancy_company_valid_provisioning_state"})
-    with connection.cursor() as cursor:
-        structures = {c.schema_name: _schema_structure(cursor, c.schema_name)
-                      for c in Company.objects.exclude(schema_name="")}
-    # Exercise the real migration executor in both directions. No fake migration.
-    with transaction.atomic():
-        historical_executor().migrate(OLD)
-        check("reverse restores old state and removes only the added default", default() == [(None,)])
-        old_model = historical_executor().loader.project_state(OLD).apps.get_model("tenancy", "Company")
-        check("historical ORM still reads all retained serial rows",
-              old_model.objects.count() == Company.objects.count()
-              and not old_model.objects.exclude(inventory_mode="serial").exists())
-        before_output = io.StringIO()
-        call_command("production_foundation_audit", serial_only=True, stdout=before_output)
-        check("candidate pre-deploy continuity audit works before expansion",
-              json.loads(before_output.getvalue())["ok"] and default() == [(None,)])
-        historical_executor().migrate(NEW)
-        check("forward keeps original constraint identity and all metadata values",
-              constraint() == original_constraint and snapshot() == baseline)
-        with connection.cursor() as cursor:
-            check("forward/reverse leave every serial schema structure unchanged",
-                  all(_schema_structure(cursor, name) == value for name, value in structures.items()))
-        transaction.set_rollback(True)
-
-    negative_sql = {
-        "missing constraint": "ALTER TABLE public.tenancy_company DROP CONSTRAINT tenancy_company_valid_inventory_mode",
-        "wrong constraint kind": "ALTER TABLE public.tenancy_company DROP CONSTRAINT tenancy_company_valid_inventory_mode; ALTER TABLE public.tenancy_company ADD CONSTRAINT tenancy_company_valid_inventory_mode UNIQUE (id)",
-        "unvalidated constraint": "ALTER TABLE public.tenancy_company DROP CONSTRAINT tenancy_company_valid_inventory_mode; ALTER TABLE public.tenancy_company ADD CONSTRAINT tenancy_company_valid_inventory_mode CHECK (inventory_mode='serial') NOT VALID",
-        "weakened constraint": "ALTER TABLE public.tenancy_company DROP CONSTRAINT tenancy_company_valid_inventory_mode; ALTER TABLE public.tenancy_company ADD CONSTRAINT tenancy_company_valid_inventory_mode CHECK (inventory_mode IN ('serial','quantity'))",
-        "nullable column": "ALTER TABLE public.tenancy_company ALTER COLUMN inventory_mode DROP NOT NULL",
-        "different column type": "ALTER TABLE public.tenancy_company ALTER COLUMN inventory_mode TYPE varchar(32)",
-        "unexpected default": "ALTER TABLE public.tenancy_company ALTER COLUMN inventory_mode SET DEFAULT 'quantity'",
-    }
-    for name, statement in negative_sql.items():
-        blocked = False
-        with transaction.atomic():
-            call_migration(MIGRATION.backwards)
-            sql(statement)
-            try:
-                call_migration(MIGRATION.forwards)
-            except RuntimeError as exc:
-                blocked = str(exc).startswith("3A blocked:")
-            transaction.set_rollback(True)
-        check(f"migration fails closed on {name}, without persistent changes",
-              blocked and snapshot() == baseline and constraint() == original_constraint
-              and default() == [("'serial'::character varying",)])
-
-    blocker = psycopg2.connect(**connection.get_connection_params())
-    try:
-        with blocker.cursor() as cursor:
-            cursor.execute("LOCK TABLE public.tenancy_company IN ACCESS SHARE MODE")
-        started = time.monotonic()
-        blocked = False
-        try:
-            call_migration(MIGRATION.forwards)
-        except DatabaseError as exc:
-            blocked = getattr(exc.__cause__, "pgcode", None) == "55P03"
-        check("busy production-style registry lock times out within a bounded wait",
-              blocked and 1.5 <= time.monotonic() - started < 8)
-    finally:
-        blocker.rollback()
-        blocker.close()
-
-    # Checkpoint 4A removed the retired field and its compatibility API, so the
-    # keyword is refused by Model.__init__ before any row can be built. That is
-    # strictly stronger than the Phase 3A save-time ValidationError it replaces.
+    check(
+        "the retired column is absent from the registry",
+        sql(
+            """SELECT count(*) FROM information_schema.columns
+                WHERE table_schema='public' AND table_name='tenancy_company'
+                  AND column_name='inventory_mode'"""
+        )[0][0] == 0,
+    )
+    check(
+        "the retired serial-only constraint is absent",
+        sql(
+            """SELECT count(*) FROM pg_constraint
+                WHERE conname='tenancy_company_valid_inventory_mode'"""
+        )[0][0] == 0,
+    )
+    check("Company has no concrete inventory-mode field",
+          "inventory_mode" not in {f.name for f in Company._meta.get_fields()})
     for value in ("quantity", "unknown", "", None, "serial"):
-        name = f"Phase3A rejected {time.time_ns()}"
-        rejected = False
-        try:
-            Company(name=name, inventory_mode=value)
-        except TypeError:
-            rejected = True
         check(f"construction rejects retired mode keyword {value!r} without inserting",
-              rejected and not Company.objects.filter(name=name).exists())
+              retired_mode_rejected(f"Phase3A rejected {time.time_ns()}", value))
     check("retired mode is absent from the model API entirely",
           not hasattr(Company, "inventory_mode")
           and not hasattr(Company, "get_inventory_mode_display"))
 
-    # SQL references to the physical column must not occur on the application
-    # path. All fixture rows/schema/DDL in this block are rolled back together.
-    with transaction.atomic():
-        sql("ALTER TABLE public.tenancy_company DROP COLUMN inventory_mode")
-        tag = str(time.time_ns())
+    tag = str(time.time_ns())
+    company = None
+    user = None
+    try:
         with CaptureQueriesContext(connection) as queries:
-            company = Company.objects.create(name=f"Phase3A no column {tag}")
+            company = Company.objects.create(name=f"Phase3A serial {tag}")
             company.refresh_from_db()
             company.full_clean()
             verification = verify_company_schema(company, use_cache=False)
-            check("new company provisions serial v6 without physical legacy column",
-                  company.provisioning_state == "ready" and verification.ok and verification.family == "serial")
+            check("new company provisions serial v6 without any retired column",
+                  company.provisioning_state == "ready"
+                  and verification.ok and verification.family == "serial")
             check("no retired mode attribute survives on a live company",
-                  not hasattr(company, "inventory_mode")
-                  and not hasattr(company, "get_inventory_mode_display"))
+                  no_retired_mode_attribute(company))
             form = CompanyAdminForm(instance=company)
             check("company administration and shared setup remain available",
-                  "inventory_mode" not in form.fields and "base_currency" in form.fields
+                  "inventory_mode" not in form.fields
+                  and "base_currency" in form.fields
                   and "tax_environment" in form.fields)
             user = get_user_model().objects.create_superuser(
-                username=f"phase3a_{tag}", email="phase3a@example.com", password="test-only")
+                username=f"phase3a_{tag}", email="phase3a@example.com",
+                password="test-only")
             Membership.objects.create(user=user, company=company)
             client = Client(HTTP_HOST="localhost")
             client.force_login(user)
-            for path in ("/", "/purchase/purchasing/", "/sale/sales/", "/items/items-dash/", "/admin/tenancy/company/"):
+            for path in ("/", "/purchase/purchasing/", "/sale/sales/",
+                         "/items/items-dash/", "/admin/tenancy/company/"):
                 response = client.get(path, follow=True)
-                check(f"authenticated serial page works without column: {path}",
-                      response.status_code == 200 and response.wsgi_request.user.is_authenticated
-                      and not any("/authentication/login/" in location for location, _ in response.redirect_chain))
+                check(f"authenticated serial page works: {path}",
+                      response.status_code == 200
+                      and response.wsgi_request.user.is_authenticated
+                      and not any("/authentication/login/" in location
+                                  for location, _ in response.redirect_chain))
             company.disabled_features = ["stock_reports"]
             company.save(update_fields=["disabled_features"])
             company.refresh_from_db()
-            check("shared feature settings still persist without legacy column",
-                  not company.feature_enabled("stock_reports") and company.feature_enabled("sales_reports"))
-            call_command("apply_sql_all_tenants", "tenancy/sql/tenant_indexes.sql", dry_run=True, stdout=io.StringIO())
+            check("shared feature settings still persist",
+                  not company.feature_enabled("stock_reports")
+                  and company.feature_enabled("sales_reports"))
+            call_command("apply_sql_all_tenants", "tenancy/sql/tenant_indexes.sql",
+                         dry_run=True, stdout=io.StringIO())
             call_command("release_preflight", stdout=io.StringIO())
             call_command("production_foundation_audit", stdout=io.StringIO())
         check("application reads/writes and operational commands emit no legacy-column SQL",
-              not any("inventory_mode" in query["sql"] for query in queries.captured_queries))
-        # This audit intentionally detects an optional legacy column, unlike
-        # the application paths above; absence must not prevent continuity.
+              not any("inventory_mode" in query["sql"]
+                      for query in queries.captured_queries))
+
         output = io.StringIO()
         call_command("serial_only_phase0_audit", include_continuity=True, stdout=output)
         report = json.loads(output.getvalue())
-        check("continuity inventory remains available after future contraction",
+        check("continuity inventory remains available and serial-only",
               not report["non_serial_companies"] and not report["missing_schemas"]
-              and not report["unbalanced_schemas"] and not report["continuity_missing_schemas"])
-        transaction.set_rollback(True)
-    check("destructive rehearsal rolls back column, constraints and all fixture rows",
-          snapshot() == baseline and constraint() == original_constraint
-          and default() == [("'serial'::character varying",)])
-    print(f"{sum(ok for _, ok in RESULTS)}/{len(RESULTS)} Phase 3A compatibility checks passed")
-    return 0 if all(ok for _, ok in RESULTS) else 1
+              and not report["unbalanced_schemas"]
+              and not report["continuity_missing_schemas"])
+    finally:
+        if user is not None:
+            user.delete()
+        if company is not None:
+            schema = company.schema_name
+            Company.objects.filter(pk=company.pk).delete()
+            with connection.cursor() as cursor:
+                cursor.execute("SET search_path TO public")
+                cursor.execute(
+                    f"DROP SCHEMA IF EXISTS "
+                    f"{connection.ops.quote_name(schema)} CASCADE"
+                )
+
+    passed = sum(ok for _name, ok in RESULTS)
+    print(f"{passed}/{len(RESULTS)} serial no-retired-mode checks passed", flush=True)
+    return 0 if passed == len(RESULTS) else 1
 
 
 if __name__ == "__main__":

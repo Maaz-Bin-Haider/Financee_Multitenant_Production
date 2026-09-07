@@ -631,17 +631,85 @@ audit, so the first work is that audit, not the deletions.
   digests. Phase 3B cleanup fixture now 73/73.
 - [x] Pass every host-runnable gate, including 8/8 hostile wrapper tests
   (3 new) and 29/29 Phase 4 contracts (5 new 4B contracts).
-- [ ] Review the exact local diff and obtain approval to push.
-- [ ] Separately authorize and dispatch the protected `transition` audit against
-  deployed `a4f915f`, then review its artifact. Only its PASS unlocks the
-  migration-file removal below.
+- [x] Review the exact local diff and obtain approval to push.
+  Exact commit `b0a3970` pushed to `main` with `[skip ci]`. The skip was
+  required, not cosmetic: a CI/CD run would have offered a deployable image
+  whose deployment would immediately supersede the `a4f915f` pin the transition
+  audit depends on. Verified no CI/CD run was created for `b0a3970`.
+- [x] Separately authorize and dispatch the protected `transition` audit against
+  deployed `a4f915f`, then review its artifact.
+  **Protected run `34084347071` PASS** from audited source `b0a3970` against
+  deployed `a4f915f`. `PHASE4_STAGE=transition`,
+  `audit=serial-only-phase4-transition`, **`replacements_recorded=true`** —
+  production's `django_migrations` carries the exact pre-squash chain plus both
+  `0001_serial_only` records, which is the plan's precondition for removing the
+  replaced files. Retired column absent, 0 retired permissions, 0 retired
+  feature occurrences, archive `applied` with the unchanged payload digest
+  `a7b4b186…`, one canonical active ready serial v6 schema, journal balanced,
+  no orphan/missing/invalid/non-serial schema, container unchanged. The audit
+  authorizes nothing: both `authorizes_migration_replacement` and
+  `authorizes_replaced_file_removal` are false.
+  **The 4A release was provably inert on tenant data.** Comparing this artifact
+  with the pre-4A audit `34080323205`: the tenant structure fingerprint
+  (`b764c48d…`), the continuity fingerprint (`5d4b35b8…`) and the archive
+  payload digest are all *identical* across the deployment. The only change is
+  the two recorded replacement rows.
+
+**Checkpoint 4B.0 is closed. Checkpoint 4B.1 is unlocked.**
 
 ##### Checkpoint 4B.1 — the transition itself (blocked on 4B.0)
 
-- [ ] Remove the old replaced migration files, update dependencies to the
+- [x] Remove the old replaced migration files, update dependencies to the
   squashed migrations, and remove `replaces` so each becomes a normal migration.
-- [ ] Validate `migrate --prune` on restored and synthetic databases before any
+  All nine `tenancy` and twenty-five `authentication` replaced files deleted;
+  `replaces` removed from both squashes, which are now ordinary initial
+  migrations. No migration outside those two apps referenced them, so no
+  dependency needed rewriting. The 14 retired permission codenames the deleted
+  migrations created are preserved in
+  `tests/retired_permissions_reference.json` so the Phase 3 audit and Phase 3B
+  cleanup catalogues keep an *independent* cross-check instead of the tooling
+  agreeing with itself.
+- [x] Validate `migrate --prune` on restored and synthetic databases before any
   separately approved pruning of obsolete migration-table rows.
+  `tests/phase4b_migration_transition.sh`, wired into CI as
+  `migration-transition-gate`, proves all four properties on disposable stacks:
+  a fresh 4B install records only the two squashed migrations and still creates
+  no retired column, constraint or permission; a database carrying the exact
+  post-4A history upgrades as a no-op with a byte-identical registry; per-app
+  `--prune` removes exactly the 34 stale rows and nothing else; and the release
+  stays rollback-safe *before* pruning.
+
+  **Two operational findings, both proven rather than assumed:**
+
+  1. Django refuses a project-wide prune — `Migrations can be pruned only when
+     an app is specified.` It must be run per application:
+     `migrate tenancy --prune` and `migrate authentication --prune`.
+  2. **Pruning is a one-way door and must NOT be part of the 4B deployment.**
+     Django drops a replacement from `applied_migrations` when the migrations
+     it replaces are not all applied, *even though the replacement's own row
+     exists*. Once pruned, every `replaces`-carrying image — including the
+     deployed 4A rollback target — believes nothing has been applied, re-plans
+     the whole initial migration and is refused by PostgreSQL with
+     `relation "tenancy_company" already exists`. Measured: before pruning,
+     rollback to both 4A and 3A applies no migration; after pruning, rollback to
+     4A is refused while 4B itself stays a no-op.
+
+     The safe order is therefore: deploy 4B **without** pruning, keep it
+     rollback-safe, and prune only later as a separately approved step once no
+     `replaces`-carrying image is a rollback target. Nothing in the deployment
+     path prunes automatically, and a contract now enforces that.
+  3. **The 4A release cannot be skipped.** The same loader rule applies in the
+     forward direction: a database still on the original chain has no
+     replacement record, so the 4B release — which no longer carries
+     `replaces` — treats its own migration as unapplied, re-plans the whole
+     initial migration and is refused with `relation "tenancy_company" already
+     exists`. Every environment must pass through the 4A release first.
+     Production already has. The transition proof now asserts this refusal so
+     the constraint cannot be rediscovered during a deployment.
+
+  `tests/phase4a_migration_proof.sh` and its CI gate retired with the premise
+  they tested — a squash coexisting with its originals — and are superseded by
+  the transition proof.
 - [ ] Retire `tests/serial_api_compat.py` and its dual-image branches, and the
   pre-3B fixture reconstruction in the Phase 3 inventory and 3A compatibility
   proofs. **Sequencing constraint:** the accepted rollback image is still 3A
@@ -760,3 +828,13 @@ audit, so the first work is that audit, not the deletions.
 | 2026-09-07 | Stale audit pin corrected and the audit taught two stages | The protected workflow still required the superseded deployed SHA `497b665` and would have failed closed after 4A. It now accepts only protected-approved images paired with their correct stage: `497b665`/`entry`, `a4f915f`/`transition`. `serial_only_phase4_audit --stage transition` requires the pre-squash chain plus both recorded replacements and returns `authorizes_replaced_file_removal=false` |
 | 2026-09-07 | Both stages proven fail-closed against real PostgreSQL | In the disposable post-cleanup fixture the entry stage passes and transition is refused; after inserting exactly the two rows Django records, transition passes and entry is refused, with distinct state digests. Phase 3B cleanup fixture 69/69 -> 73/73; hostile wrapper tests 5/5 -> 8/8; Phase 4 contracts 21 -> 29. All host-runnable gates PASS |
 | 2026-09-07 | Sequencing constraint recorded for 4B.1 | `tests/serial_api_compat.py` and the pre-3B fixture reconstruction cannot be removed while the accepted rollback image is 3A `497b665`, which still carries the retired compatibility API and is the only image that produces the pre-3B database the 3B cleanup rehearsal needs. Removal waits until the rollback target is a 4A-or-later build |
+| 2026-09-07 | Owner authorized the 4B.0 push; exact `b0a3970` pushed to `main` with `[skip ci]` | The skip was required: a CI/CD run would have offered a deployable image whose deployment would immediately supersede the `a4f915f` pin the transition audit depends on. Verified no CI/CD run was created |
+| 2026-09-07 | Owner approved the protected gate; transition audit `34084347071` PASS | From audited source `b0a3970` against deployed `a4f915f`. `replacements_recorded=true` — production carries the pre-squash chain plus both `0001_serial_only` records, satisfying the plan's 4B precondition. Retired column, permissions and feature keys still absent; archive `applied`; serial v6 balanced; container unchanged; audit authorizes nothing |
+| 2026-09-07 | The 4A release proven inert on tenant data | Against the pre-4A audit `34080323205`, the tenant structure fingerprint `b764c48d…`, continuity fingerprint `5d4b35b8…` and archive payload digest are all identical across the deployment. Only the two migration records changed. Checkpoint 4B.0 closed; 4B.1 unlocked |
+| 2026-09-07 | Checkpoint 4B.1 implemented locally | All 34 replaced migration files deleted and `replaces` removed from both squashes, which are now ordinary initial migrations. No cross-app dependency needed rewriting. The 14 retired permission codenames were frozen into `tests/retired_permissions_reference.json` so the Phase 3 and 3B catalogues keep an independent cross-check |
+| 2026-09-07 | The 3A migration-compatibility proof retired with its subject | `tests/phase3a_compatibility.py` drove migration 0009, which no longer exists. Its migration half was removed and its still-true application half kept: a serial company is created, administered and used end to end with no retired mode in the model API, admin, database or emitted SQL |
+| 2026-09-07 | `migrate --prune` validated, exposing two operational findings | Django refuses a project-wide prune and requires per-app invocation. More seriously, pruning is a one-way door: Django drops a replacement from `applied_migrations` when its replaced migrations are absent, so after pruning the deployed 4A rollback target re-plans the whole initial migration and PostgreSQL refuses it. Before pruning, rollback to both 4A and 3A is a clean no-op |
+| 2026-09-07 | Safe release order fixed and enforced | 4B deploys WITHOUT pruning so it stays rollback-safe; pruning becomes a separate, later, separately approved step once no `replaces`-carrying image is a rollback target. A contract asserts nothing in the deployment path prunes automatically |
+| 2026-09-07 | Third migration finding: the 4A release cannot be skipped | A database still on the original chain jumping straight to 4B is refused with `relation "tenancy_company" already exists`, because without a replacement record the 4B release treats its own migration as unapplied. Production already ran 4A. The transition proof now asserts the refusal so the constraint cannot be rediscovered during a deployment |
+| 2026-09-07 | Superseded 4A proof and its CI gate retired | `tests/phase4a_migration_proof.sh` tested a squash coexisting with its originals, which 4B removed. The 4B transition proof covers fresh install, no-op upgrade, per-app prune, rollback safety before and after pruning, and the unsupported skip-4A jump |
+| 2026-09-07 | The 3A old-image rollback test retired | `tests/phase3a_old_image.py` pinned the Phase 2 image, which declares `inventory_mode` as a concrete ORM field and cannot run against a 4B database at all. Rollback compatibility is now proven against the actual rollback target inside the transition proof |

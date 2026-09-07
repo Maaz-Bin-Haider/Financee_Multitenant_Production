@@ -25,17 +25,13 @@ catalogue = next(ast.literal_eval(node.value) for node in tree.body
                  if isinstance(node, ast.Assign)
                  and any(isinstance(target, ast.Name) and target.id == "RETIRED_PERMISSIONS"
                          for target in node.targets))
-historical = {}
-for name in (
-    "0022_add_quantity_warehouse_permissions.py", "0023_add_quantity_transfer_permissions.py",
-    "0024_add_quantity_count_adjustment_permissions.py", "0025_add_quantity_platform_permissions.py",
-):
-    migration = ast.parse((ROOT / "authentication/migrations" / name).read_text())
-    for node in migration.body:
-        if isinstance(node, ast.Assign) and any(
-            isinstance(target, ast.Name) and target.id == "PERMISSIONS" for target in node.targets
-        ):
-            historical.update(ast.literal_eval(node.value))
+# Checkpoint 4B deleted authentication migrations 0022-0025. Their exact
+# catalogue is preserved in a frozen reference so this stays an independent
+# cross-check rather than the audit tooling agreeing with itself.
+import json as _json
+historical = _json.loads(
+    (ROOT / "tests/retired_permissions_reference.json").read_text()
+)["permissions"]
 
 checks = {
     "repeatable consistent snapshot is forced read-only":

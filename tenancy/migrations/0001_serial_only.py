@@ -29,8 +29,13 @@ def mark_existing_ready(apps, schema_editor):
     )
 
 class Migration(migrations.Migration):
+    # Checkpoint 4B: the replaced files are gone and `replaces` is removed, so
+    # this is now an ordinary initial migration. Databases that recorded the
+    # original chain already carry this migration's own record, written by
+    # Django's check_replacements() during the 4A release, so it is a no-op for
+    # them; the stale rows are removed by the separately approved
+    # `migrate --prune`.
 
-    replaces = [('tenancy', '0001_initial'), ('tenancy', '0002_subscription_control'), ('tenancy', '0003_subscription_emails'), ('tenancy', '0004_company_feature_flags'), ('tenancy', '0005_company_inventory_mode'), ('tenancy', '0006_currency_company_setup'), ('tenancy', '0007_company_provisioning_state'), ('tenancy', '0008_serial_only_company_creation'), ('tenancy', '0009_inventory_mode_compatibility')]
 
     initial = True
 

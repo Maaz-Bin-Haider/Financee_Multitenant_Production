@@ -83,12 +83,13 @@ case "$gate" in
     ;;
   isolation) "${compose[@]}" exec -T web python tests/phase25_four_company_isolation.py ;;
   compatibility)
+    # Checkpoint 4B: the old-image half retired with the Phase 2 image it
+    # pinned. That image declares inventory_mode as a concrete ORM field and
+    # cannot run against a 4B database at all, and it is now two rollback
+    # generations old. Rollback compatibility is proven instead by
+    # tests/phase4b_migration_transition.sh against the actual rollback target.
     "${compose[@]}" exec -T -e PHASE3A_TEST_DISPOSABLE=1 web python tests/phase3a_compatibility.py \
       | tee "$artifact_dir/phase3a-compatibility.log"
-    docker run --rm -i --network "${test_project}_default" --env-file "$WEB_ENV_FILE" \
-      -e PHASE3A_TEST_DISPOSABLE=1 --entrypoint python \
-      ghcr.io/maaz-bin-haider/financee-web:e44737f1f740fa936e853a3d6bbbd068a1b6d89d \
-      - < tests/phase3a_old_image.py | tee "$artifact_dir/phase3a-old-image.log"
     ;;
   arm64)
     "${compose[@]}" exec -T web python tests/phase27_arm64_smoke.py

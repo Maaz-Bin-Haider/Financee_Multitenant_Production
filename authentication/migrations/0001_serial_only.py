@@ -106,33 +106,9 @@ def add_serial_permissions(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    replaces = [
-        ("authentication", "0001_payments_permissions"),
-        ("authentication", "0002_receipts_permissions"),
-        ("authentication", "0003_purchase_permissions"),
-        ("authentication", "0004_sale_permissions"),
-        ("authentication", "0005_purchase_return_permissions"),
-        ("authentication", "0006_sale_return_permissions"),
-        ("authentication", "0007_items_permissions"),
-        ("authentication", "0008_parties_permissions"),
-        ("authentication", "0009_accounts_reports_permissions"),
-        ("authentication", "0010_stock_reports_page"),
-        ("authentication", "0011_profit_reports_permissions"),
-        ("authentication", "0012_add_stock_reports_permissions_version2"),
-        ("authentication", "0013_add_account_reports_permissions_version2"),
-        ("authentication", "0014_add_stock_reports_permissions_version3"),
-        ("authentication", "0015_add_dashboard_options_permissions"),
-        ("authentication", "0016_add_set_opening_permission"),
-        ("authentication", "0017_add_owner_equity_permission"),
-        ("authentication", "0018_add_month_close_permission"),
-        ("authentication", "0019_add_sales_reports_permissions"),
-        ("authentication", "0020_add_contra_permissions"),
-        ("authentication", "0021_add_opening_stock_permissions"),
-        ("authentication", "0022_add_quantity_warehouse_permissions"),
-        ("authentication", "0023_add_quantity_transfer_permissions"),
-        ("authentication", "0024_add_quantity_count_adjustment_permissions"),
-        ("authentication", "0025_add_quantity_platform_permissions"),
-    ]
+    # Checkpoint 4B: see tenancy/migrations/0001_serial_only.py. `replaces` is
+    # removed and the replaced files are deleted; this is now an ordinary
+    # initial migration.
 
     initial = True
 

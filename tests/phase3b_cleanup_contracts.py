@@ -8,11 +8,13 @@ source = (ROOT / "tenancy/management/commands/serial_only_phase3_cleanup.py").re
 tree = ast.parse(source)
 catalogue = next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
                  and any(isinstance(t, ast.Name) and t.id == "PERMISSIONS" for t in n.targets))
-historical = {}
-for path in (ROOT / "authentication/migrations").glob("002[2-5]_*.py"):
-    for node in ast.parse(path.read_text()).body:
-        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "PERMISSIONS" for t in node.targets):
-            historical.update(ast.literal_eval(node.value))
+# Checkpoint 4B deleted authentication migrations 0022-0025. Their exact
+# catalogue is preserved in a frozen reference so this stays an independent
+# cross-check rather than the cleanup tooling agreeing with itself.
+import json as _json
+historical = _json.loads(
+    (ROOT / "tests/retired_permissions_reference.json").read_text()
+)["permissions"]
 apply = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "apply")
 apply_source = ast.get_source_segment(source, apply)
 summary = ast.get_source_segment(source, next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "summary"))

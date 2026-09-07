@@ -10,12 +10,17 @@ restore_project="phase28_restore_$run_tag"
 source_project=${source_project//-/_}
 restore_project=${restore_project//-/_}
 current_image="financee-phase28-current:${GITHUB_SHA:-local}"
-# Rollback target = the image currently deployed to production. Since
-# checkpoint 3A that is 497b665. The older Phase 2 image
-# (e44737f1f740fa936e853a3d6bbbd068a1b6d89d) still declares inventory_mode as
-# a concrete ORM field, so it cannot run against a database that no longer
-# has that column -- which is every post-3B and every fresh 4A database.
-old_image="${PHASE28_OLD_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:497b6650ed678bc462f85de6bff14692bffd6ace}"
+# Rollback target = the image currently deployed to production. Checkpoint 4B
+# deleted the replaced migration files, so the rollback target must now be the
+# 4A release: Django drops a replacement from applied_migrations when the
+# migrations it replaces are absent, so no pre-4A image recognises a 4B
+# database and every one of them re-plans the initial migration and is refused.
+old_image="${PHASE28_OLD_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00}"
+# The estate must be built the way production actually reached 4B -- through the
+# 3A and 4A releases -- because only an upgraded database retains the replaced
+# migration rows that make a rollback possible. A fresh 4B install has no
+# pre-4B rollback path at all, which is inherent to a squash transition.
+seed_3a_image="${PHASE28_SEED_3A_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:497b6650ed678bc462f85de6bff14692bffd6ace}"
 work_dir=$(mktemp -d)
 artifact_dir="${PHASE28_ARTIFACT_DIR:-$repo_root/phase28-artifacts}"
 mkdir -p "$artifact_dir"
@@ -93,7 +98,19 @@ chmod 600 "$work_dir/passphrase"
 
 echo "==> Building disposable Phase 28 source image"
 WEB_IMAGE="$current_image" "${source_compose[@]}" build web
-"${source_compose[@]}" up -d db redis web
+# Reproduce production's real migration history: the 3A release applies the
+# original chain, the 4A release records both squashed replacements, and only
+# then does the current release take over. Building straight from the current
+# image would produce a fresh 4B database, which by design has no rollback path.
+echo "==> Seeding the estate through the 3A and 4A releases"
+docker pull -q "$seed_3a_image" >/dev/null 2>&1 || true
+docker pull -q "$old_image" >/dev/null 2>&1 || true
+WEB_IMAGE="$seed_3a_image" "${source_compose[@]}" up -d --wait --wait-timeout 240 db redis web
+"${source_compose[@]}" cp ../tenancy/management/commands/register_bootstrap_tenant.py \
+    web:/app/tenancy/management/commands/register_bootstrap_tenant.py >/dev/null 2>&1 || true
+"${source_compose[@]}" exec -T web python manage.py register_bootstrap_tenant >/dev/null 2>&1 || true
+WEB_IMAGE="$old_image" "${source_compose[@]}" up -d --wait --wait-timeout 240 web
+WEB_IMAGE="$current_image" "${source_compose[@]}" up -d --force-recreate db redis web
 source_web=$("${source_compose[@]}" ps -q web)
 for _ in $(seq 1 90); do
     [[ "$(docker inspect -f '{{.State.Health.Status}}' "$source_web")" = healthy ]] && break

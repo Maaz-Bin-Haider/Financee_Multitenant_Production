@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Database-free contracts for the Phase 4 entry gate and transition plan."""
 import ast
+import json
 from pathlib import Path
 
 
@@ -23,7 +24,7 @@ ci = read(".github/workflows/ci.yml")
 project_context = read("PROJECT_CONTEXT.md")
 readme = read("README.md")
 claude_md = read("CLAUDE.md")
-migration_proof = read("tests/phase4a_migration_proof.sh")
+transition_proof = read("tests/phase4b_migration_transition.sh")
 bootstrap_sql = read("build_multitenant_db.sql")
 entrypoint_sh = read("deploy/entrypoint.sh")
 bootstrap_command = read(
@@ -43,12 +44,8 @@ PRESERVED_PATHS = (
     "tenancy/management/commands/serial_only_phase3_audit.py",
     "PHASE3B_MAINTENANCE_RUNBOOK.md",
     ".github/workflows/phase3b-controlled-cleanup.yml",
-    "tenancy/migrations/0005_company_inventory_mode.py",
-    "tenancy/migrations/0008_serial_only_company_creation.py",
-    "tenancy/migrations/0009_inventory_mode_compatibility.py",
     "tenancy/sql/tenant_template.sql",
     "tenancy/sql/production_hardening.sql",
-    "tests/phase3a_old_image.py",
     "tests/phase26_capacity_preflight.py",
 )
 # Modules the Phase 3 recovery gate runs inside the *previously published*
@@ -157,8 +154,27 @@ checks = {
         and not any((ROOT / "tests/suite").glob("test_quantity_*.py"))
         and not any((ROOT / "tests").glob("PHASE*QUANTITY*_RESULTS.md"))
     ),
-    "4A: the reversal path and migration history are preserved": (
+    "4A: the reversal path is preserved": (
         all((ROOT / path).exists() for path in PRESERVED_PATHS)
+    ),
+    "4B: the replaced migration files are removed and replaces is gone": (
+        sorted(p.name for p in (ROOT / "tenancy/migrations").glob("*.py"))
+        == ["0001_serial_only.py", "__init__.py"]
+        and sorted(p.name for p in (ROOT / "authentication/migrations").glob("*.py"))
+        == ["0001_serial_only.py", "__init__.py"]
+        and "replaces = [" not in read("tenancy/migrations/0001_serial_only.py")
+        and "replaces = [" not in read("authentication/migrations/0001_serial_only.py")
+        and "initial = True" in read("tenancy/migrations/0001_serial_only.py")
+        and "initial = True" in read("authentication/migrations/0001_serial_only.py")
+    ),
+    "4B: the retired permission catalogue keeps an independent cross-reference": (
+        (ROOT / "tests/retired_permissions_reference.json").exists()
+        and len(json.loads(
+            read("tests/retired_permissions_reference.json"))["permissions"]) == 14
+        and "retired_permissions_reference.json" in read(
+            "tests/phase3b_cleanup_contracts.py")
+        and "retired_permissions_reference.json" in read(
+            "tests/phase3_metadata_inventory_contracts.py")
     ),
     "4A: no source or test references a deleted module or symbol": (
         "retire_quantity_static" not in read("deploy/entrypoint.sh")
@@ -187,17 +203,13 @@ checks = {
         'ordinary word "quantity" is not by itself' in project_context
         and 'ordinary word "quantity" is *not* evidence' in claude_md
     ),
-    "4A: the migration-replacement proof exists and is a mandatory CI gate": (
-        (ROOT / "tests/phase4a_migration_proof.sh").exists()
-        and "migration-replacement-gate:" in ci
-        and "tests/phase4a_migration_proof.sh" in ci
+    "4B: the superseded 4A proof retired with the coexisting originals": (
+        not (ROOT / "tests/phase4a_migration_proof.sh").exists()
+        and "migration-replacement-gate:" not in ci
     ),
-    "4A: the proof covers both required migration paths fail-closed": (
-        "never creates the retired inventory_mode column" in migration_proof
-        and "never creates the 14 retired quantity permissions" in migration_proof
-        and "applies no migration to that database" in migration_proof
-        and "the replaced rows remain for the checkpoint 4B prune" in migration_proof
-        and 'exit "$FAILED"' in migration_proof
+    "4B: the transition proof guards the unsupported skip-4A upgrade": (
+        "a database on the original chain cannot skip the 4A release"
+        in transition_proof
     ),
     "4A: the bootstrap no longer defeats the tenancy squash": (
         "CREATE TABLE IF NOT EXISTS public.tenancy_company" not in bootstrap_sql
@@ -234,6 +246,23 @@ checks = {
         and "_stage_refused(\"transition\")" in postgres_fixture
         and "_stage_refused(\"entry\")" in postgres_fixture
         and "distinct state digests" in postgres_fixture
+    ),
+    "4B: the transition proof exists and is a mandatory CI gate": (
+        (ROOT / "tests/phase4b_migration_transition.sh").exists()
+        and "migration-transition-gate:" in ci
+        and "tests/phase4b_migration_transition.sh" in ci
+    ),
+    "4B: the transition proof covers prune and rollback safety fail-closed": (
+        "fresh install creates no retired column" in transition_proof
+        and "prune leaves only the two squashed migration records" in transition_proof
+        and "before pruning, rolling back to 4A applies no migration" in transition_proof
+        and "after pruning, rolling back to 4A is refused by the database" in transition_proof
+        and 'exit "$FAILED"' in transition_proof
+    ),
+    "4B: pruning is never automated anywhere in the deployment path": (
+        "--prune" not in read("deploy/entrypoint.sh")
+        and "--prune" not in read("deploy/deploy_pull.sh")
+        and "--prune" not in ci.split("migration-transition-gate:", 1)[0]
     ),
     "real PostgreSQL cleanup fixture executes the Phase 4 audit": (
         "phase4_audit.inspect()" in postgres_fixture

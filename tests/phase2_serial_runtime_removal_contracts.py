@@ -216,10 +216,14 @@ checks = {
         "is_quantity_company" not in base
         and "quantity_" not in base
         and "Quantity Reports" not in base,
-    "quantity SQL is retired while migration history awaits checkpoint 4B":
+    "quantity SQL and the replaced migration history are both retired":
         not any((ROOT / "tenancy/sql").glob("quantity_*.sql"))
-        and (ROOT / "tenancy/migrations/0005_company_inventory_mode.py").is_file()
-        and (ROOT / "tenancy/migrations/0009_inventory_mode_compatibility.py").is_file(),
+        # Checkpoint 4B removed the replaced files; only the squashed
+        # serial-only migration remains in each app.
+        and sorted(p.name for p in (ROOT / "tenancy/migrations").glob("*.py"))
+        == ["0001_serial_only.py", "__init__.py"]
+        and sorted(p.name for p in (ROOT / "authentication/migrations").glob("*.py"))
+        == ["0001_serial_only.py", "__init__.py"],
     "mandatory Phase 2 local and CI gates are wired":
         "phase2_serial_runtime_removal_contracts.py" in workflow
         and "runtime-removal-gate:" in workflow
