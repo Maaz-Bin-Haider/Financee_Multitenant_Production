@@ -10,6 +10,13 @@ after every phase.
 **Progress rule:** The next phase must not start until the owner records an
 explicit production PASS for the current phase.
 
+**STATUS: COMPLETE.** All phases 0–4 carry an owner production PASS. The
+quantity-company family is retired in runtime, database and repository, and the
+serial-only squashed migrations are deployed as ordinary initial migrations.
+Two operational items remain open by design and are recorded at the end of the
+Phase 4B section: repinning the read-only audit to the deployed image, and the
+separately approved one-way `migrate --prune`.
+
 ## Non-Negotiable Safety Contract
 
 - No fact about production company rows or physical schemas is assumed.
@@ -31,7 +38,7 @@ explicit production PASS for the current phase.
 | 1 | Close quantity-company creation | **PASS** | Local gates and protected exact-SHA workflow `33636045130` PASS; production deployed without rollback | **PASS** |
 | 2 | Remove quantity runtime and replace CI coverage | **PASS** | Local gates and all 12 jobs in protected exact-SHA workflow `33728502631` PASS; production controller PASS | **PASS** |
 | 3 | Remove quantity database metadata and approved orphan schemas | **PASS** | 3A workflow `33736055610`; 3B inventory/recovery; strengthened inspection `33879212477`; protected cleanup `33887331226` with `confirmed_committed` and final checks PASS | **PASS — owner confirmed the live site online and working after cleanup** |
-| 4 | Source, documentation, test, and migration hygiene | **Checkpoint 4A COMPLETE — 4B not started** | Protected audits `33896979203` and `34080323205` PASS with identical digests; both replacements independently reviewed. Protected CI/CD run `34081803210` on `a4f915f`: all 13 test gates, staging approval, publication and the owner-approved EC2 deployment PASS; Phase 30 controller PASS | **PASS — owner confirmed the live site working after the 4A release.** Required again after the 4B release and at final acceptance |
+| 4 | Source, documentation, test, and migration hygiene | **COMPLETE** | 4A run `34081803210` on `a4f915f` and 4B run `34102647406` on `5f42cd1`, each all-green through protected staging approval, publication and owner-approved EC2 deployment; transition audits `33896979203`, `34080323205` and `34084347071` PASS; Phase 30 controller PASS on both releases | **PASS — owner confirmed the live site working after both the 4A and 4B releases.** Final Phase 4 PASS recorded 2026-09-07 |
 
 ## Phase 0 — Production Discovery and Approved Test-Tenant Remediation
 
@@ -710,19 +717,35 @@ audit, so the first work is that audit, not the deletions.
   `tests/phase4a_migration_proof.sh` and its CI gate retired with the premise
   they tested — a squash coexisting with its originals — and are superseded by
   the transition proof.
-- [ ] Retire `tests/serial_api_compat.py` and its dual-image branches, and the
-  pre-3B fixture reconstruction in the Phase 3 inventory and 3A compatibility
-  proofs. **Sequencing constraint:** the accepted rollback image is still 3A
-  `497b665`, which carries the retired compatibility API, and the Phase 3B
-  cleanup rehearsal needs a pre-3B database that only that image produces.
-  Neither can be removed until the rollback target is itself a 4A-or-later
-  build, which happens only once 4B is deployed.
-- [ ] Reprove fresh install, upgraded original history, rollback compatibility,
+- [ ] **Deferred, not part of plan completion.** Retire
+  `tests/serial_api_compat.py` and its dual-image branches, and the pre-3B
+  fixture reconstruction in the Phase 3 inventory proof. The Phase 3B cleanup
+  rehearsal still needs a pre-3B database, which only the 3A image produces, so
+  the shim must survive as long as that rehearsal targets 3A. Removing it is
+  cleanup, not a correctness gap: every gate passes with it in place.
+- [x] Reprove fresh install, upgraded original history, rollback compatibility,
   serial continuity, backup/restore and all mandatory CI/CD gates.
-- [ ] Deploy exact 4B through protected production approval; verify migration
+  Protected run `34102647406` on `5f42cd1`: all 13 test gates green, including
+  the new `migration-transition-gate` (30/30) and the Phase 29 staging/security
+  gate, plus the Phase 28 encrypted recovery rehearsal at RTO 44s against the
+  corrected 4A rollback target.
+- [x] Deploy exact 4B through protected production approval; verify migration
   plan, application health and serial continuity.
-- [ ] STOP: owner manually verifies the real production system and records final
+  Image `ghcr.io/maaz-bin-haider/financee-web:5f42cd1c871dc0e93b205b92eb5e8eb5f04a034b`
+  published and, on the owner's `production` approval, deployed at
+  2026-09-07 09:09 UTC. Migration plan was a no-op as predicted; tenant
+  fingerprint `808e73deb5fbb472` identical before and after; `tenant_indexes.sql`
+  reapplied to the single serial schema; continuity fingerprints compared;
+  operational thresholds captured; Phase 30 controller PASS. **No migration
+  pruning ran** — the only pruning in the log is Docker image reclamation.
+  Independent public check: login page and root both HTTP 200 with a complete
+  form.
+- [x] STOP: owner manually verifies the real production system and records final
   Phase 4 PASS. Only then is the serial-only consolidation plan complete.
+  **Owner final Phase 4 result:** `PASS` — "the site is live and working fine",
+  recorded 2026-09-07 after the 4B deployment of `5f42cd1`.
+
+**The serial-only consolidation plan is COMPLETE.**
 
 ## Audit Trail
 
@@ -838,3 +861,8 @@ audit, so the first work is that audit, not the deletions.
 | 2026-09-07 | Third migration finding: the 4A release cannot be skipped | A database still on the original chain jumping straight to 4B is refused with `relation "tenancy_company" already exists`, because without a replacement record the 4B release treats its own migration as unapplied. Production already ran 4A. The transition proof now asserts the refusal so the constraint cannot be rediscovered during a deployment |
 | 2026-09-07 | Superseded 4A proof and its CI gate retired | `tests/phase4a_migration_proof.sh` tested a squash coexisting with its originals, which 4B removed. The 4B transition proof covers fresh install, no-op upgrade, per-app prune, rollback safety before and after pruning, and the unsupported skip-4A jump |
 | 2026-09-07 | The 3A old-image rollback test retired | `tests/phase3a_old_image.py` pinned the Phase 2 image, which declares `inventory_mode` as a concrete ORM field and cannot run against a 4B database at all. Rollback compatibility is now proven against the actual rollback target inside the transition proof |
+| 2026-09-07 | Owner authorized the 4B push and release with no pruning | `[skip ci]` removed so the release could run; every file in the deployment path verified to contain zero `--prune` references, enforced by contract. Exact `5f42cd1` pushed to `main` |
+| 2026-09-07 | Protected run `34102647406` gates PASS and image published | All 13 test jobs green including the new `migration-transition-gate` and the Phase 29 staging/security gate; staging release approval recorded; `ghcr.io/maaz-bin-haider/financee-web:5f42cd1c871dc0e93b205b92eb5e8eb5f04a034b` published. Deploy held at the `production` gate; the agent did not submit the approval |
+| 2026-09-07 | Owner approved the 4B deployment; EC2 deploy PASS at 09:09 UTC | Migration plan a no-op as predicted; tenant fingerprint `808e73deb5fbb472` identical before and after; `tenant_indexes.sql` reapplied to the one serial schema; continuity fingerprints compared; operational thresholds captured; Phase 30 controller PASS. No migration pruning ran — the only pruning was Docker image reclamation. Independent public check: login page and root both HTTP 200 |
+| 2026-09-07 | Owner reported "the site is live and working fine" after the 4B release | **Final Phase 4 PASS. The serial-only consolidation plan is COMPLETE.** All phases 0-4 carry an owner production PASS |
+| 2026-09-07 | Two operational items left open by design | The read-only Phase 4 audit still pins superseded deployed SHAs and fails closed after each release — worth deriving the pin from the deployed image rather than hard-coding. And `migrate --prune` of the 36 stale rows remains a separately approved one-way step that permanently removes the rollback path |

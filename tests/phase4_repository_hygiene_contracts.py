@@ -193,11 +193,16 @@ checks = {
         and "except ValidationError:" in compat
         and "return False" in compat
     ),
-    "4A: active documentation describes the serial-only system": (
+    "active documentation describes the completed serial-only system": (
         "Retired Quantity-Company Family" in project_context
-        and "Phase 4 (repository hygiene)" in project_context
+        and "STATUS: COMPLETE" in project_context
         and "Do not reintroduce an inventory-mode concept" in claude_md
         and "There is no inventory-mode concept left to configure" in readme
+    ),
+    "4B: the migration rules future work must know are documented": (
+        "`migrate --prune` is a one-way door" in project_context
+        and "Prune is per-app" in project_context
+        and "no pre-4B rollback path" in project_context
     ),
     "4A: documentation still warns that serial line quantities are not the family": (
         'ordinary word "quantity" is not by itself' in project_context

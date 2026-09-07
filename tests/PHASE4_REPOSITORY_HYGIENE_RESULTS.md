@@ -2,9 +2,9 @@
 
 **Started:** 2026-09-04
 
-**Current status:** Checkpoints 4.0 and **4A are COMPLETE**. The 4A release is
-deployed to production as `a4f915f` and the owner recorded a manual production
-PASS on 2026-09-07. Checkpoint 4B has not started.
+**Current status: PHASE 4 COMPLETE.** Checkpoints 4.0, 4A and 4B are all
+released to production and each carries an owner manual production PASS. The
+serial-only consolidation plan is finished.
 
 ## Entry decision
 
@@ -730,3 +730,59 @@ executor · **4B migration transition (30/30)** · Phase 28 encrypted recovery
 Push, release and deploy 4B through protected CI/CD **without pruning**, then
 the owner's manual production verification and the final Phase 4 PASS. Pruning
 stays a separate, later, separately approved one-way step.
+
+
+---
+
+# Phase 4 — complete (2026-09-07)
+
+The 4B release deployed as `5f42cd1` and the owner recorded the final Phase 4
+PASS: *"the site is live and working fine."*
+
+## The 4B release
+
+Protected run **`34102647406`** — all 13 test gates green, including the new
+`migration-transition-gate` and the Phase 29 staging/security gate; staging
+approval recorded; image published; owner-approved EC2 deployment completed at
+09:09 UTC with a Phase 30 controller PASS.
+
+```text
+Image ...:5f42cd1c871dc0e93b205b92eb5e8eb5f04a034b Pulled
+==> Recreating web + nginx           health through nginx recovered
+==> Applying tenant SQL to all schemas (idempotent)
+      ok   -> tenant_company_1 (serial v6)
+OK tenant_company_1 family=serial version=6/6 fingerprint=808e73deb5fbb472
+Phase 30 production foundation deployment PASS
+```
+
+The tenant fingerprint is **identical before and after** the deployment; the
+migration plan was the predicted no-op. Independent public check immediately
+afterwards returned HTTP 200 for both the login page and the root, with a
+complete login form.
+
+**No migration pruning ran.** The single `Pruning superseded images` line in the
+deploy log is Docker image reclamation, not `migrate --prune`. Production still
+carries all 36 migration rows and its rollback path to the 4A release.
+
+## Final state
+
+- Phases 0–4 all carry an owner production PASS.
+- The quantity-company family is retired in runtime, database and repository.
+- The serial-only squashed migrations are deployed as ordinary initial
+  migrations, with the replaced files removed.
+- Serial behaviour is unchanged throughout: the Phase 2 byte-identity baselines
+  for the serial view functions, UI files, tenant SQL and the bootstrap's
+  business-schema build all still pass.
+
+## Open by design — not gaps in the plan
+
+1. **The read-only Phase 4 audit pins deployed SHAs by hand** and therefore
+   fails closed after every release. It has now gone stale twice. Deriving the
+   pin from the actually deployed image would remove a recurring manual step.
+2. **`migrate --prune` of the 36 stale rows** is a separately approved one-way
+   step. It permanently removes the rollback path to every `replaces`-carrying
+   image, so it wants its own decision and maintenance window.
+3. **`tests/serial_api_compat.py` and the pre-3B fixture reconstruction** stay
+   in place. The Phase 3B cleanup rehearsal still needs a pre-3B database, which
+   only the 3A image produces. This is cleanup, not a correctness gap — every
+   gate passes with them present.

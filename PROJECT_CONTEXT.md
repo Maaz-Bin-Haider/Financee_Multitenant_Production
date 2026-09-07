@@ -6,60 +6,59 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
-- **System state:** serial-only. The quantity company family is retired in
-  runtime, database and repository. Serial business behavior is unchanged.
-- **Governing plan:** `SERIAL_ONLY_REMOVAL_PLAN.md` (phase gates + audit
-  trail). Every phase requires an explicit owner production PASS before the
-  next begins.
-- **Phase 0 (discovery):** PASS. Read-only production audit; the individually
-  approved orphan quantity test schema `tenant_company_2` was retired after a
-  fresh encrypted backup and isolated restore.
-- **Phase 1 (creation freeze):** PASS, deployed. Company creation locked to
-  serial in admin, model, provisioning commands and database constraint.
-- **Phase 2 (runtime removal):** PASS, deployed. Quantity routes, adapters,
-  templates, static assets and startup SQL maintenance removed; retired paths
-  return 403/404.
-- **Phase 3 (database cleanup):** PASS. Checkpoint 3A deployed the
-  compatibility release (image `497b6650ed678bc462f85de6bff14692bffd6ace`);
-  checkpoint 3B dropped the physical `inventory_mode` column, its check
-  constraint, 14 retired permissions and the retired feature keys inside one
-  guarded, reversible transaction. The private Phase 3B archive remains in
-  state `applied` and is the reversal path — do not delete it.
-- **Phase 4 (repository hygiene):** in progress.
-  - Checkpoint 4.0 entry gate implemented (`serial_only_phase4_audit`,
-    `.github/workflows/phase4-migration-leaf-inspection.yml`, manual-only and
-    read-only). The protected production audit has **not** been dispatched.
-  - Checkpoint 4A implemented locally: retired quantity SQL templates, test
-    modules, design/result documents and the one-shot static-retirement code
-    are removed; the quantity schema-family registry and the temporary
-    inventory-mode compatibility API are gone; squashed replacement migrations
-    `tenancy/0001_serial_only.py` and `authentication/0001_serial_only.py` were
-    added **beside** the original files.
-  - Checkpoint 4B not started: only after every environment has run 4A may the
-    replaced migration files be deleted, `replaces` removed, and `migrate
-    --prune` validated.
-- **Bootstrap ownership changed in 4A (important).** `build_multitenant_db.sql`
-  no longer creates `tenancy_company`/`tenancy_membership` and no longer seeds
-  `('tenancy','0001_initial')`. Seeding it left the squashed replacement
-  *partially* applied, and Django only uses a replacement when **all** or
-  **none** of what it replaces is applied — so it replayed the original chain
-  and `0005` recreated the retired `inventory_mode` column on every fresh
-  install. Django migrations now own the whole public tenancy schema; the
-  bootstrap still builds the example `tenant_company_1` business schema, and
-  `deploy/entrypoint.sh` registers it afterwards with
-  `manage.py register_bootstrap_tenant`. That command refuses to act on any
-  database that already contains a company, so it is a no-op on every existing
-  deployment. Proven by `tests/phase4a_migration_proof.sh` (CI job
-  `migration-replacement-gate`).
-- **Production today:** one serial company, tenant schema version 6, ARM64
-  image `497b665`. No Phase 4 change has been deployed.
-- **Serial-only is now proven physically.** There is no registry mode value to
+- **System state:** serial-only, and the consolidation is **complete**. The
+  quantity company family is retired in runtime, database and repository.
+  Serial business behaviour is unchanged throughout.
+- **Governing plan:** `SERIAL_ONLY_REMOVAL_PLAN.md` — **STATUS: COMPLETE**. All
+  phases 0–4 carry an explicit owner production PASS.
+  - Phase 0 discovery, Phase 1 creation freeze, Phase 2 runtime removal,
+    Phase 3 database cleanup (3A compatibility release, 3B guarded reversible
+    cleanup) — all PASS and deployed.
+  - Phase 4 repository hygiene and the migration transition — PASS. Checkpoint
+    4A (`a4f915f`) shipped the squashed replacements beside the originals;
+    checkpoint 4B (`5f42cd1`) deleted the replaced files and removed
+    `replaces`, so each squash is now an ordinary initial migration.
+- **Production today:** image `5f42cd1c871dc0e93b205b92eb5e8eb5f04a034b`, one
+  serial company, tenant schema version 6, no `inventory_mode` column, no
+  retired permissions or feature keys. The Phase 3B archive remains `applied`
+  and is the reversal path — do not delete it.
+- **Migrations:** only `tenancy/0001_serial_only.py` and
+  `authentication/0001_serial_only.py` exist. Production still carries the 36
+  historical `django_migrations` rows; they have **not** been pruned, and that
+  is deliberate — see below.
+- **Serial-only is proven physically.** There is no registry mode value to
   trust: `verify_company_schema` checks each schema's own
   `tenant_schema_version`, and `Company` has no `inventory_mode` field,
   property or choice list. The retired keyword is refused by `Model.__init__`.
-- **Do not:** delete the Phase 3B archive or its restore tooling, delete
-  applied migration history in a single release, or infer push/deploy
-  authorization from a local implementation instruction.
+
+### Three migration rules to know before touching this again
+
+1. **`migrate --prune` is a one-way door.** Django drops a replacement from
+   `applied_migrations` when the migrations it replaces are absent, even though
+   the replacement's own row exists. Pruning therefore makes every
+   `replaces`-carrying image believe nothing is applied; it re-plans the initial
+   migration and PostgreSQL refuses it. Pruning permanently removes the rollback
+   path. Nothing in the deployment path prunes, and a contract enforces that.
+2. **Prune is per-app.** Django refuses a project-wide prune:
+   `migrate tenancy --prune`, `migrate authentication --prune`.
+3. **A fresh install has no pre-4B rollback path**, because it never had the
+   replaced rows. Only an upgraded database retains one.
+
+### Open by design
+
+- The read-only Phase 4 audit workflow pins deployed SHAs by hand and fails
+  closed after each release. Deriving the pin from the deployed image would
+  remove a recurring manual step.
+- `migrate --prune` of the 36 stale rows: separately approved, one-way.
+- `tests/serial_api_compat.py` and the pre-3B fixture reconstruction stay while
+  the Phase 3B cleanup rehearsal needs a pre-3B database from the 3A image.
+
+### Do not
+
+- Reintroduce an inventory-mode concept.
+- Delete the Phase 3B archive or its restore tooling.
+- Assume "quantity" in code means the retired family — serial purchases, sales,
+  returns and stock reports legitimately store counts named `qty`/`quantity`.
 
 ## System Identity
 
