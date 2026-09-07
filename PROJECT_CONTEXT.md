@@ -44,11 +44,19 @@ This file is the persistent engineering context for Financee. Update it on every
 3. **A fresh install has no pre-4B rollback path**, because it never had the
    replaced rows. Only an upgraded database retains one.
 
+### The read-only Phase 4 audit
+
+`serial_only_phase4_audit` **discovers** which migration history the estate
+holds rather than being told: `pre-4A` (original chain), `post-4A` (chain plus
+both replacement records) or `pruned` (replacements only). It reports the state
+and fails closed on anything unrecognised. `--expect-state` is an optional
+assertion. Its workflow derives the deployed SHA from the commit it runs from
+and requires that commit to be an ancestor of the ref; the remote wrapper still
+refuses to proceed unless it matches the running container. Nothing needs
+repinning after a release.
+
 ### Open by design
 
-- The read-only Phase 4 audit workflow pins deployed SHAs by hand and fails
-  closed after each release. Deriving the pin from the deployed image would
-  remove a recurring manual step.
 - `migrate --prune` of the 36 stale rows: separately approved, one-way.
 - `tests/serial_api_compat.py` and the pre-3B fixture reconstruction stay while
   the Phase 3B cleanup rehearsal needs a pre-3B database from the 3A image.

@@ -22,8 +22,20 @@ import re
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 
-STAGES = ("entry", "transition")
 REPLACEMENT = "0001_serial_only"
+
+# The three migration histories a correct estate can hold. The audit discovers
+# which one it is looking at instead of being told, so it never goes stale when
+# a release moves the estate from one to the next.
+#
+#   pre-4A    the original chain only, before the 4A release
+#   post-4A   the chain plus both replacement records, written by Django's
+#             check_replacements() when the 4A release applied
+#   pruned    the replacement records only, after a separately approved
+#             per-app `migrate --prune`
+#
+# Anything else is drift and fails closed.
+HISTORY_STATES = ("pre-4A", "post-4A", "pruned")
 
 
 TENANCY_MIGRATIONS = (
@@ -104,26 +116,33 @@ def scalar(cursor, query, params=None):
     return cursor.fetchone()[0]
 
 
-def expected_history(stage):
-    """Migration names expected for the given stage, in django_migrations order.
+def history_for(state):
+    """The exact django_migrations names each recognised state must hold.
 
-    Django records every replaced migration when a replacement is applied, and
-    ``check_replacements`` additionally records the replacement itself, so a
-    post-4A database carries both. Names sort ahead of the replacement because
-    "initial"/"payments_permissions" precede "serial_only".
+    Names sort ahead of the replacement because "initial" and
+    "payments_permissions" precede "serial_only".
     """
-    if stage == "entry":
+    if state == "pre-4A":
         return TENANCY_MIGRATIONS, AUTHENTICATION_MIGRATIONS
+    if state == "pruned":
+        return (REPLACEMENT,), (REPLACEMENT,)
     return (
         tuple(sorted(TENANCY_MIGRATIONS + (REPLACEMENT,))),
         tuple(sorted(AUTHENTICATION_MIGRATIONS + (REPLACEMENT,))),
     )
 
 
-def inspect(stage="entry"):
-    if stage not in STAGES:
-        raise CommandError(f"unknown stage {stage!r}")
-    expected_tenancy, expected_authentication = expected_history(stage)
+def classify_history(observed_tenancy, observed_authentication):
+    """Return the recognised state these histories are, or None for drift."""
+    for state in HISTORY_STATES:
+        if (observed_tenancy, observed_authentication) == history_for(state):
+            return state
+    return None
+
+
+def inspect(expect_state=None):
+    if expect_state is not None and expect_state not in HISTORY_STATES:
+        raise CommandError(f"unknown history state {expect_state!r}")
     with transaction.atomic():
         with connection.cursor() as cursor:
             cursor.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
@@ -140,15 +159,19 @@ def inspect(stage="entry"):
             observed = {"tenancy": [], "authentication": []}
             for app, name in cursor.fetchall():
                 observed[app].append(name)
-            require(
-                tuple(observed["tenancy"]) == expected_tenancy,
-                f"tenancy migration history does not match the exact {stage} "
-                f"expectation",
+            history_state = classify_history(
+                tuple(observed["tenancy"]), tuple(observed["authentication"])
             )
             require(
-                tuple(observed["authentication"]) == expected_authentication,
-                f"authentication migration history does not match the exact "
-                f"{stage} expectation",
+                history_state is not None,
+                "migration history matches no recognised state "
+                f"({len(observed['tenancy'])} tenancy and "
+                f"{len(observed['authentication'])} authentication rows)",
+            )
+            require(
+                expect_state is None or history_state == expect_state,
+                f"migration history is {history_state!r}, not the asserted "
+                f"{expect_state!r}",
             )
 
             column_present = scalar(
@@ -253,8 +276,9 @@ def inspect(stage="entry"):
 
             state = {
                 "archive_payload_sha256": archive_rows[0][1],
-                "replacements_recorded": stage == "transition",
-                "stage": stage,
+                "history_state": history_state,
+                "replacements_recorded": history_state in ("post-4A", "pruned"),
+                "replaced_rows_retained": history_state == "post-4A",
                 "archive_state": archive_rows[0][2],
                 "authentication_leaf": AUTHENTICATION_MIGRATIONS[-1],
                 "company_count": len(companies),
@@ -266,7 +290,7 @@ def inspect(stage="entry"):
             }
             encoded = json.dumps(state, sort_keys=True, separators=(",", ":")).encode()
             return {
-                "audit": f"serial-only-phase4-{stage}",
+                "audit": f"serial-only-phase4-{history_state}",
                 "authorizes_migration_replacement": False,
                 "authorizes_replaced_file_removal": False,
                 "mode": "database-enforced-read-only",
@@ -280,11 +304,14 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--strict", action="store_true")
-        parser.add_argument("--stage", choices=STAGES, default="entry")
+        # Optional assertion. Omitted, the audit reports whichever recognised
+        # state it finds and fails closed on anything unrecognised, so it never
+        # needs repinning when a release moves the estate forward.
+        parser.add_argument("--expect-state", choices=HISTORY_STATES, default=None)
 
     def handle(self, *args, **options):
         self.stdout.write(
-            json.dumps(inspect(options["stage"]), indent=2, sort_keys=True)
+            json.dumps(inspect(options["expect_state"]), indent=2, sort_keys=True)
         )
 
 

@@ -8,16 +8,15 @@ on:
         required: true
         type: string
       expected_deployed_sha:
-        description: "Exact accepted deployed image SHA"
-        required: true
+        description: "Deployed image SHA to audit. Leave empty to use this ref's commit."
+        required: false
         type: string
-        default: a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00
-      stage:
-        description: "entry = checkpoint 4.0 gate; transition = checkpoint 4B precondition"
-        required: true
-        type: choice
-        options: [transition, entry]
-        default: transition
+        default: ""
+      expect_state:
+        description: "Optional assertion: pre-4A, post-4A or pruned. Empty = report whichever is found."
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -34,21 +33,32 @@ jobs:
     environment: production
     env:
       CONFIRMATION: ${{ inputs.confirmation }}
-      EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
-      AUDIT_STAGE: ${{ inputs.stage }}
+      # Empty means "the commit this workflow is running from", which after a
+      # normal release is exactly what is deployed. The remote wrapper still
+      # refuses to proceed unless it matches the running container, so a stale
+      # or wrong value fails closed with the real deployed SHA in the error.
+      EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha || github.sha }}
+      EXPECT_STATE: ${{ inputs.expect_state }}
       APP_DIR: ${{ secrets.EC2_APP_DIR }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Validate inspected source and transport
         run: |
           set -euo pipefail
           [[ "$CONFIRMATION" == INSPECT-PHASE4-MIGRATION-LEAVES ]]
-          # Accept only images that have actually been through protected
-          # production approval: 3A (pre-4A) or the deployed 4A release.
-          case "$EXPECTED_DEPLOYED_SHA" in
-            497b6650ed678bc462f85de6bff14692bffd6ace) [[ "$AUDIT_STAGE" == entry ]] ;;
-            a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00) [[ "$AUDIT_STAGE" == transition ]] ;;
-            *) echo "unaccepted deployed SHA" >&2; exit 1 ;;
+          # The SHA must be a real commit from this repository's own history,
+          # not an arbitrary string. A hard-coded allowlist was used here and
+          # went stale on every release; requiring an ancestor of this ref keeps
+          # the "deliberate, released commit" property without any pinning.
+          [[ "$EXPECTED_DEPLOYED_SHA" =~ ^[0-9a-f]{40}$ ]] \
+            || { echo "expected_deployed_sha must be a 40-character commit SHA" >&2; exit 1; }
+          git merge-base --is-ancestor "$EXPECTED_DEPLOYED_SHA" HEAD \
+            || { echo "expected_deployed_sha is not an ancestor of this ref" >&2; exit 1; }
+          case "$EXPECT_STATE" in
+            ""|pre-4A|post-4A|pruned) ;;
+            *) echo "expect_state must be empty, pre-4A, post-4A or pruned" >&2; exit 1 ;;
           esac
           python3 tests/phase4_repository_hygiene_contracts.py
           python3 -m unittest tests.test_phase4_inventory_remote
@@ -73,7 +83,7 @@ jobs:
           remote_script=$(< deploy/phase4_inventory_remote.sh)
           printf -v remote_command 'bash -c %q -- %q %q %q %q' \
             "$remote_script" "$APP_DIR" "$EXPECTED_DEPLOYED_SHA" "$GITHUB_SHA" \
-            "$AUDIT_STAGE"
+            "$EXPECT_STATE"
           ssh -i ~/.ssh/id_deploy "$EC2_USER@$EC2_HOST" "$remote_command" \
             < tenancy/management/commands/serial_only_phase4_audit.py \
             | tee phase4-migration-leaf-inspection.log

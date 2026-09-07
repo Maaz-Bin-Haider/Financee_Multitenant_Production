@@ -13,9 +13,9 @@ explicit production PASS for the current phase.
 **STATUS: COMPLETE.** All phases 0–4 carry an owner production PASS. The
 quantity-company family is retired in runtime, database and repository, and the
 serial-only squashed migrations are deployed as ordinary initial migrations.
-Two operational items remain open by design and are recorded at the end of the
-Phase 4B section: repinning the read-only audit to the deployed image, and the
-separately approved one-way `migrate --prune`.
+One operational item remains open by design and is recorded at the end of the
+Phase 4B section: the separately approved one-way `migrate --prune`. The audit's
+recurring pin staleness has been fixed — it now discovers its own state.
 
 ## Non-Negotiable Safety Contract
 
@@ -866,3 +866,6 @@ audit, so the first work is that audit, not the deletions.
 | 2026-09-07 | Owner approved the 4B deployment; EC2 deploy PASS at 09:09 UTC | Migration plan a no-op as predicted; tenant fingerprint `808e73deb5fbb472` identical before and after; `tenant_indexes.sql` reapplied to the one serial schema; continuity fingerprints compared; operational thresholds captured; Phase 30 controller PASS. No migration pruning ran — the only pruning was Docker image reclamation. Independent public check: login page and root both HTTP 200 |
 | 2026-09-07 | Owner reported "the site is live and working fine" after the 4B release | **Final Phase 4 PASS. The serial-only consolidation plan is COMPLETE.** All phases 0-4 carry an owner production PASS |
 | 2026-09-07 | Two operational items left open by design | The read-only Phase 4 audit still pins superseded deployed SHAs and fails closed after each release — worth deriving the pin from the deployed image rather than hard-coding. And `migrate --prune` of the 36 stale rows remains a separately approved one-way step that permanently removes the rollback path |
+| 2026-09-07 | Recurring audit-pin staleness fixed at its root | The audit no longer takes a declared stage tied to a hard-coded SHA. It discovers which of three recognised migration histories the estate holds -- `pre-4A` (original chain), `post-4A` (chain plus both replacement records) and `pruned` (replacements only) -- reports it, and fails closed on anything unrecognised. `--expect-state` remains available as an optional assertion |
+| 2026-09-07 | The workflow derives the deployed SHA instead of allow-listing it | The baked-in SHA list is gone. The input defaults to the commit the workflow runs from, must be 40 hex characters, and must be an ancestor of that ref -- a real released commit from this repository. The remote wrapper still refuses to proceed unless it matches the running container, which is the control that actually mattered; the allowlist only added staleness |
+| 2026-09-07 | All three states and drift proven against real PostgreSQL | The disposable fixture now discovers pre-4A, post-4A and pruned histories, produces three distinct state digests, and fails closed on an unrecognised one. The simulations capture and restore the real rows and then verify the restoration, after an earlier version left the estate broken and failed the post-cleanup suite. Fixture 73/73 -> 78/78; Phase 4 contracts 29 -> 36 |

@@ -31,15 +31,24 @@ from tenancy.models import Company
 RESULTS = []
 
 
+def _discovery_refused():
+    """True when the audit refuses an estate matching no recognised state."""
+    try:
+        phase4_audit.inspect()
+    except Exception:
+        return True
+    return False
+
+
 def check(name, ok):
     RESULTS.append(bool(ok))
     print(f"{'PASS' if ok else 'FAIL'}: {name}", flush=True)
 
 
-def _stage_refused(stage):
-    """True when the audit fails closed for `stage` against the current state."""
+def _state_refused(state):
+    """True when the audit fails closed asserting `state` against the estate."""
     try:
-        phase4_audit.inspect(stage)
+        phase4_audit.inspect(state)
     except Exception:
         return True
     return False
@@ -280,8 +289,11 @@ def main():
           and not phase4_entry["inventory_mode_column_present"]
           and phase4_entry["retired_permission_count"] == 0
           and phase4_entry["retired_feature_occurrences"] == 0)
-    check("Phase 4 entry audit refuses the checkpoint 4B expectation on this state",
-          _stage_refused("transition"))
+    check("the audit discovers the pre-4A history without being told",
+          phase4_entry["history_state"] == "pre-4A"
+          and not phase4_entry["replacements_recorded"])
+    check("asserting a different state against this estate fails closed",
+          _state_refused("post-4A") and _state_refused("pruned"))
 
     # Checkpoint 4B precondition. Django records every replaced migration when a
     # replacement is applied and check_replacements() then records the
@@ -294,19 +306,73 @@ def main():
                VALUES ('tenancy', '0001_serial_only', now()),
                       ('authentication', '0001_serial_only', now())"""
         )
-    phase4_transition = phase4_audit.inspect("transition")
-    check("Phase 4 transition audit accepts the recorded replacement migrations",
+    phase4_transition = phase4_audit.inspect()
+    check("the audit discovers the post-4A history without being told",
           phase4_transition["mode"] == "database-enforced-read-only"
-          and phase4_transition["stage"] == "transition"
+          and phase4_transition["history_state"] == "post-4A"
           and phase4_transition["replacements_recorded"]
+          and phase4_transition["replaced_rows_retained"]
           and not phase4_transition["authorizes_replaced_file_removal"]
           and phase4_transition["archive_state"] == "applied"
           and not phase4_transition["inventory_mode_column_present"]
           and phase4_transition["retired_permission_count"] == 0)
-    check("Phase 4 entry audit now correctly refuses the post-4A history",
-          _stage_refused("entry"))
-    check("the two audit stages produce distinct state digests",
+    check("asserting the superseded state now fails closed",
+          _state_refused("pre-4A"))
+    check("the two histories produce distinct state digests",
           phase4_transition["state_sha256"] != phase4_entry["state_sha256"])
+
+    # The remaining states are simulated by editing django_migrations directly.
+    # The audit opens its own read-only transaction, so these cannot be nested
+    # inside a rolled-back block; the rows are captured first and restored in a
+    # finally, and the restoration is then verified. Everything after this point
+    # depends on the history being intact.
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """SELECT app, name, applied FROM django_migrations
+                WHERE app IN ('tenancy','authentication') ORDER BY id"""
+        )
+        saved_history = cursor.fetchall()
+
+    def restore_history():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM django_migrations WHERE app IN ('tenancy','authentication')"
+            )
+            cursor.executemany(
+                "INSERT INTO django_migrations (app, name, applied) VALUES (%s,%s,%s)",
+                saved_history,
+            )
+
+    try:
+        # Third recognised state: after a separately approved per-app prune only
+        # the replacement records remain.
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """DELETE FROM django_migrations
+                    WHERE app IN ('tenancy','authentication')
+                      AND name <> '0001_serial_only'"""
+            )
+        phase4_pruned = phase4_audit.inspect()
+        check("the audit discovers the pruned history without being told",
+              phase4_pruned["history_state"] == "pruned"
+              and phase4_pruned["replacements_recorded"]
+              and not phase4_pruned["replaced_rows_retained"])
+        check("all three recognised histories produce distinct digests",
+              len({phase4_entry["state_sha256"], phase4_transition["state_sha256"],
+                   phase4_pruned["state_sha256"]}) == 3)
+
+        # Anything outside the three recognised shapes is drift and must fail.
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM django_migrations WHERE app='tenancy' AND name='0001_serial_only'"
+            )
+        check("an unrecognised migration history fails closed", _discovery_refused())
+    finally:
+        restore_history()
+    restored = phase4_audit.inspect()
+    check("the simulated states left the real migration history intact",
+          restored["history_state"] == "post-4A"
+          and restored["state_sha256"] == phase4_transition["state_sha256"])
 
     print(f"{sum(RESULTS)}/{len(RESULTS)} Phase 3B cleanup checks passed", flush=True)
     return 0 if all(RESULTS) else 1

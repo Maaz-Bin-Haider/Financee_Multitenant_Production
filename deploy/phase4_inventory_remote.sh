@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Read-only Phase 4 inspection. Audited Python arrives through stdin from the
 # exact workflow commit; no checkout, image, container, or database changes.
-# Stage 'entry' is the checkpoint 4.0 gate (pre-squash chain); stage
-# 'transition' is the checkpoint 4B precondition and additionally requires both
-# squashed replacement records to be present.
+# The audit discovers which recognised migration history the estate holds
+# (pre-4A, post-4A or pruned) and fails closed on anything else. The optional
+# fourth argument asserts one of those states instead of merely reporting it.
 set -euo pipefail
 
 fail() {
@@ -14,10 +14,13 @@ fail() {
 app_dir=${1?app directory argument required (may be empty for the existing default)}
 expected_deployed_sha=${2:?expected deployed SHA required}
 audit_source_sha=${3:?audit source SHA required}
-stage=${4:-entry}
+expect_state=${4:-}
 [[ "$expected_deployed_sha" =~ ^[0-9a-f]{40}$ ]] || fail 'invalid deployed SHA'
 [[ "$audit_source_sha" =~ ^[0-9a-f]{40}$ ]] || fail 'invalid source SHA'
-[[ "$stage" == entry || "$stage" == transition ]] || fail 'invalid audit stage'
+case "$expect_state" in
+    ""|pre-4A|post-4A|pruned) ;;
+    *) fail 'invalid expected history state' ;;
+esac
 app_dir="${app_dir:-$HOME/Financee_Multitenant_Production}"
 [[ "$app_dir" == /* && -d "$app_dir/deploy" ]] || fail 'application directory is unavailable'
 cd "$app_dir/deploy"
@@ -34,12 +37,13 @@ actual_image=$(sudo -n docker inspect --format '{{.Config.Image}}' "$web_id")
 [[ "$(sudo -n docker inspect --format '{{.State.Health.Status}}' "$web_id")" == healthy ]] || fail 'web is not healthy'
 image_id=$(sudo -n docker inspect --format '{{.Image}}' "$web_id")
 [[ "$(sudo -n docker image inspect --format '{{.Architecture}}' "$image_id")" == arm64 ]] || fail 'image is not ARM64'
-printf 'PHASE4_AUDIT_SOURCE_SHA=%s\nPHASE4_DEPLOYED_SHA=%s\nPHASE4_STAGE=%s\n' \
-    "$audit_source_sha" "$expected_deployed_sha" "$stage"
+printf 'PHASE4_AUDIT_SOURCE_SHA=%s\nPHASE4_DEPLOYED_SHA=%s\nPHASE4_EXPECT_STATE=%s\n' \
+    "$audit_source_sha" "$expected_deployed_sha" "${expect_state:-<discover>}"
 
 audit_status=0
 "${compose[@]}" exec -T -e 'PGOPTIONS=-c default_transaction_read_only=on' \
-    web python - --strict --stage "$stage" || audit_status=$?
+    web python - --strict ${expect_state:+--expect-state "$expect_state"} \
+    || audit_status=$?
 
 continuity_status=0
 "${compose[@]}" exec -T -e 'PGOPTIONS=-c default_transaction_read_only=on' \

@@ -38,7 +38,12 @@ elif args[:1] == ["compose"] and args[-3:] == ["ps", "-q", "web"]:
 elif args[:1] == ["compose"] and "exec" in args:
     if "PGOPTIONS=-c default_transaction_read_only=on" not in args:
         raise SystemExit(93)
-    if args[-5:-1] == ["python", "-", "--strict", "--stage"]:
+    if args[-3:] == ["python", "-", "--strict"]:
+        pathlib.Path(os.environ["PHASE4_FAKE_INPUT"]).write_text(sys.stdin.read())
+        pathlib.Path(os.environ["PHASE4_FAKE_STAGE"]).write_text("<discover>")
+        print('{"mode":"database-enforced-read-only"}')
+        raise SystemExit(1 if scenario == "audit-failed" else 0)
+    if args[-5:-1] == ["python", "-", "--strict", "--expect-state"]:
         pathlib.Path(os.environ["PHASE4_FAKE_INPUT"]).write_text(sys.stdin.read())
         pathlib.Path(os.environ["PHASE4_FAKE_STAGE"]).write_text(args[-1])
         print('{"mode":"database-enforced-read-only"}')
@@ -138,22 +143,22 @@ class Phase4RemoteInventoryTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(calls, [])
 
-    def test_stage_defaults_to_the_checkpoint_4_0_entry_gate(self):
+    def test_state_is_discovered_when_no_assertion_is_given(self):
         result, _calls, _body = self.run_wrapper()
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(self.last_stage, "entry")
-        self.assertIn("PHASE4_STAGE=entry", result.stdout)
+        self.assertEqual(self.last_stage, "<discover>")
+        self.assertIn("PHASE4_EXPECT_STATE=<discover>", result.stdout)
 
-    def test_transition_stage_is_forwarded_to_the_audited_source(self):
-        result, _calls, _body = self.run_wrapper(stage="transition")
+    def test_an_asserted_state_is_forwarded_to_the_audited_source(self):
+        result, _calls, _body = self.run_wrapper(stage="post-4A")
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(self.last_stage, "transition")
-        self.assertIn("PHASE4_STAGE=transition", result.stdout)
+        self.assertEqual(self.last_stage, "post-4A")
+        self.assertIn("PHASE4_EXPECT_STATE=post-4A", result.stdout)
 
-    def test_unknown_stage_is_refused_before_any_docker_command(self):
+    def test_unknown_state_is_refused_before_any_docker_command(self):
         result, calls, _body = self.run_wrapper(stage="authorize-everything")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("invalid audit stage", result.stderr)
+        self.assertIn("invalid expected history state", result.stderr)
         self.assertEqual(calls, [])
 
 if __name__ == "__main__":

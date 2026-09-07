@@ -83,15 +83,12 @@ checks = {
         and all(statement.lstrip().upper().startswith(("SELECT", "SET"))
                 for statement in audit_sql)
     ),
-    "exact pre-squash migration leaves are required at the entry stage": (
+    "the exact historical leaf names remain the basis of every state": (
         '"0009_inventory_mode_compatibility"' in audit
         and '"0025_add_quantity_platform_permissions"' in audit
-        # The comparison is now stage-derived, but the entry stage must still
-        # resolve to exactly the original chain with no replacement record.
-        and 'if stage == "entry":\n        return TENANCY_MIGRATIONS, AUTHENTICATION_MIGRATIONS'
+        and 'if state == "pre-4A":\n        return TENANCY_MIGRATIONS, AUTHENTICATION_MIGRATIONS'
         in audit
-        and "tuple(observed[\"tenancy\"]) == expected_tenancy" in audit
-        and "tuple(observed[\"authentication\"]) == expected_authentication" in audit
+        and "classify_history(" in audit
     ),
     "post-cleanup column permissions and features must be absent": (
         "retired inventory_mode column is present" in audit
@@ -222,35 +219,45 @@ checks = {
         and "register_bootstrap_tenant" in entrypoint_sh
         and "Company.objects.exists()" in bootstrap_command
     ),
-    "4B: the audit distinguishes the entry and transition stages": (
-        'STAGES = ("entry", "transition")' in audit
-        and "def expected_history(stage)" in audit
+    "the audit discovers its migration history instead of being pinned": (
+        'HISTORY_STATES = ("pre-4A", "post-4A", "pruned")' in audit
+        and "def classify_history(" in audit
         and "check_replacements" in audit
-        and '"--stage", choices=STAGES, default="entry"' in audit
+        and '"--expect-state", choices=HISTORY_STATES, default=None' in audit
         and '"authorizes_replaced_file_removal": False,' in audit
     ),
-    "4B: the transition stage requires both replacement records": (
+    "the audit fails closed on any unrecognised migration history": (
+        "history_state is not None," in audit
+        and "matches no recognised state" in audit
+        and "not the asserted" in audit
+    ),
+    "each recognised history state is defined exactly": (
         "TENANCY_MIGRATIONS + (REPLACEMENT,)" in audit
         and "AUTHENTICATION_MIGRATIONS + (REPLACEMENT,)" in audit
+        and 'if state == "pruned":' in audit
     ),
-    "4B: the remote wrapper validates and forwards the stage": (
-        "stage=${4:-entry}" in wrapper
-        and '"$stage" == entry || "$stage" == transition' in wrapper
-        and 'invalid audit stage' in wrapper
-        and '--strict --stage "$stage"' in wrapper
-        and "PHASE4_STAGE=%s" in wrapper
+    "the remote wrapper validates and forwards an optional assertion": (
+        "expect_state=${4:-}" in wrapper
+        and '""|pre-4A|post-4A|pruned) ;;' in wrapper
+        and "invalid expected history state" in wrapper
+        and '${expect_state:+--expect-state "$expect_state"}' in wrapper
+        and "PHASE4_EXPECT_STATE=%s" in wrapper
     ),
-    "4B: the workflow accepts only approved deployed SHAs per stage": (
-        "a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00) [[ \"$AUDIT_STAGE\" == transition ]] ;;" in workflow
-        and "497b6650ed678bc462f85de6bff14692bffd6ace) [[ \"$AUDIT_STAGE\" == entry ]] ;;" in workflow
-        and "unaccepted deployed SHA" in workflow
+    "the workflow derives the deployed SHA instead of hard-coding it": (
+        "497b6650ed678bc462f85de6bff14692bffd6ace" not in workflow
+        and "a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00" not in workflow
+        and "inputs.expected_deployed_sha || github.sha" in workflow
+        and "git merge-base --is-ancestor" in workflow
+        and "fetch-depth: 0" in workflow
         and "%q %q %q %q" in workflow
     ),
-    "4B: the real PostgreSQL fixture proves both stages fail closed": (
-        'phase4_audit.inspect("transition")' in postgres_fixture
-        and "_stage_refused(\"transition\")" in postgres_fixture
-        and "_stage_refused(\"entry\")" in postgres_fixture
-        and "distinct state digests" in postgres_fixture
+    "the real PostgreSQL fixture proves all three states and drift": (
+        'history_state"] == "pre-4A"' in postgres_fixture
+        and 'history_state"] == "post-4A"' in postgres_fixture
+        and 'history_state"] == "pruned"' in postgres_fixture
+        and "_state_refused(" in postgres_fixture
+        and "_discovery_refused()" in postgres_fixture
+        and "all three recognised histories produce distinct digests" in postgres_fixture
     ),
     "4B: the transition proof exists and is a mandatory CI gate": (
         (ROOT / "tests/phase4b_migration_transition.sh").exists()
