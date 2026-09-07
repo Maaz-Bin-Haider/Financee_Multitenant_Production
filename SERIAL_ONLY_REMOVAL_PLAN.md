@@ -31,7 +31,7 @@ explicit production PASS for the current phase.
 | 1 | Close quantity-company creation | **PASS** | Local gates and protected exact-SHA workflow `33636045130` PASS; production deployed without rollback | **PASS** |
 | 2 | Remove quantity runtime and replace CI coverage | **PASS** | Local gates and all 12 jobs in protected exact-SHA workflow `33728502631` PASS; production controller PASS | **PASS** |
 | 3 | Remove quantity database metadata and approved orphan schemas | **PASS** | 3A workflow `33736055610`; 3B inventory/recovery; strengthened inspection `33879212477`; protected cleanup `33887331226` with `confirmed_committed` and final checks PASS | **PASS — owner confirmed the live site online and working after cleanup** |
-| 4 | Source, documentation, test, and migration hygiene | **In progress — 4A committed and green in CI; awaiting release approval** | Protected audits `33896979203` and `34080323205` PASS with identical digests. Both replacements independently reviewed. Branch CI run `34081125290` on commit `d8e55c6`: 13/13 test jobs green including the new `migration-replacement-gate`; publish/deploy correctly skipped as branch-only. Not published or deployed | Required after each 4A/4B release and at final acceptance |
+| 4 | Source, documentation, test, and migration hygiene | **Checkpoint 4A COMPLETE — 4B not started** | Protected audits `33896979203` and `34080323205` PASS with identical digests; both replacements independently reviewed. Protected CI/CD run `34081803210` on `a4f915f`: all 13 test gates, staging approval, publication and the owner-approved EC2 deployment PASS; Phase 30 controller PASS | **PASS — owner confirmed the live site working after the 4A release.** Required again after the 4B release and at final acceptance |
 
 ## Phase 0 — Production Discovery and Approved Test-Tenant Remediation
 
@@ -578,8 +578,26 @@ instances can finish the original chain; new installations use the replacements.
   proving the dual-image shim. All of it was then re-run in GitHub Actions on
   the pushed branch, where the production-like staging/security gate also
   passed: run `34081125290`, 13/13 test jobs green.
-- [ ] Review, approve, publish and deploy the exact 4A image through normal
+- [x] Review, approve, publish and deploy the exact 4A image through normal
   protected CI/CD. Stop for owner manual production PASS.
+  Commit `d8e55c6` was verified on branch CI run `34081125290` (13/13 test jobs)
+  before landing. `main` fast-forwarded to `a4f915f`; protected run
+  `34081803210` passed all 13 test gates, the staging release approval, and
+  published `ghcr.io/maaz-bin-haider/financee-web:a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00`.
+  The owner approved the `production` environment and the EC2 deployment
+  completed at 2026-09-07 04:19 UTC: image pulled and pinned, web recreated,
+  health through nginx recovered after two expected 502s during restart,
+  `tenant_indexes.sql` reapplied to the single serial schema, post-deploy
+  family/version/fingerprint check `serial version=6/6` OK, continuity
+  fingerprints compared, operational thresholds captured, superseded image
+  pruned, **Phase 30 production foundation deployment PASS**.
+  Independent public check immediately afterwards: `/authentication/login/` and
+  `/` both HTTP 200 with a complete login form and CSRF token.
+- [x] **STOP — owner manual production verification and Phase 4A PASS.**
+  **Owner Phase 4A result:** `PASS` — "the site is live and working fine",
+  recorded 2026-09-07 after the deployment of `a4f915f`.
+  Checkpoint 4B is now eligible but must not begin without an explicit
+  instruction, per the plan's progress rule.
 
 #### Checkpoint 4B — transition replacements and final retirement
 
@@ -692,3 +710,8 @@ confirms the replacement migration records may the transition complete.
 | 2026-09-07 | Independent review of both squashed replacements completed | `replaces` lists match the on-disk chains exactly and end at the audited leaves; dependencies identical to the originals. tenancy: final ORM state proven identical to the original chain across all 6 models, retired constraint absent, `RunPython.noop` shown behaviourally identical to the original empty `reverse_backfill`, no model drift. authentication: static parse and an empirical two-database diff agree exactly — 90 custom permissions become 76, the difference is precisely the 14 retired codenames, with none added or relabelled. No defects found; two inherited patterns recorded rather than changed |
 | 2026-09-07 | Checkpoint 4A committed as `d8e55c6` on branch `phase4a-serial-only-hygiene` | 116 files, +2,108 / -20,965. Committed to a branch rather than directly to `main`; `main` left at `4f7f49f`. No `[skip ci]`, so the branch push runs the full test gate set |
 | 2026-09-07 | Owner authorized pushing the branch; CI run `34081125290` PASS | All 13 test jobs green: static/release contracts, serial, creation-freeze, runtime-removal, metadata-inventory, compatibility, 3B cleanup rehearsal, isolation, ARM64, full regression, encrypted recovery, Phase 29 staging/security, and the new checkpoint 4A migration-replacement proof. `staging-release-approval`, `publish` and `deploy` correctly skipped — all three are gated on `refs/heads/main`. Nothing published or deployed |
+| 2026-09-07 | Owner instructed merge to `main`; fast-forward `4f7f49f` → `a4f915f` pushed | Clean fast-forward of both 4A commits. Protected CI/CD run `34081803210` started; publication and deployment are gated on `main` and on protected environments |
+| 2026-09-07 | Protected run `34081803210` gates PASS and image published | All 13 test jobs green including the checkpoint 4A migration-replacement proof and the Phase 29 staging/security gate; staging release approval recorded; `ghcr.io/maaz-bin-haider/financee-web:a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00` published. Deploy held at the `production` gate; the agent verified the pending gate and did not submit the approval |
+| 2026-09-07 | Owner approved the production deployment; EC2 deploy PASS at 04:19 UTC | Pinned image pulled, web recreated, nginx health recovered after two expected restart 502s, `tenant_indexes.sql` reapplied to the one serial schema, post-deploy check `serial version=6/6`, continuity fingerprints compared, operational thresholds captured, superseded image pruned, Phase 30 controller PASS. Independent public check: login page and root both HTTP 200 with a complete form. **Owner manual production verification still required to record the Phase 4A PASS** |
+| 2026-09-07 | Follow-up noted: the Phase 4 audit workflow pin is now stale | `.github/workflows/phase4-migration-leaf-inspection.yml` and `deploy/phase4_inventory_remote.sh` hard-assert the accepted deployed SHA `497b665`, which the 4A release superseded. The read-only audit will fail closed until that pin is moved to `a4f915f…`; it must be updated before checkpoint 4B's confirmation audit |
+| 2026-09-07 | Owner reported "the site is live and working fine" after the 4A release | **Checkpoint 4A manual production PASS.** The quantity-company family is now retired in runtime, database and repository, and the serial-only squashed replacements are deployed. Checkpoint 4B eligible but not started pending explicit instruction |

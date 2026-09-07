@@ -2,12 +2,9 @@
 
 **Started:** 2026-09-04
 
-**Current status:** Checkpoint 4.0 is **closed** — the protected read-only
-production audit passed and its artifact has been reviewed. Checkpoint 4A
-retirement, test rewrite, documentation rewrite and the migration-replacement
-proof are complete **locally**, and every static and container-backed gate
-passes. No CI/CD release, deployment, archive change, or production mutation has
-been authorized or performed.
+**Current status:** Checkpoints 4.0 and **4A are COMPLETE**. The 4A release is
+deployed to production as `a4f915f` and the owner recorded a manual production
+PASS on 2026-09-07. Checkpoint 4B has not started.
 
 ## Entry decision
 
@@ -569,6 +566,98 @@ This also closes the one local gap noted earlier: the production-like Phase 29
 staging and security gate, which had not been run separately on the workstation,
 passed in CI on this exact commit.
 
-**Remaining for checkpoint 4A:** land the commit on `main` so the protected
-CI/CD publishes the exact image, approve the deployment through the `production`
-environment, then the owner's manual production verification and PASS.
+**Superseded by the release below.**
+
+
+---
+
+# Checkpoint 4A — released to production (2026-09-07)
+
+`main` fast-forwarded `4f7f49f` → **`a4f915f`**. Protected CI/CD run
+**`34081803210`** — conclusion **success**, every job green:
+
+- 13 test gates (as on the branch run), plus
+- `Product, engineering & operations staging approval` — recorded,
+- `Publish signed-off multi-architecture image` — published
+  `ghcr.io/maaz-bin-haider/financee-web:a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00`,
+- `Deploy to EC2 (manual approval)` — released by the owner through the
+  `production` environment; the agent verified the pending gate and did not
+  submit the approval.
+
+## Deployment evidence — 2026-09-07 04:19 UTC
+
+```text
+Image ...:a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00 Pulled
+==> Recreating web + nginx
+==> Waiting for health through nginx        (two expected 502s during restart, then healthy)
+==> Applying tenant SQL to all schemas (idempotent)
+    applying 'tenancy/sql/tenant_indexes.sql' to 1 serial schema(s), target version 6.
+      ok   -> tenant_company_1 (serial v6)
+==> Post-deploy tenant family/version/fingerprint and safe-report checks
+    OK tenant_company_1 family=serial version=6/6
+==> Comparing all tenant balances and continuity fingerprints
+==> Capturing operational thresholds
+==> Pruning superseded images after all release gates passed
+Phase 30 production foundation deployment PASS
+```
+
+The container now runs the 4A image. Critically, the entrypoint's `migrate` was
+a **no-op** on production, exactly as the migration-replacement proof predicted
+for a database already at the original leaves — the retired column was not
+recreated, and `register_bootstrap_tenant` took no action because the registry
+already contains a company.
+
+Independent public check immediately after the deploy:
+
+```text
+https://financee-swisstech.com/authentication/login/   HTTP 200
+https://financee-swisstech.com/                        HTTP 200
+login form present with csrfmiddlewaretoken, username, password
+```
+
+## Two operational notes
+
+1. **The Phase 4 audit workflow pin is now stale.**
+   `.github/workflows/phase4-migration-leaf-inspection.yml` and
+   `deploy/phase4_inventory_remote.sh` hard-assert the accepted deployed SHA
+   `497b6650ed678bc462f85de6bff14692bffd6ace`, which this release superseded.
+   The read-only audit will fail closed until that pin moves to `a4f915f…`. It
+   must be updated before checkpoint 4B's confirmation audit.
+2. **The previous image was pruned from the EC2 host** after all release gates
+   passed, which is the controller's intended behaviour — in-deploy rollback
+   happens before pruning. A *later* manual rollback to `497b665` would need a
+   fresh `docker pull` from GHCR, where the image still exists.
+
+## Owner verification — Phase 4A PASS
+
+**Owner Phase 4A result:** `PASS`. Reported 2026-09-07 after the deployment of
+`a4f915f`: *"the site is live and working fine."*
+
+Checkpoint 4A is complete. The quantity-company family is now retired in
+runtime, database and repository, and the serial-only squashed replacement
+migrations are deployed and recorded in production.
+
+## Remaining — checkpoint 4B, not started
+
+Per the plan's progress rule, 4B must not begin without an explicit
+instruction. Its scope:
+
+1. Delete the replaced migration files, update dependencies to the squashed
+   migrations, and remove `replaces` so each becomes a normal migration.
+2. Validate `migrate --prune` on restored and synthetic databases before any
+   separately approved pruning of obsolete `django_migrations` rows.
+3. Delete `tests/serial_api_compat.py` and the dual-image branches that depend
+   on it, once no published image carries the retired compatibility API. Note
+   the rollback target `497b665` still does, so this cannot happen until the
+   accepted rollback image is a 4A-or-later build.
+4. Retire the pre-3B fixture reconstruction added to the Phase 3 inventory and
+   Phase 3A compatibility proofs, which exists only to exercise replaced
+   migrations.
+5. Reprove fresh install, upgraded original history, rollback compatibility,
+   serial continuity, backup/restore and all mandatory CI/CD gates, then deploy
+   4B through protected production approval.
+
+**Blocking follow-up before 4B:** the Phase 4 audit workflow and
+`deploy/phase4_inventory_remote.sh` still pin the superseded deployed SHA
+`497b665` and will fail closed. Repin them to `a4f915f…` before dispatching
+4B's confirmation audit.
