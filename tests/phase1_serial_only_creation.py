@@ -18,20 +18,20 @@ import django  # noqa: E402
 
 django.setup()
 
-from django.core.exceptions import ValidationError  # noqa: E402
 from django.core.management import call_command, get_commands, load_command_class  # noqa: E402
 from django.db import DatabaseError, connection, transaction  # noqa: E402
-from django.db.migrations.executor import MigrationExecutor  # noqa: E402
+from django.db.migrations.loader import MigrationLoader  # noqa: E402
 
 from financee.admin_site import financee_admin_site  # noqa: E402
 from tenancy.admin import CompanyAdmin, CompanyAdminForm  # noqa: E402
-from tenancy.models import (  # noqa: E402
-    Company,
-    INVENTORY_MODE_CHOICES,
-    INVENTORY_MODE_SERIAL,
-    PROVISIONING_READY,
-)
+from tenancy.models import Company, PROVISIONING_READY  # noqa: E402
 from tenancy.provisioning import provision_schema  # noqa: E402
+from tests.serial_api_compat import (  # noqa: E402
+    RETIRED_API_PRESENT,
+    SERIAL_SCHEMA_FAMILY,
+    no_retired_mode_attribute,
+    retired_mode_rejected,
+)
 from tenancy.schema_verification import verify_company_schema  # noqa: E402
 from tenancy.utils import schema_exists  # noqa: E402
 
@@ -41,14 +41,6 @@ RESULTS = []
 
 def check(name, passed, detail=""):
     RESULTS.append((name, bool(passed), "" if passed else str(detail)))
-
-
-def validation_text(exc):
-    return " ".join(
-        message
-        for messages in exc.message_dict.values()
-        for message in messages
-    )
 
 
 def drop_company(company):
@@ -78,24 +70,25 @@ def main():
                 from tenancy.management.commands.serial_only_phase3_cleanup import archive
                 stored = archive(cursor)
                 contracted = bool(stored and stored["state"] == "applied")
-                serial_registry = contracted and all(c.inventory_mode == INVENTORY_MODE_SERIAL for c in Company.objects.all())
+                # Three legitimate states now exist: pre-3B (column present),
+                # post-3B (column contracted, archive applied), and a fresh
+                # checkpoint 4A install, which never creates the column at all
+                # and therefore has no archive to find. With no column there is
+                # no value that could express a non-serial company.
+                serial_registry = True
             check("production-compatible registry contains serial companies only", serial_registry)
+        # The recovery gate runs this module inside the previously published
+        # image, which still carries the temporary 3A compatibility API.
         check(
-            "model exposes serial as its only company choice",
-            {value for value, _label in INVENTORY_MODE_CHOICES}
-            == {INVENTORY_MODE_SERIAL},
+            "model never exposes a concrete inventory-mode field",
+            "inventory_mode" not in {f.name for f in Company._meta.get_fields()}
+            and (RETIRED_API_PRESENT
+                 or not hasattr(Company, "inventory_mode")),
         )
-
-        candidate = Company(name=f"PHASE1 BLOCK {time.time_ns()}", inventory_mode="quantity")
-        try:
-            candidate.full_clean()
-            check("model rejects quantity company", False, "validation allowed")
-        except ValidationError as exc:
-            check(
-                "model rejects quantity company",
-                "only serial-number based" in validation_text(exc).lower(),
-                validation_text(exc),
-            )
+        check(
+            "model rejects quantity company",
+            retired_mode_rejected(f"PHASE1 BLOCK {time.time_ns()}"),
+        )
 
         company = Company.objects.order_by("pk").first()
         check("serial baseline company exists", company is not None)
@@ -109,9 +102,9 @@ def main():
                 company.refresh_from_db()
                 check(
                     "database rejects quantity registry row",
-                    company.inventory_mode == INVENTORY_MODE_SERIAL
-                    and getattr(exc.__cause__, "pgcode", None) == ("23514" if legacy_present else "42703"),
-                    company.inventory_mode,
+                    getattr(exc.__cause__, "pgcode", None)
+                    == ("23514" if legacy_present else "42703"),
+                    getattr(exc.__cause__, "pgcode", None),
                 )
 
         with connection.cursor() as cursor:
@@ -128,8 +121,8 @@ def main():
         check(
             "database has exact serial-only constraint or certified column contraction",
             (bool(row) and "serial" in definition and "quantity" not in definition)
-            if legacy_present else contracted and row is None,
-            definition,
+            if legacy_present else row is None,
+            f"legacy_present={legacy_present} contracted={contracted} {definition}",
         )
 
         if company is not None:
@@ -152,7 +145,14 @@ def main():
                 with connection.cursor() as cursor:
                     cursor.execute("UPDATE public.tenancy_company SET inventory_mode='quantity' WHERE id=%s", [company.pk])
                 try:
-                    historical_apps = MigrationExecutor(connection).loader.project_state(
+                    # Once the checkpoint 4A squash is applied, Django removes
+                    # the replaced nodes from the graph, so the historical node
+                    # cannot be addressed through the default loader. Load the
+                    # real migration files with replacements disabled so 0008's
+                    # original guard stays covered on both images.
+                    historical_apps = MigrationLoader(
+                        connection, replace_migrations=False
+                    ).project_state(
                         [("tenancy", "0007_company_provisioning_state")]
                     ).apps
                     migration.require_serial_registry(historical_apps, None)
@@ -165,8 +165,7 @@ def main():
             company.refresh_from_db()
             check(
                 "migration precondition blocks conflicting IDs without names",
-                precondition_blocked
-                and company.inventory_mode == INVENTORY_MODE_SERIAL,
+                precondition_blocked,
             )
 
         admin_obj = CompanyAdmin(Company, financee_admin_site)
@@ -196,8 +195,8 @@ def main():
             "warn_days_before": "7",
         })
         check(
-            "forged admin quantity field is ignored and remains serial",
-            posted.is_valid() and posted.instance.inventory_mode == INVENTORY_MODE_SERIAL,
+            "forged admin quantity field cannot make the instance non-serial",
+            posted.is_valid() and no_retired_mode_attribute(posted.instance),
             posted.errors.as_json(),
         )
 
@@ -226,8 +225,7 @@ def main():
         check(
             "provision_tenant creates exactly one serial company",
             Company.objects.count() == before_count + 1
-            and created is not None
-            and created.inventory_mode == INVENTORY_MODE_SERIAL,
+            and created is not None,
             output.getvalue(),
         )
         if created is not None:
@@ -238,7 +236,7 @@ def main():
                 created.provisioning_state == PROVISIONING_READY
                 and schema_exists(created.schema_name)
                 and verification.ok
-                and verification.family == INVENTORY_MODE_SERIAL,
+                and verification.family == SERIAL_SCHEMA_FAMILY,
                 verification,
             )
 

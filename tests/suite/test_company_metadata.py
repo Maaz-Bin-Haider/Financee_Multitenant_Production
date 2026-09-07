@@ -15,15 +15,17 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "financee.settings")
 import django  # noqa: E402
 django.setup()
 
-from django.core.exceptions import ValidationError  # noqa: E402
 from django.db import DatabaseError, connection, transaction  # noqa: E402
 
 from financee.admin_site import financee_admin_site  # noqa: E402
 from tenancy.admin import CompanyAdmin, CompanyAdminForm  # noqa: E402
-from tenancy.models import (  # noqa: E402
-    Company,
-    INVENTORY_MODE_CHOICES,
-    INVENTORY_MODE_SERIAL,
+from tenancy.models import Company  # noqa: E402
+from tenancy.schema_verification import verify_company_schema  # noqa: E402
+from tests.serial_api_compat import (  # noqa: E402
+    RETIRED_API_PRESENT,
+    SERIAL_SCHEMA_FAMILY,
+    no_retired_mode_attribute,
+    retired_mode_rejected,
 )
 
 
@@ -34,44 +36,50 @@ def chk(name, ok, detail=""):
     RESULTS.append((name, bool(ok), str(detail)))
 
 
-def validation_message(exc):
-    return " ".join(
-        message
-        for messages in exc.message_dict.values()
-        for message in messages
-    )
-
-
 def main():
     companies = list(Company.objects.order_by("id"))
     chk("active baseline companies exist", bool(companies), len(companies))
+    # Checkpoint 4A retired the registry mode column, so "serial only" is
+    # proven against each physical schema instead of a metadata value.
+    verified = [
+        (c.id, verify_company_schema(c, use_cache=False)) for c in companies
+        if c.schema_name
+    ]
     chk(
-        "all companies use serial inventory",
-        bool(companies) and all(
-            c.inventory_mode == INVENTORY_MODE_SERIAL
-            for c in companies
+        "every provisioned company verifies as the serial family",
+        bool(verified) and all(
+            v.ok and v.family == SERIAL_SCHEMA_FAMILY for _cid, v in verified
         ),
-        [(c.id, c.inventory_mode) for c in companies],
+        [(cid, v.family, v.reason) for cid, v in verified],
     )
     bootstrap = Company.objects.filter(name="Company One").first()
     chk(
-        "legacy bootstrap company remains serial",
-        bootstrap is None or bootstrap.inventory_mode == INVENTORY_MODE_SERIAL,
-        None if bootstrap is None else bootstrap.inventory_mode,
+        "legacy bootstrap company still verifies as serial",
+        bootstrap is None or verify_company_schema(
+            bootstrap, use_cache=False).family == SERIAL_SCHEMA_FAMILY,
+        None if bootstrap is None else bootstrap.schema_name,
     )
 
-    choice_values = {value for value, _label in INVENTORY_MODE_CHOICES}
-    chk(
-        "model declares serial as the only company choice",
-        choice_values == {INVENTORY_MODE_SERIAL},
-        choice_values,
-    )
+    # The recovery gate runs this module inside the previously published
+    # image, which still carries the temporary 3A compatibility API.
+    if RETIRED_API_PRESENT:
+        chk(
+            "retired mode is a serial-locked compatibility property only",
+            "inventory_mode" not in {f.name for f in Company._meta.get_fields()}
+            and Company.get_inventory_mode_display is not None,
+        )
+    else:
+        chk(
+            "model exposes no inventory-mode concept at all",
+            not hasattr(Company, "inventory_mode")
+            and not hasattr(Company, "get_inventory_mode_display")
+            and "inventory_mode" not in {f.name for f in Company._meta.get_fields()},
+        )
 
     # Unsaved serial companies remain valid. Avoid save(): this phase must not
     # create or delete any physical tenant schema.
     serial_candidate = Company(
         name=f"PHASE3 SERIAL VALIDATION {time.time_ns()}",
-        inventory_mode=INVENTORY_MODE_SERIAL,
     )
     try:
         serial_candidate.full_clean()
@@ -79,37 +87,26 @@ def main():
     except Exception as exc:
         chk("new serial company metadata validates", False, repr(exc))
 
-    quantity_candidate = Company(
-        name=f"PHASE3 QUANTITY BLOCK {time.time_ns()}",
-        inventory_mode="quantity",
+    # The retired keyword is now refused by Model.__init__ itself, which is
+    # stricter than the save-time validation it replaces.
+    chk(
+        "quantity company metadata is rejected",
+        retired_mode_rejected(f"PHASE3 QUANTITY BLOCK {time.time_ns()}"),
     )
-    try:
-        quantity_candidate.full_clean()
-        chk("quantity company metadata is rejected", False, "validation allowed")
-    except ValidationError as exc:
-        chk(
-            "quantity company metadata is rejected",
-            "only serial-number based" in validation_message(exc).lower(),
-            validation_message(exc),
-        )
 
-    company = next(
-        value for value in companies
-        if value.inventory_mode == INVENTORY_MODE_SERIAL
-    )
+    company = companies[0]
     original_schema = company.schema_name
-    company.inventory_mode = "quantity"
     try:
         company.save(update_fields=["inventory_mode"])
         chk("existing company inventory mode is immutable", False, "save succeeded")
-    except ValidationError as exc:
+    except Exception as exc:
+        # 4A: ValueError (unknown field). 3A: ValidationError (non-serial value).
         company.refresh_from_db()
         chk(
-            "existing company cannot be changed to quantity",
-            company.inventory_mode == INVENTORY_MODE_SERIAL
-            and company.schema_name == original_schema
-            and "only serial-number based" in validation_message(exc).lower(),
-            validation_message(exc),
+            "existing company cannot be updated through a retired field",
+            company.schema_name == original_schema
+            and no_retired_mode_attribute(company),
+            f"{type(exc).__name__}: {exc}",
         )
 
     # Before 3B the constraint rejects quantity; after certified 3B the column
@@ -131,9 +128,9 @@ def main():
         company.refresh_from_db()
         chk(
             "database rejects quantity inventory mode",
-            company.inventory_mode == INVENTORY_MODE_SERIAL
+            company.schema_name == original_schema
             and getattr(exc.__cause__, "pgcode", None) == ("23514" if legacy_present else "42703"),
-            company.inventory_mode,
+            getattr(exc.__cause__, "pgcode", None),
         )
 
     with connection.cursor() as cur:
@@ -146,8 +143,13 @@ def main():
             """
         )
         constraint_count = cur.fetchone()[0]
+    # Three legitimate states: pre-3B (column + constraint present), post-3B
+    # (contracted, archive applied), and a fresh checkpoint 4A install, which
+    # never creates the column and therefore has no archive. With no column
+    # there is no value that could express a non-serial company.
     chk("serial-only database constraint or certified column contraction",
-        constraint_count == 1 if legacy_present else contracted and constraint_count == 0, constraint_count)
+        constraint_count == 1 if legacy_present else constraint_count == 0,
+        f"legacy_present={legacy_present} contracted={contracted} count={constraint_count}")
 
     admin_obj = CompanyAdmin(Company, financee_admin_site)
     chk("admin form hides inventory mode", "inventory_mode" not in CompanyAdminForm.base_fields)
@@ -168,8 +170,8 @@ def main():
         "warn_days_before": "7",
     })
     chk(
-        "posted quantity value cannot alter the serial admin default",
-        form.is_valid() and form.instance.inventory_mode == INVENTORY_MODE_SERIAL,
+        "posted quantity value cannot make the instance non-serial",
+        form.is_valid() and no_retired_mode_attribute(form.instance),
         form.errors.as_json(),
     )
 

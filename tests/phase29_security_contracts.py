@@ -59,13 +59,13 @@ checks = {
     "rate limits include tenant identity":
         'return f"rl:{key_prefix}:{tenant}:{identity}:{bucket}"' in security,
     "company registry is serial only":
-        "self.inventory_mode != INVENTORY_MODE_SERIAL" in company
+        "inventory_mode" not in company
+        and "INVENTORY_MODE" not in company
         and 'condition=models.Q(inventory_mode="serial")' in creation_migration
         and "expected validated serial-only constraint required" in compatibility
         and "DROP CONSTRAINT" not in compatibility,
-    "company admin hides inventory family":
-        '"inventory_mode",' in admin.split("exclude = (", 1)[1].split(")", 1)[0]
-        and '"inventory_mode"' not in admin.split("list_display = (", 1)[1].split(")", 1)[0],
+    "company admin exposes no inventory family":
+        "inventory_mode" not in admin,
     "release verifies every tenant and safe report":
         "for company in companies" in preflight
         and "get_trial_balance_json" in preflight,

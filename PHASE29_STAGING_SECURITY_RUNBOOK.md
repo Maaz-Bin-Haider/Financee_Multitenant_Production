@@ -20,7 +20,9 @@ state, stack logs, the T7 result, and a machine-readable acceptance summary.
 - Use a separate Compose project, credentials, hostname, database, media
   volume, and Redis namespace.
 - Verify every restored serial tenant with `release_preflight`.
-- Provision two synthetic quantity tenants after restoration.
+- Provision two synthetic serial tenants after restoration. (Before the
+  serial-only consolidation this step provisioned quantity tenants; that
+  family is retired and can no longer be provisioned.)
 - Never copy production passwords, session data, API credentials, mail
   credentials, or backup passphrases into staging.
 
@@ -36,8 +38,11 @@ artifact.
 2. Route, feature, subscription, and object-level authorization.
 3. Private attachment metadata, preview, download, guessed-ID, and traversal
    behavior.
-4. SQL identifier validation and hostile serial/quantity payload rejection.
-5. Company provisioning, schema-family verification, and inventory-mode lock.
+4. SQL identifier validation and hostile payload rejection, including the
+   retired non-serial field identifiers.
+5. Company provisioning and physical serial schema-family verification.
+   There is no inventory-mode value to lock: the model, admin and
+   provisioning paths cannot express a non-serial company.
 6. HTTPS proxy handling, secure cookies, CSRF, response headers, and redacted
    error responses.
 7. Dependency integrity and vulnerability findings.
@@ -72,14 +77,16 @@ PHASE29_ARTIFACT_DIR=phase29-artifacts \
 The gate covers:
 
 - production settings and runtime hardening;
-- T4 serial regression and T5 quantity workflow/report UAT;
-- T6 two-serial/two-quantity isolation, authorization, attachment, cache,
+- T4 serial regression and T5 serial workflow/report UAT;
+- T6 four-serial isolation, authorization, attachment, cache,
   search-path, and error-scrubbing behavior;
 - selected T7 capacity and concurrency smoke;
 - T8 as an enforced upstream encrypted recovery gate;
 - initial/final all-tenant release preflight and Redis health.
 
-Local validation on 2026-07-27 passed: security contracts 18/18, runtime
-hardening 5/5, serial 51/51, quantity 20/20, mixed-family isolation 17/17,
+Local validation on 2026-07-27 (recorded before the serial-only
+consolidation, when the retired family still existed) passed: security
+contracts 18/18, runtime hardening 5/5, serial 51/51, quantity 20/20,
+mixed-family isolation 17/17,
 selected T7 at 1,000 SKUs, 20,000 movements, and 20 concurrent sessions with
 zero failures, deadlocks, negative stock, or waiting locks.

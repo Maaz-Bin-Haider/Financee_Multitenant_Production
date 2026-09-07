@@ -6,8 +6,8 @@ execution required
 ## Purpose
 
 Phase 30 deploys only the shared/public migration and serial-family hardening.
-It must not provision the quantity pilot. The controller fails if any active
-quantity tenant already exists.
+It provisions no company. The controller fails if any active tenant does not
+verify physically as the serial family.
 
 ## Required change record
 
@@ -33,7 +33,7 @@ actor is recorded as rollback owner. The workflow supplies the exact release
 SHA, image, and GitHub run/change ID.
 The controller rejects a non-SHA image, source/SHA mismatch, missing change
 metadata, an invalid backup mode, missing encrypted-mode configuration,
-quantity tenant, failed tenant verification, or unbalanced serial ledger.
+non-serial tenant, failed tenant verification, or unbalanced serial ledger.
 
 ## Execution order
 
@@ -50,7 +50,7 @@ quantity tenant, failed tenant verification, or unbalanced serial ledger.
    database/media restore point when encrypted mode is selected.
 4. Run the existing approval-gated pull deployment.
 5. Apply public migrations and serial hardening through the image entrypoint;
-   no quantity company is created.
+   no company is created.
 6. Repeat T9 and require identical tenant sets, table counts, journals, serial
    state, trial balance, and continuity fingerprints.
 7. Enforce login latency, HTTP 5xx, PostgreSQL connection, free-disk,

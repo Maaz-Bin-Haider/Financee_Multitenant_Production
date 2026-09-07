@@ -191,11 +191,7 @@ def features_map(company=None):
         group_on = company.feature_enabled(group) if company else True
         result[group] = {
             "enabled": group_on,
-            "applicable": (
-                company is None
-                or not spec.get("modes")
-                or company.inventory_mode in spec["modes"]
-            ),
+            "applicable": True,
             "subs": {
                 sub: (company.feature_enabled(f"{group}.{sub}") if company else True)
                 for sub in spec["subs"]

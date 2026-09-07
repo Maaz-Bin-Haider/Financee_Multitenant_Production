@@ -28,8 +28,9 @@ from django.test import Client, RequestFactory  # noqa: E402
 from financee.security import rate_limit_response  # noqa: E402
 from tenancy.middleware import TenantSchemaMiddleware  # noqa: E402
 from tenancy.models import (  # noqa: E402
-    Company, Currency, Membership, INVENTORY_MODE_SERIAL, PROVISIONING_READY,
+    Company, Currency, Membership, PROVISIONING_READY,
 )
+from tests.serial_api_compat import SERIAL_SCHEMA_FAMILY  # noqa: E402
 from tenancy.schema_verification import verify_company_schema  # noqa: E402
 from tenancy.utils import set_search_path  # noqa: E402
 
@@ -240,14 +241,14 @@ def main():
         currency = Currency.objects.get(pk="PKR")
         User = get_user_model()
         modes = (
-            (INVENTORY_MODE_SERIAL, "SA"),
-            (INVENTORY_MODE_SERIAL, "SB"),
-            (INVENTORY_MODE_SERIAL, "SC"),
-            (INVENTORY_MODE_SERIAL, "SD"),
+            (SERIAL_SCHEMA_FAMILY, "SA"),
+            (SERIAL_SCHEMA_FAMILY, "SB"),
+            (SERIAL_SCHEMA_FAMILY, "SC"),
+            (SERIAL_SCHEMA_FAMILY, "SD"),
         )
-        for mode, suffix in modes:
+        for _mode, suffix in modes:
             company = Company.objects.create(
-                name=f"PHASE25 {suffix} {TAG}", inventory_mode=mode,
+                name=f"PHASE25 {suffix} {TAG}",
                 base_currency=currency, tax_environment="non_tax",
             )
             user = User.objects.create_superuser(
@@ -259,7 +260,9 @@ def main():
             users.append(user)
 
         chk("T6 provisions four serial companies",
-            [c.inventory_mode for c in companies].count(INVENTORY_MODE_SERIAL) == 4
+            len(companies) == 4
+            and all(verify_company_schema(c, use_cache=False).family
+                    == SERIAL_SCHEMA_FAMILY for c in companies)
             and all(c.provisioning_state == PROVISIONING_READY for c in companies))
         chk("all four serial schemas verify before concurrency",
             all(verify_company_schema(c, use_cache=False).ok for c in companies))
@@ -317,16 +320,34 @@ def main():
                 "status": "error", "message": "An unexpected error occurred."
             } and companies[0].schema_name not in json.dumps(payload), payload)
 
-        mismatch = Company(
-            pk=companies[2].pk, name=companies[2].name,
-            schema_name=companies[2].schema_name,
-            inventory_mode="quantity",
-            base_currency=companies[2].base_currency,
-            tax_environment=companies[2].tax_environment,
-        )
-        verification = verify_company_schema(mismatch, use_cache=False)
-        chk("schema-family mismatch is rejected without changing tenant data",
-            not verification.ok)
+        # The retired registry mode can no longer be forged at all, so the
+        # equivalent fail-closed guarantee is proven physically: a company
+        # pointing at a schema without serial metadata must be rejected.
+        stray_schema = f"tenant_company_stray_{TAG}".lower()
+        with connection.cursor() as cursor:
+            cursor.execute("SET search_path TO public")
+            cursor.execute(f"CREATE SCHEMA {connection.ops.quote_name(stray_schema)}")
+        try:
+            mismatch = Company(
+                pk=companies[2].pk, name=companies[2].name,
+                schema_name=stray_schema,
+                base_currency=companies[2].base_currency,
+                tax_environment=companies[2].tax_environment,
+            )
+            verification = verify_company_schema(mismatch, use_cache=False)
+            chk("non-serial schema shape is rejected without changing tenant data",
+                not verification.ok
+                and verification.reason in {"metadata_invalid", "metadata_missing"},
+                verification)
+        finally:
+            with connection.cursor() as cursor:
+                cursor.execute("SET search_path TO public")
+                cursor.execute(
+                    f"DROP SCHEMA IF EXISTS "
+                    f"{connection.ops.quote_name(stray_schema)} CASCADE"
+                )
+        chk("verified serial companies are unaffected by the rejected probe",
+            all(verify_company_schema(c, use_cache=False).ok for c in companies))
         chk("main Django connection finishes on public", django_schema() == "public",
             django_schema())
     finally:

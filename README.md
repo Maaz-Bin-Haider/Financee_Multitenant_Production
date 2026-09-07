@@ -477,14 +477,19 @@ flowchart LR
 
 Financee serves and provisions the **serial schema family only**. Every item is
 tracked per physical serial number through purchase, sale, return, stock, and
-reporting workflows. Company creation is locked to serial in the admin, model,
-provisioning commands, and public database constraint.
+reporting workflows. There is no inventory-mode concept left to configure: the
+model, admin, provisioning commands and schema-family registry can only express
+a serial company, and the retired `inventory_mode` column, its check
+constraint, and the retired permissions have been removed from the production
+database under the Phase 3B guarded, reversible cleanup.
 
 The former quantity HTTP routes, dispatchers, templates, static assets,
-dashboard branches, and startup SQL maintenance are retired. Historical
-quantity schema descriptors, SQL artifacts, migrations, and permissions remain
-temporarily so Phase 3 can identify and remove database metadata safely; none
-of them is reachable as an application runtime.
+dashboard branches, startup SQL maintenance, schema descriptors, SQL templates
+and test modules have all been retired. Only the replaced Django migration
+files remain, pending the checkpoint 4B migration transition; they create no
+retired column on a fresh install. "Serial only" is now proven physically by
+schema verification rather than by any registry metadata value. See
+`SERIAL_ONLY_REMOVAL_PLAN.md`.
 
 ---
 
@@ -495,13 +500,13 @@ of them is reachable as an application runtime.
 ```mermaid
 flowchart TB
     subgraph boot["First DB boot (pgdata empty)"]
-        SEED[build_multitenant_db.sql<br/>→ public objects + example tenant_company_1]
+        SEED[build_multitenant_db.sql<br/>→ Django/auth tables + example tenant_company_1<br/>tenancy registry NOT created here]
     end
     subgraph start["Every web container start (entrypoint.sh)"]
         W1[wait for Postgres] --> W2[sync baked static → shared volume]
-        W2 --> RS[remove allowlisted retired quantity assets only]
-        RS --> W3[manage.py migrate  — public only]
-        W3 --> W4[apply_sql_all_tenants production_hardening.sql --family serial]
+        W2 --> W3[manage.py migrate  — public only]
+        W3 --> RB[register_bootstrap_tenant — first boot only]
+        RB --> W4[apply_sql_all_tenants production_hardening.sql --family serial]
         W4 --> W5[apply_sql_all_tenants tenant_indexes.sql --family serial]
         W5 --> W6[exec gunicorn]
     end
@@ -512,7 +517,7 @@ flowchart TB
 
 - **Host:** AWS **EC2 `t4g.medium`** — ARM64 Graviton, 2 vCPU / 4 GiB. Postgres, Redis, web, and nginx all co-located; DB tuned accordingly (`shared_buffers=768MB`, `work_mem=4MB`, etc.).
 - **TLS:** domain `financee-swisstech.com` on **Cloudflare (proxied)**, Full-strict mode, **Cloudflare Origin Certificate** on nginx (15-yr, no certbot/renewal). The 443 listener lives in `docker-compose.tls.yml`, auto-added by the deploy scripts once `origin.pem` exists on the host — so HTTP-only deploys never break before the cert is installed.
-- **Static:** collected at image build; entrypoint syncs the baked tree into the shared volume so nginx serves current hashed assets after every deploy. A fixed allowlist removes retired quantity assets and their hashed/compressed variants without clearing older serial assets. The previous image repopulates its own assets on rollback.
+- **Static:** collected at image build; entrypoint syncs the baked tree into the shared volume so nginx serves current hashed assets after every deploy. The one-shot allowlist that removed retired quantity assets completed its rollout and was itself retired in checkpoint 4A. The previous image repopulates its own assets on rollback.
 - **Ports:** only 22 / 80 / 443 open; Postgres & Redis stay internal to the Docker network.
 
 Full step-by-step (fresh EC2 → running stack → CI/CD → HTTPS) is in **`DEPLOYMENT_GUIDE.md`**.
@@ -679,8 +684,8 @@ Financee_Multitenant_Production/
 | **`FIXED_ISSUES.md`** | Diagnosed production/setup bugs, root causes & fixes |
 | **`DEPLOYMENT_GUIDE.md`** | Fresh EC2 → running stack → CI/CD → HTTPS, step by step |
 | **`DATABASE_BACKUP_GITHUB_RUNBOOK.md`** · **`PHASE28_RECOVERY_RUNBOOK.md`** | Backup & restore runbooks |
-| **`ARCHITECTURE_QUANTITY_COMPANY.md`** · **`SRS_QUANTITY_BASED_COMPANY.md`** | Quantity-family design & requirements |
-| **`IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`** · **`todo.md`** | 33-phase rollout plan & execution status |
+| **`SERIAL_ONLY_REMOVAL_PLAN.md`** | Serial-only consolidation plan, phase gates & audit trail |
+| **`todo.md`** | Historical 33-phase rollout plan & execution status (quantity family since retired) |
 | `tests/README.md` · `tests/suite/README.md` | Test harness docs |
 
 ---

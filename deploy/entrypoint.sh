@@ -40,10 +40,18 @@ if [ -d /app/static_build ]; then
     cp -a /app/static_build/. /app/staticfiles/ 2>/dev/null || true
 fi
 
-python deploy/retire_quantity_static.py
-
 echo "[entrypoint] applying public-schema migrations ..."
 python manage.py migrate --no-input
+
+# First boot only: build_multitenant_db.sql builds the example
+# tenant_company_1 business schema but no longer creates the public
+# tenancy registry (doing so left the serial-only squashed migration
+# partially applied, so Django replayed the original chain and recreated
+# the retired inventory_mode column). This registers that pre-built schema
+# once. It refuses to act on any database that already contains a company,
+# so it is a no-op on every existing deployment.
+echo "[entrypoint] registering bootstrap tenant if this is a fresh database ..."
+python manage.py register_bootstrap_tenant
 
 echo "[entrypoint] applying required tenant hardening SQL ..."
 python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql --family serial

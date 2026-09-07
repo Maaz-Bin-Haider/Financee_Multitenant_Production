@@ -21,9 +21,10 @@ from django.db import connection  # noqa: E402
 from django.test import Client  # noqa: E402
 
 from tenancy.models import (  # noqa: E402
-    Company, Currency, Membership, INVENTORY_MODE_SERIAL, PROVISIONING_READY,
+    Company, Currency, Membership, PROVISIONING_READY,
 )
 from tenancy.schema_families import schema_family  # noqa: E402
+from tests.serial_api_compat import SERIAL_SCHEMA_FAMILY  # noqa: E402
 from tenancy.schema_verification import verify_company_schema  # noqa: E402
 
 TAG = f"{time.strftime('%H%M%S')}_{os.getpid()}"
@@ -118,7 +119,6 @@ def main():
         for suffix in ("A", "B"):
             company = Company.objects.create(
                 name=f"PHASE24 SERIAL {TAG} {suffix}",
-                inventory_mode=INVENTORY_MODE_SERIAL,
                 base_currency=currency, tax_environment="non_tax",
             )
             companies.append(company)
@@ -129,7 +129,7 @@ def main():
             users.append(user)
             Membership.objects.create(user=user, company=company)
 
-        definition = schema_family(INVENTORY_MODE_SERIAL)
+        definition = schema_family(SERIAL_SCHEMA_FAMILY)
         chk("two fresh serial companies provisioned",
             len({company.schema_name for company in companies}) == 2
             and all(company.provisioning_state == PROVISIONING_READY
@@ -145,12 +145,12 @@ def main():
 
         call_command(
             "apply_sql_all_tenants", str(definition.hardening_path),
-            family=INVENTORY_MODE_SERIAL, stdout=open(os.devnull, "w"),
+            family=SERIAL_SCHEMA_FAMILY, stdout=open(os.devnull, "w"),
         )
         indexes_path = ROOT / "tenancy/sql/tenant_indexes.sql"
         call_command(
             "apply_sql_all_tenants", str(indexes_path),
-            family=INVENTORY_MODE_SERIAL, stdout=open(os.devnull, "w"),
+            family=SERIAL_SCHEMA_FAMILY, stdout=open(os.devnull, "w"),
         )
         chk("serial hardening and index rollout are idempotent",
             all(verify_company_schema(company, use_cache=False).ok

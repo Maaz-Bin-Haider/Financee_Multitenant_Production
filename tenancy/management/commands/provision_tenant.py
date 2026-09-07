@@ -16,7 +16,6 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from tenancy.models import (
-    INVENTORY_MODE_SERIAL,
     TAX_ENVIRONMENT_CHOICES,
     Company,
     Currency,
@@ -87,7 +86,6 @@ class Command(BaseCommand):
             # physical schema from tenant_template.sql.
             company = Company.objects.create(
                 name=name,
-                inventory_mode=INVENTORY_MODE_SERIAL,
                 base_currency=base_currency,
                 tax_environment=tax_environment,
             )
@@ -106,7 +104,6 @@ class Command(BaseCommand):
                 f"Company {company.name!r} created (schema {company.schema_name!r}, "
                 f"base_currency={company.base_currency_id}, "
                 f"tax_environment={company.tax_environment}, "
-                f"inventory_mode={company.inventory_mode}, "
                 f"state={company.provisioning_state}, "
                 f"provisioned={provisioned})."
             )

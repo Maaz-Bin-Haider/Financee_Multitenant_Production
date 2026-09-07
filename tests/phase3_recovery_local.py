@@ -57,6 +57,31 @@ def main():
         attempted = True
         gate.run([*compose, "up", "-d", "--wait", "--wait-timeout", "180", "db", "redis", "web"],
                  env=env, timeout=240, log=work / "synthetic-startup.log")
+        # build_multitenant_db.sql builds tenant_company_1 but no longer creates
+        # the tenancy registry, so the entrypoint registers it after migrate.
+        # The pinned 3A source image predates that command, which would leave
+        # tenant_company_1 orphaned and collide with the first company created
+        # here. Copy the current command in and run it; it refuses to act on any
+        # database that already has a company, so it is a no-op if the image
+        # already handled it.
+        gate.run([*compose, "cp",
+                  str(ROOT / "tenancy/management/commands/register_bootstrap_tenant.py"),
+                  "web:/app/tenancy/management/commands/register_bootstrap_tenant.py"], env=env)
+        gate.run([*compose, "exec", "-T", "web", "python", "manage.py",
+                  "register_bootstrap_tenant"], env=env,
+                 log=work / "synthetic-bootstrap-tenant.log")
+        # The old image's entrypoint already ran apply_sql_all_tenants before
+        # that registration existed, so it skipped the unregistered schema.
+        # Reapply the rollout in the entrypoint's own order so this estate
+        # matches what a normal boot produces -- otherwise the restored copy
+        # (whose backup already carries the registry row) gets the indexes and
+        # the live source does not, and the structural witnesses diverge.
+        for rollout in ("tenancy/sql/production_hardening.sql",
+                        "tenancy/sql/tenant_indexes.sql"):
+            gate.run([*compose, "exec", "-T", "web", "python", "manage.py",
+                      "apply_sql_all_tenants", rollout, "--family", "serial"],
+                     env=env, timeout=240,
+                     log=work / ("synthetic-rollout-" + Path(rollout).stem + ".log"))
         print("SYNTHETIC_SOURCE_STARTUP=PASS", flush=True)
         if executor_test:
             sys.path.insert(0, str(ROOT))

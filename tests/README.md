@@ -10,8 +10,10 @@ docker compose -f deploy/docker-compose.yml exec -T web \
 It exits non-zero when the effective runtime cannot safely begin the T7
 100-session capacity test. See `PHASE26_PERFORMANCE_CAPACITY_RESULTS.md`.
 
-The clean two-tenant serial baseline captured before quantity-company
-implementation is recorded in `tests/PHASE1_BASELINE_RESULTS.md`.
+The clean two-tenant serial baseline captured before the (since retired)
+quantity-company implementation is recorded in
+`tests/PHASE1_BASELINE_RESULTS.md`. The system is serial-only; see
+`SERIAL_ONLY_REMOVAL_PLAN.md`.
 
 Three complementary harnesses that together exercise **every** business operation,
 the HTTP layer, and high-risk real-world serial lifecycles.

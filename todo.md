@@ -1,5 +1,21 @@
 # TODO
 
+> **Historical record — read as history, not as current behavior.**
+>
+> This file logs the completed 33-phase rollout of the **quantity/FIFO company
+> family**, which was never used by a production customer and has since been
+> retired end to end (runtime, database and repository) under
+> `SERIAL_ONLY_REMOVAL_PLAN.md`. Financee is now **serial-only**.
+>
+> Statements below about quantity schemas, quantity tenants, mixed-family
+> operation, `inventory_mode`, and the design documents
+> `SRS_QUANTITY_BASED_COMPANY.md`,
+> `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`,
+> `ARCHITECTURE_QUANTITY_COMPANY.md` and
+> `REQUIREMENTS_TRACEABILITY_QUANTITY_COMPANY.md` describe a system and files
+> that no longer exist. For the current state see `PROJECT_CONTEXT.md` →
+> Session Resume Checkpoint.
+
 ## [ ] MAJOR OPERATIONS UPDATE: Automated Daily Encrypted PostgreSQL Backup to a Private GitHub Repository
 
 ### Objective

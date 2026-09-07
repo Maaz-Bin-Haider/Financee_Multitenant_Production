@@ -10,6 +10,8 @@ Each company is an isolated PostgreSQL **schema** (`tenant_company_<id>`). Share
 
 Deeper context lives in `README.md`, `PROJECT_CONTEXT.md` (persistent engineering context — keep it current), and `FIXED_ISSUES.md` (diagnosed production/setup bugs). Read these before non-trivial work.
 
+**Serial-only.** Financee tracks inventory by physical serial number and supports exactly one schema family. A second "quantity/FIFO" family was built but never used in production and has been retired in runtime, database and repository under `SERIAL_ONLY_REMOVAL_PLAN.md` (phase gates + audit trail; Phase 4 is in progress). There is no `inventory_mode` — `Company` has no such field, property or choice list, and the physical column and its constraint were dropped from production under the Phase 3B guarded, reversible cleanup. **Do not reintroduce an inventory-mode concept.** Note that the ordinary word "quantity" is *not* evidence of the retired family: serial purchases, sales, returns and stock reports legitimately store counts named `qty`/`quantity`, and those must be preserved. The Phase 3B archive and its restore tooling are the reversal path — never delete them.
+
 ## Multitenancy model — the core mechanism
 
 - Only **two ORM models exist**: `Company` and `Membership` (`tenancy/models.py`), both in `public`. A user belongs to exactly one company (OneToOne). Business tables are **not** Django models.
@@ -25,6 +27,8 @@ Business schema changes require **two coordinated edits**, or new tenants and ex
 1. Update `tenancy/sql/tenant_template.sql` (so new tenants get it).
 2. Add/update an **idempotent** patch under `tenancy/sql/` using `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
 3. Apply to existing tenants: `python manage.py apply_sql_all_tenants tenancy/sql/<patch>.sql`
+
+**Do not make `build_multitenant_db.sql` create the `public` tenancy tables or seed a `tenancy` row into `django_migrations`.** It used to, and that left the serial-only squashed migration *partially* applied — Django only uses a replacement when all or none of what it replaces is applied, so it replayed the original chain and recreated the retired `inventory_mode` column on every fresh install. Migrations own the public tenancy schema; the bootstrap builds the example `tenant_company_1` business schema and the entrypoint registers it with `manage.py register_bootstrap_tenant`.
 
 Keep `tenant_template.sql`, `build_multitenant_db.sql`, and `tenancy/sql/production_hardening.sql` aligned — `production_hardening.sql` is re-run on every Docker container start (`deploy/entrypoint.sh`) to self-heal older schemas, so anything critical must live there and be safe to rerun.
 

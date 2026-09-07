@@ -5,9 +5,6 @@ from __future__ import annotations
 import json
 from django.http import JsonResponse
 
-from .models import INVENTORY_MODE_SERIAL
-
-
 NON_SERIAL_PAYLOAD_KEYS = frozenset({
     "variant_id", "warehouse_id", "source_warehouse_id",
     "destination_warehouse_id", "source_sale_line_id",
@@ -16,9 +13,9 @@ NON_SERIAL_PAYLOAD_KEYS = frozenset({
 
 
 def serial_inventory_view(request, view, *args, **kwargs):
-    """Run a serial view only for a trusted serial Company registry row."""
+    """Run a serial view only when middleware resolved a trusted company."""
     company = getattr(request, "tenant_company", None)
-    if getattr(company, "inventory_mode", None) == INVENTORY_MODE_SERIAL:
+    if company is not None:
         if request.method in {"POST", "PUT", "PATCH"}:
             try:
                 payload = _request_payload(request)
@@ -44,7 +41,7 @@ def reject_non_serial_payload(payload):
             for key, child in value.items():
                 if str(key).lower() in NON_SERIAL_PAYLOAD_KEYS:
                     raise ValueError(
-                        "Quantity-inventory fields are unavailable for serial companies."
+                        "Unsupported inventory fields are unavailable."
                     )
                 walk(child)
         elif isinstance(value, list):

@@ -70,6 +70,43 @@ def main():
     orphan = f"tenant_company_{TAG}"
     invalid_orphan = f"tenant_company_phase3_{TAG}"
     dependent_view = f"phase3_dependency_{TAG}"
+    # Checkpoint 4A: the authentication squash correctly no longer creates the
+    # retired permissions, so a fresh serial-only database has none. The Phase 3
+    # inventory must still find them wherever they do exist -- that is the real
+    # production case before the 3B cleanup -- so seed the exact retired set
+    # here and remove only what this test created.
+    # The Phase 3 inventory audits the *pre-3B* estate, so it requires the
+    # retired column to exist. A fresh checkpoint 4A install never creates it
+    # (that is the point of 4A), so reconstruct the exact contract the audit
+    # expects on this disposable stack before exercising it.
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema='public' AND table_name='tenancy_company' "
+            "AND column_name='inventory_mode')"
+        )
+        if not cursor.fetchone()[0]:
+            cursor.execute(
+                "ALTER TABLE public.tenancy_company "
+                "ADD COLUMN inventory_mode varchar(16) NOT NULL DEFAULT 'serial'"
+            )
+            cursor.execute(
+                "ALTER TABLE public.tenancy_company "
+                "ADD CONSTRAINT tenancy_company_valid_inventory_mode "
+                "CHECK (inventory_mode='serial')"
+            )
+            print("NOTE: fresh checkpoint 4A database; reconstructed the "
+                  "retired column contract for the Phase 3 inventory.", flush=True)
+
+    auth_user_type = ContentType.objects.get_for_model(get_user_model())
+    seeded_permission_ids = []
+    for codename, label in audit.RETIRED_PERMISSIONS.items():
+        permission, created = Permission.objects.get_or_create(
+            codename=codename, content_type=auth_user_type,
+            defaults={"name": label},
+        )
+        if created:
+            seeded_permission_ids.append(permission.pk)
     seed_permission = Permission.objects.get(
         codename="view_warehouse", content_type__app_label="auth", content_type__model="user"
     )
@@ -189,6 +226,9 @@ def main():
             custom_type.delete()
         if company:
             Company.objects.filter(pk=company.pk).delete()
+        # Remove only the retired permissions this test created.
+        if seeded_permission_ids:
+            Permission.objects.filter(pk__in=seeded_permission_ids).delete()
     for name, passed in RESULTS:
         print(f"{'PASS' if passed else 'FAIL'}: {name}")
     print(f"{sum(passed for _, passed in RESULTS)}/{len(RESULTS)} Phase 3 live inventory checks passed")

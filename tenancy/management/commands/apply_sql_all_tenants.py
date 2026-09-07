@@ -33,8 +33,12 @@ import os
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 
-from tenancy.models import Company, INVENTORY_MODE_SERIAL
-from tenancy.schema_families import family_for_sql_file, schema_family
+from tenancy.models import Company
+from tenancy.schema_families import (
+    SERIAL_SCHEMA_FAMILY,
+    family_for_sql_file,
+    schema_family,
+)
 from tenancy.schema_verification import verify_company_schema
 from tenancy.utils import (
     PUBLIC_SCHEMA,
@@ -50,7 +54,7 @@ class Command(BaseCommand):
         parser.add_argument("sql_file", help="Path to the .sql file to execute.")
         parser.add_argument(
             "--family",
-            choices=[INVENTORY_MODE_SERIAL],
+            choices=[SERIAL_SCHEMA_FAMILY],
             default=None,
             help=(
                 "Target schema family. Must agree with the controlled SQL "
@@ -85,7 +89,7 @@ class Command(BaseCommand):
             registered_family = family_for_sql_file(sql_path)
         except ValueError as exc:
             raise CommandError(str(exc)) from exc
-        if registered_family != INVENTORY_MODE_SERIAL:
+        if registered_family != SERIAL_SCHEMA_FAMILY:
             raise CommandError("Only serial tenant SQL rollout is supported.")
         requested_family = opts["family"] or registered_family
         if requested_family != registered_family:

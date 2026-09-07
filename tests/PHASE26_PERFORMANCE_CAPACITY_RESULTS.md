@@ -3,6 +3,14 @@
 Date: 2026-07-27  
 Result: **PASS**
 
+> **Retained historical evidence.** The T7 benchmark harness
+> `tests/phase26_performance_capacity.py` exercised the retired
+> quantity-company family and was removed in checkpoint 4A of the
+> serial-only consolidation. These recorded results and
+> `tests/phase26_target_results.json` are preserved as evidence and are
+> no longer reproducible on the serial-only system. The serial capacity
+> gate `tests/phase26_capacity_preflight.py` remains active.
+
 ## Production-equivalent envelope
 
 The T7 target ran with Docker resource limits totaling 2 vCPU and 3.875 GiB,

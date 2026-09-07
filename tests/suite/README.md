@@ -44,29 +44,10 @@ PASS/FAIL summary. Exit code is non-zero if any real check fails.
 | `test_reports.py` | **Every** report: accounts, stock, serial, sales analytics, monthly, and all dashboard functions + views. |
 | `test_attachments.py` | Document attachment upload/update/replacement, metadata/preview/download endpoints, validation, cleanup, and attachment-only update behavior for sale, purchase, returns, payment, receipt, and contra documents. |
 | `test_feature_flags.py` | Per-company feature flags: registry/model semantics, admin form + change-view round-trip, middleware URL enforcement (group/sub blocking, GET redirects vs 403 JSON), UI hiding (sidebar, report buttons, CSV buttons, attachment widget), upload guard. |
-| `test_company_metadata.py` | Phase 3 public company inventory-mode metadata: serial backfill, supported choices, quantity-provisioning gate, model/save immutability, database constraint, and admin add/change behavior. |
+| `test_company_metadata.py` | Serial-only company registry: physical serial-family verification of every provisioned schema, absence of any inventory-mode concept on the model, construction-time rejection of the retired keyword, database rejection of a retired-mode write, certified column contraction, and admin add/change behavior. |
 | `test_company_setup.py` | Phase 4 ISO 4217 catalogue, idempotent seed, PKR/non-tax compatibility backfill, company setup validation/locking, constraints, protected currency references, and admin selection behavior. |
-| `test_quantity_foundation.py` | Phase 5 family registry, two deterministic quantity schemas, metadata/fingerprint verification, idempotent family hardening, rollout isolation, mismatch denial, sanitized failure state, and search-path reset. |
-| `test_quantity_accounting.py` | Phase 6 quantity chart of accounts, journal posting/reversal/immutability, trial balance, precision, concurrent numbering, and tenant isolation. |
-| `test_quantity_items_variants_units.py` | Phase 7 quantity products, seven-dimension variants, SKU suggestion/locking, units/precision, catalogue HTTP API, and isolation. |
-| `test_quantity_warehouses.py` | Phase 8 warehouse CRUD, single-default lifecycle, reference deletion guard, permissions, HTTP contracts, and tenant/family isolation. |
-| `test_quantity_fifo.py` | Phase 9 immutable movement ledger, FIFO layers/allocations, backdated replay, concurrency locks, reconciliation, precision, and isolation. |
-| `test_quantity_opening_stock.py` | Phase 10 quantity opening documents, whole/decimal stock, FIFO/accounting, guarded reversal, Capital reclassification, HTTP workflow, and isolation. |
-| `test_quantity_purchases.py` | Phase 11 domestic quantity credit/cash purchases, FIFO/AP/Cash accounting, idempotency, guarded edit/reversal, navigation, concurrency, HTTP, and isolation. |
-| `test_quantity_sales.py` | Phase 12 domestic quantity credit/cash sales, warehouse availability, FIFO COGS, AR/Cash/Revenue accounting, idempotency, guarded edit/reversal, final-stock concurrency, HTTP, and isolation. |
-| `test_quantity_sale_returns.py` | Phase 13 source-linked partial quantity sale returns, cumulative limits, exact historical FIFO-cost restoration, accounting, concurrency, reversal guards, HTTP, and isolation. |
-| `test_quantity_purchase_returns.py` | Phase 14 original-source quantity purchase returns, eligibility, original-cost accounting, concurrency, correction/reversal, HTTP, and isolation. |
-| `test_quantity_transfers.py` | Phase 15 atomic multi-warehouse FIFO transfers, value neutrality, concurrency, guarded correction/reversal, HTTP, permissions, and isolation. |
-| `test_quantity_counts_adjustments.py` | Phase 16 reproducible cutoff counts, approval, FIFO-valued gain/loss adjustments, reversal, concurrency, HTTP, permissions, and isolation. |
-| `test_quantity_tax_discounts.py` | Phase 17 quantity tax modes, discounts, immutable calculations, return tax journals, administration, and regression. |
-| `test_quantity_currency_settlements.py` | Phase 18 foreign documents, immutable rates, settlements, realized gain/loss, return eligibility, reporting, validation, and reconciliation. |
-| `test_quantity_financial_modules.py` | Phase 19 quantity parties, cash movements, opening cash, owner equity, month close, universal closed-period guards, accounting, UI, and isolation. |
-| `test_quantity_platform_controls.py` | Phase 20 quantity attachment mappings, immutable audit deployment, type-aware features, permissions, and schema-family gates. |
-| `test_quantity_type_aware_ui.py` | Phase 21 central company-type dispatch, payload-family rejection, shared quantity interaction, responsive, keyboard, accessibility, and authoritative preview contracts. |
-| `test_quantity_reports_dashboards.py` | Phase 22 quantity report catalogue, filters, SQL execution, dashboards, permissions, CSV, and Excel-compatible exports. |
-| `test_quantity_complete_suite.py` | Phase 23 two-fresh-quantity-tenant lifecycle, hostile-input, isolation, reconciliation, fingerprint, rollout, and evidence certification. |
-| `../phase24_serial_matrix.py` | Phase 24 two-fresh-serial-tenant unchanged regression, schema/report compatibility, and quantity-absence certification. |
-| `../phase25_four_company_isolation.py` | Phase 25 simultaneous two-serial/two-quantity posting, report/export, attachment, logout, cache, exception, schema mismatch, and persistent-connection isolation. |
+| `../phase24_serial_matrix.py` | Phase 24 two-fresh-serial-tenant unchanged regression, schema/report compatibility, and certification that no retired quantity table, function or route exists. |
+| `../phase25_four_company_isolation.py` | Phase 25 simultaneous four-serial posting, report/export, attachment, logout, cache, exception, non-serial schema-shape rejection, and persistent-connection isolation. |
 | `test_http.py` | Real Django endpoints via the test client: pages render, JSON APIs return no 5xx, auth works, a master-data write flow succeeds. |
 
 ## Invariants asserted throughout

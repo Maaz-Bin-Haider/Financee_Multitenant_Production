@@ -51,7 +51,6 @@ from financee.security import (
 from .features import feature_for_path
 from .models import BLOCKED_STATES, PROVISIONING_READY
 from .schema_verification import verify_company_schema
-from .schema_families import schema_family
 from .utils import (
     PUBLIC_SCHEMA,
     reset_search_path,
@@ -72,16 +71,8 @@ class TenantSchemaMiddleware(MiddlewareMixin):
         set_search_path(schema)
         if tenant_ok and schema != PUBLIC_SCHEMA:
             verification = verify_company_schema(company)
-            definition = schema_family(company.inventory_mode)
-            path_enabled = any(
-                request.path.startswith(prefix)
-                for prefix in definition.enabled_path_prefixes
-            )
             request.tenant_schema_compatible = verification.ok
-            request.tenant_is_active = (
-                verification.ok
-                and (definition.runtime_enabled or path_enabled)
-            )
+            request.tenant_is_active = verification.ok
             request.tenant_schema_error = verification.reason
 
     def process_view(self, request, view_func, view_args, view_kwargs):

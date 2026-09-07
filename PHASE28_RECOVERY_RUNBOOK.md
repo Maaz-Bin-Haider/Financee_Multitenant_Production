@@ -72,7 +72,8 @@ set `KEEP_RESTORE_STACK=1` only during an attended investigation.
 
 ## Rehearsal result
 
-The 2026-07-27 rehearsal completed in 163 seconds. The 1,003,552-byte encrypted
+The 2026-07-27 rehearsal (recorded before the serial-only consolidation,
+when the retired quantity family still existed) completed in 163 seconds. The 1,003,552-byte encrypted
 bundle restored in 43 seconds with an RPO of zero seconds for the declared
 synthetic recovery point. Two serial schemas, restored media, one post-restore
 quantity schema, forward migrations, the previous Phase 26 production image,

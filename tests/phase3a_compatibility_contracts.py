@@ -36,10 +36,14 @@ for path in query_sources:
                 query_dependencies.append(f"{path.relative_to(ROOT)}:{node.lineno}")
 checks = {
     "inventory mode is no longer a concrete Company field": "inventory_mode" not in concrete,
-    "legacy display and explicit-input validation are preserved":
-        "def get_inventory_mode_display(self)" in model and "self.inventory_mode != INVENTORY_MODE_SERIAL" in model,
-    "bulk inserts also reject explicit non-serial legacy input":
-        "def bulk_create(self, objs" in model and "if obj.inventory_mode != INVENTORY_MODE_SERIAL" in model,
+    "temporary 3A compatibility API is fully retired":
+        "def get_inventory_mode_display(self)" not in model
+        and "_requested_inventory_mode" not in model
+        and "class CompanyQuerySet" not in model,
+    "no supported path can express a retired mode":
+        "inventory_mode" not in model and "INVENTORY_MODE" not in model,
+    "live test proves the retired keyword is rejected at construction":
+        "TypeError" in live and "construction rejects" in live,
     "shared currency tax and provisioning constraints remain":
         all(name in concrete for name in ("base_currency", "tax_environment", "provisioning_state", "disabled_features"))
         and "tenancy_company_valid_tax_environment" in model and "tenancy_company_valid_provisioning_state" in model,
@@ -73,14 +77,20 @@ checks = {
         and "e44737f1f740fa936e853a3d6bbbd068a1b6d89d" in stack,
     "new image checks application SQL with physical column removed":
         "DROP COLUMN inventory_mode" in live and "CaptureQueriesContext" in live
-        and "queries.captured_queries" in live,
+        and "queries.captured_queries" in live
+        and 'not hasattr(company, "inventory_mode")' in live,
     "compatibility is mandatory for staging and publication":
         workflow.count("metadata-inventory-gate, compatibility-gate,") == 2,
     "ARM64 executes new compatibility tests":
         "phase3a_compatibility.py" in stack.split("  arm64)", 1)[1].split("  full)", 1)[0],
-    "recovery rollback targets actual deployed Phase 2 and tests old-image creation":
-        "e44737f1f740fa936e853a3d6bbbd068a1b6d89d" in recovery
-        and "Phase 3A Old Image Serial" in recovery,
+    "recovery rollback targets the actually deployed image and tests old-image creation":
+        # Checkpoint 3A is the deployed image, so it is the rollback target.
+        # The Phase 2 image still declares inventory_mode as a concrete ORM
+        # field and cannot run against a post-3B or fresh 4A database.
+        'old_image="${PHASE28_OLD_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:497b6650ed678bc462f85de6bff14692bffd6ace}"'
+        in recovery
+        and "Phase 3A Old Image Serial" in recovery
+        and "tenant_schema_version" in recovery,
 }
 for name, ok in checks.items():
     print(f"{'PASS' if ok else 'FAIL'}: {name}")

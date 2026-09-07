@@ -80,10 +80,6 @@ workflow = read(".github/workflows/ci.yml")
 stack = read("tests/ci_phase27_stack.sh")
 suite = read("tests/suite/run_all.py")
 
-quantity_family_block = families.split(
-    "INVENTORY_MODE_QUANTITY: SchemaFamily(", 1
-)[1].split("),\n    }", 1)[0]
-
 # Extracted from deployed Phase 1 commit 102e55e857bbffa8bd4318e6afaec42e048c8e67.
 # These are independent regression anchors, not hashes of the candidate itself.
 SERIAL_FUNCTION_BASELINES = {
@@ -118,7 +114,23 @@ serial_ui_paths = [path.relative_to(ROOT).as_posix()
                    and path.relative_to(ROOT).as_posix() != "templates/base/base.html"]
 serial_sql_paths = [path.relative_to(ROOT).as_posix()
                     for path in (ROOT / "tenancy/sql").glob("*.sql")
-                    if not path.name.startswith("quantity_")] + ["build_multitenant_db.sql"]
+                    if not path.name.startswith("quantity_")]
+
+# Checkpoint 4A had to change build_multitenant_db.sql: seeding
+# ('tenancy','0001_initial') left the squashed replacement permanently
+# partially applied, so Django replayed the original chain and recreated the
+# retired inventory_mode column on every fresh install. Only the Django
+# migration bookkeeping changed. Hashing the bootstrap as one blob would hide
+# that distinction, so its 12,248-line tenant business-schema build is pinned
+# separately and must stay byte-identical to deployed Phase 1.
+bootstrap = read("build_multitenant_db.sql")
+BOOTSTRAP_TENANT_START = "-- 2. Example tenant schema: tenant_company_1"
+BOOTSTRAP_TENANT_END = (
+    "-- reset search_path back to shared after building the tenant schema"
+)
+bootstrap_tenant_section = bootstrap[
+    bootstrap.index(BOOTSTRAP_TENANT_START):bootstrap.index(BOOTSTRAP_TENANT_END)
+]
 
 checks = {
     "12 serial document implementations are source-identical to deployed Phase 1":
@@ -126,9 +138,23 @@ checks = {
     "212 serial UI source files are byte-identical to deployed Phase 1":
         len(serial_ui_paths) == 212
         and files_hash(serial_ui_paths) == "cae8e5e425906e5b8b26deb33a8a15b8dc73ef0a665473b55d307c0faf648bb6",
-    "17 serial SQL/bootstrap files are byte-identical to deployed Phase 1":
-        len(serial_sql_paths) == 17
-        and files_hash(serial_sql_paths) == "15a1171224a3a3d06e5b77dfb76c518f27555812d01922e698ca4e98b0c166af",
+    "16 serial tenant SQL files are byte-identical to deployed Phase 1":
+        len(serial_sql_paths) == 16
+        and files_hash(serial_sql_paths) == "6785de6f44dbb4d5e70775626e9e21352f5b3578bad51eb3b9f9ce1afbc3ecb1",
+    "bootstrap tenant business schema is byte-identical to deployed Phase 1":
+        hashlib.sha256(bootstrap_tenant_section.encode()).hexdigest()
+        == "e1d912cccffc584fc83056e37b62e9f8523862a690444360c181a9957d5d25b9",
+    "bootstrap no longer defeats the serial-only squashed migration":
+        "CREATE TABLE IF NOT EXISTS public.tenancy_company" not in bootstrap
+        and "'tenancy', '0001_initial'" not in bootstrap
+        and "INSERT INTO public.tenancy_company" not in bootstrap
+        and "register_bootstrap_tenant" in bootstrap,
+    "first-boot tenant registration runs after migrate and cannot touch tenants":
+        "register_bootstrap_tenant" in entrypoint
+        and entrypoint.index("manage.py migrate")
+        < entrypoint.index("register_bootstrap_tenant")
+        and "Company.objects.exists()" in read(
+            "tenancy/management/commands/register_bootstrap_tenant.py"),
     "quantity HTTP adapter and route modules are absent":
         all(not (ROOT / path).exists() for path in RUNTIME_FILES),
     "quantity templates and static assets are absent":
@@ -150,15 +176,21 @@ checks = {
         "INVENTORY_MODE_QUANTITY" not in capabilities
         and "parse_quantity_payload" not in capabilities
         and "reject_serial_payload" not in capabilities,
-    "quantity schema descriptor remains runtime disabled with no path exceptions":
-        "runtime_enabled=False" in quantity_family_block
-        and "enabled_path_prefixes=()" in quantity_family_block,
-    "middleware still fails closed through schema runtime status":
-        "definition.runtime_enabled or path_enabled" in middleware,
+    "schema-family registry describes the serial family only":
+        "INVENTORY_MODE_QUANTITY" not in families
+        and "quantity" not in families.lower()
+        and "SERIAL_SCHEMA_FAMILY" in families
+        and "Unsupported schema family" in families,
+    "middleware still fails closed on schema verification alone":
+        "request.tenant_is_active = verification.ok" in middleware
+        and "runtime_enabled" not in middleware
+        and "enabled_path_prefixes" not in middleware
+        and "schema_family" not in middleware,
     "tenant SQL rollout command accepts serial only":
-        "choices=[INVENTORY_MODE_SERIAL]" in rollout
+        "choices=[SERIAL_SCHEMA_FAMILY]" in rollout
         and "Only serial tenant SQL rollout is supported" in rollout
-        and "INVENTORY_MODE_QUANTITY" not in rollout,
+        and "inventory_mode" not in rollout
+        and "quantity" not in rollout.lower(),
     "container startup performs serial SQL maintenance only":
         "--family serial" in entrypoint
         and "--family quantity" not in entrypoint
@@ -166,7 +198,8 @@ checks = {
         and "quantity_platform_controls.sql" not in entrypoint,
     "release preflight accepts and probes serial only":
         'choices=("serial",)' in preflight
-        and "company.inventory_mode != INVENTORY_MODE_SERIAL" in preflight
+        and "SERIAL_SCHEMA_FAMILY" in preflight
+        and "inventory_mode" not in preflight
         and "quantity_run_report" not in preflight
         and "SELECT get_trial_balance_json()" in preflight,
     "serial feature registry exposes no retired controls":
@@ -183,9 +216,10 @@ checks = {
         "is_quantity_company" not in base
         and "quantity_" not in base
         and "Quantity Reports" not in base,
-    "historical SQL and migrations remain for controlled Phase 3 cleanup":
-        (ROOT / "tenancy/sql/quantity_tenant_template.sql").is_file()
-        and (ROOT / "tenancy/migrations/0005_company_inventory_mode.py").is_file(),
+    "quantity SQL is retired while migration history awaits checkpoint 4B":
+        not any((ROOT / "tenancy/sql").glob("quantity_*.sql"))
+        and (ROOT / "tenancy/migrations/0005_company_inventory_mode.py").is_file()
+        and (ROOT / "tenancy/migrations/0009_inventory_mode_compatibility.py").is_file(),
     "mandatory Phase 2 local and CI gates are wired":
         "phase2_serial_runtime_removal_contracts.py" in workflow
         and "runtime-removal-gate:" in workflow
@@ -196,9 +230,10 @@ checks = {
         and 'test_project="phase27_' in stack
         and 'cat > "$WEB_ENV_FILE"' in stack
         and "deploy/.env" not in stack,
-    "retired generated static cleanup is narrow and explicitly tested":
-        "python deploy/retire_quantity_static.py" in entrypoint
-        and "test_phase2_static_retirement" in workflow,
+    "one-shot generated static retirement is itself fully retired":
+        "retire_quantity_static" not in entrypoint
+        and not (ROOT / "deploy/retire_quantity_static.py").exists()
+        and "test_phase2_static_retirement" not in workflow,
     "protected exact-SHA production workflow remains intact":
         "environment: production" in workflow
         and "PHASE30_RELEASE_SHA='${{ github.sha }}'" in workflow,

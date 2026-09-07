@@ -23,6 +23,7 @@ from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.core.management import call_command
 from django.db import DatabaseError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
+from django.db.migrations.loader import MigrationLoader
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from tenancy.admin import CompanyAdminForm
@@ -35,6 +36,21 @@ MIGRATION = importlib.import_module("tenancy.migrations.0009_inventory_mode_comp
 OLD = [("tenancy", "0008_serial_only_company_creation")]
 NEW = [("tenancy", "0009_inventory_mode_compatibility")]
 RESULTS = []
+
+
+def historical_executor():
+    """Executor that addresses the real migration files, ignoring the squash.
+
+    Once the checkpoint 4A replacement `tenancy/0001_serial_only.py` is fully
+    applied, Django removes the replaced nodes from the default graph, so 0008
+    and 0009 can no longer be addressed or executed through it. Loading with
+    replacements disabled keeps this migration-level proof working on both the
+    pre-squash and post-squash images until checkpoint 4B deletes the replaced
+    files -- at which point this helper and the proof retire together.
+    """
+    executor = MigrationExecutor(connection)
+    executor.loader = MigrationLoader(connection, replace_migrations=False)
+    return executor
 
 
 def check(name, ok):
@@ -74,7 +90,38 @@ def call_migration(function):
         function(None, editor)
 
 
+def ensure_pre_squash_contract():
+    """Recreate the exact post-0009 physical contract when it is absent.
+
+    Migration 0009 is a *replaced* migration. A fresh checkpoint 4A install runs
+    the squashed replacement instead, so the retired column it guards is never
+    created -- which is the whole point of 4A. This proof is still required for
+    databases that are on the original chain, so on a fresh install the exact
+    contract 0009 leaves behind is reconstructed first: a non-null
+    varchar(16) column defaulting to 'serial' with the validated serial-only
+    check constraint. django_migrations already records 0009 as applied, so the
+    real executor can then be driven forwards and backwards as before.
+
+    Disposable stacks only -- the module refuses to run anywhere else.
+    """
+    if default():
+        return False
+    sql("ALTER TABLE public.tenancy_company "
+        "ADD COLUMN inventory_mode varchar(16) NOT NULL DEFAULT 'serial'")
+    sql("ALTER TABLE public.tenancy_company "
+        "ADD CONSTRAINT tenancy_company_valid_inventory_mode "
+        "CHECK (inventory_mode='serial')")
+    return True
+
+
 def main():
+    reconstructed = ensure_pre_squash_contract()
+    check("pre-squash column contract is available for the 0009 proof",
+          default() == [("'serial'::character varying",)]
+          and len(constraint()) == 1)
+    if reconstructed:
+        print("NOTE: fresh checkpoint 4A database; the retired 0009 column "
+              "contract was reconstructed on this disposable stack.", flush=True)
     baseline = snapshot()
     original_constraint = constraint()
     check("physical legacy column has exact serial database default",
@@ -84,7 +131,7 @@ def main():
         check("Company has no concrete inventory-mode field", False)
     except FieldDoesNotExist:
         check("Company has no concrete inventory-mode field", True)
-    state = MigrationExecutor(connection).loader.project_state(NEW).apps.get_model("tenancy", "Company")
+    state = historical_executor().loader.project_state(NEW).apps.get_model("tenancy", "Company")
     check("migration state omits only legacy field/constraint",
           "inventory_mode" not in {f.name for f in state._meta.fields}
           and {c.name for c in state._meta.constraints} == {
@@ -94,9 +141,9 @@ def main():
                       for c in Company.objects.exclude(schema_name="")}
     # Exercise the real migration executor in both directions. No fake migration.
     with transaction.atomic():
-        MigrationExecutor(connection).migrate(OLD)
+        historical_executor().migrate(OLD)
         check("reverse restores old state and removes only the added default", default() == [(None,)])
-        old_model = MigrationExecutor(connection).loader.project_state(OLD).apps.get_model("tenancy", "Company")
+        old_model = historical_executor().loader.project_state(OLD).apps.get_model("tenancy", "Company")
         check("historical ORM still reads all retained serial rows",
               old_model.objects.count() == Company.objects.count()
               and not old_model.objects.exclude(inventory_mode="serial").exists())
@@ -104,7 +151,7 @@ def main():
         call_command("production_foundation_audit", serial_only=True, stdout=before_output)
         check("candidate pre-deploy continuity audit works before expansion",
               json.loads(before_output.getvalue())["ok"] and default() == [(None,)])
-        MigrationExecutor(connection).migrate(NEW)
+        historical_executor().migrate(NEW)
         check("forward keeps original constraint identity and all metadata values",
               constraint() == original_constraint and snapshot() == baseline)
         with connection.cursor() as cursor:
@@ -151,19 +198,21 @@ def main():
         blocker.rollback()
         blocker.close()
 
-    for value in ("quantity", "unknown", "", None):
-        for path in ("save", "bulk_create"):
-            candidate = Company(name=f"Phase3A rejected {time.time_ns()}", inventory_mode=value)
-            rejected = False
-            try:
-                if path == "save":
-                    candidate.save()
-                else:
-                    Company.objects.bulk_create([candidate])
-            except ValidationError:
-                rejected = True
-            check(f"{path} rejects explicit legacy mode {value!r} without inserting",
-                  rejected and not Company.objects.filter(name=candidate.name).exists())
+    # Checkpoint 4A removed the retired field and its compatibility API, so the
+    # keyword is refused by Model.__init__ before any row can be built. That is
+    # strictly stronger than the Phase 3A save-time ValidationError it replaces.
+    for value in ("quantity", "unknown", "", None, "serial"):
+        name = f"Phase3A rejected {time.time_ns()}"
+        rejected = False
+        try:
+            Company(name=name, inventory_mode=value)
+        except TypeError:
+            rejected = True
+        check(f"construction rejects retired mode keyword {value!r} without inserting",
+              rejected and not Company.objects.filter(name=name).exists())
+    check("retired mode is absent from the model API entirely",
+          not hasattr(Company, "inventory_mode")
+          and not hasattr(Company, "get_inventory_mode_display"))
 
     # SQL references to the physical column must not occur on the application
     # path. All fixture rows/schema/DDL in this block are rolled back together.
@@ -177,8 +226,9 @@ def main():
             verification = verify_company_schema(company, use_cache=False)
             check("new company provisions serial v6 without physical legacy column",
                   company.provisioning_state == "ready" and verification.ok and verification.family == "serial")
-            check("legacy serial label remains unchanged without an ORM field",
-                  company.inventory_mode == "serial" and company.get_inventory_mode_display() == "Serial-number based")
+            check("no retired mode attribute survives on a live company",
+                  not hasattr(company, "inventory_mode")
+                  and not hasattr(company, "get_inventory_mode_display"))
             form = CompanyAdminForm(instance=company)
             check("company administration and shared setup remain available",
                   "inventory_mode" not in form.fields and "base_currency" in form.fields

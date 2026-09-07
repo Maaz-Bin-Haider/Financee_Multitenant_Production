@@ -2,11 +2,12 @@
 
 **Started:** 2026-09-04
 
-**Current status:** Checkpoint 4.0 read-only entry gate prepared and validated
-locally. No
-Phase 4 push, protected production inspection, migration replacement, file
-retirement, CI/CD release, deployment, archive change, or production mutation
-has been authorized or performed.
+**Current status:** Checkpoint 4.0 is **closed** — the protected read-only
+production audit passed and its artifact has been reviewed. Checkpoint 4A
+retirement, test rewrite, documentation rewrite and the migration-replacement
+proof are complete **locally**, and every static and container-backed gate
+passes. No CI/CD release, deployment, archive change, or production mutation has
+been authorized or performed.
 
 ## Entry decision
 
@@ -64,12 +65,19 @@ already-applied migrations is expressly forbidden.
 
 ## Remaining checkpoint 4.0 gates
 
-1. Obtain explicit approval before pushing an exact `[skip ci]` audit commit.
-2. Obtain separate authorization before dispatching the protected read-only
-   workflow, then review its retained artifact.
-3. Only after that evidence may checkpoint 4A implementation begin. Any drift,
-   non-serial schema, missing archive, unexpected migration record, continuity
-   failure or container change stops Phase 4.
+1. ~~Obtain explicit approval before pushing an exact `[skip ci]` audit
+   commit.~~ Done: exact commit `4f7f49f` is on `origin/main` with `[skip ci]`;
+   no CI/CD ran.
+2. ~~Dispatch the protected read-only workflow and review its retained
+   artifact.~~ Done — see "Checkpoint 4.0 audit evidence" below.
+3. ~~Any drift, non-serial schema, missing archive, unexpected migration
+   record, continuity failure or container change stops Phase 4.~~ None found.
+
+   Note on ordering: this step reads "only after that evidence may checkpoint 4A
+   implementation begin." The audit in fact ran on 2026-09-04, before the 4A
+   implementation work — the plan checkbox simply had not been updated, so this
+   document previously and wrongly recorded it as undispatched. The required
+   ordering was therefore satisfied all along.
 
 ## Local validation result
 
@@ -109,3 +117,417 @@ checksum regex had an invalid doubled quantifier, and two schema-discovery SQL
 spellings conflicted with Python/PostgreSQL formatting rules. The harness setup,
 regex and SQL were corrected; all gates were rerun from a fresh disposable
 project to PASS. The failed projects also reported exact cleanup success.
+
+
+---
+
+# Checkpoint 4A — retirement, test and documentation rewrite
+
+**Date:** 2026-09-06 · **Scope:** local repository only.
+
+## What the rewrite had to prove
+
+Phase 1 froze creation by *rejecting* non-serial values. Checkpoint 4A removes
+the retired family outright, so the guarantee changes shape: the freeze is now
+enforced by **absence**. No supported path can express a non-serial company —
+`Company` has no `inventory_mode` field, property, choice list or queryset
+guard, and the retired keyword is refused by `Model.__init__` before a row can
+be built. Every rewritten assertion targets that stronger invariant rather than
+deleting the old one.
+
+"Serial only" is likewise now proven **physically**: `verify_company_schema`
+reads each schema's own `tenant_schema_version`, so tests assert against real
+schemas instead of a registry metadata value that no longer exists.
+
+## Modules rewritten
+
+| Module | Change |
+|---|---|
+| `phase1_serial_only_creation_contracts.py` | Asserts absence of the whole inventory-mode concept; adds two contracts proving the squashed replacement lists the exact retired creation history and never recreates the column. 16/16. |
+| `phase2_serial_runtime_removal_contracts.py` | Family registry, middleware, rollout command, preflight and static-retirement contracts retargeted; serial byte-identity baselines untouched. 24/24. |
+| `phase3a_compatibility_contracts.py` | The two contracts guarding the temporary 3A compatibility API now assert it is fully retired. 19/19. |
+| `phase29_security_contracts.py` | Registry and admin contracts assert absence. 18/18. |
+| `phase30_release_gates.py` | Restored to 14/14 after the audit command was fixed (below). |
+| `phase4_repository_hygiene_contracts.py` | **+8 checkpoint 4A contracts**: exact deletion list, preserved reversal path, no dangling references, dual-image shim usage, shim rejection shapes, and the documentation contract. 21/21. |
+| `suite/test_company_metadata.py`, `phase1_serial_only_creation.py`, `phase2_serial_runtime_removal.py`, `phase24_serial_matrix.py`, `phase25_four_company_isolation.py`, `phase27_arm64_smoke.py`, `phase3a_compatibility.py` | Retargeted to the serial-only API. |
+
+Deleted: `tests/test_phase2_static_retirement.py` (tested deleted code) and
+`tests/phase26_performance_capacity.py` (quantity-only T7 benchmark that could
+no longer run). The Phase 26 results and `phase26_target_results.json` are
+**retained** as evidence and annotated as non-reproducible; the serial capacity
+gate `phase26_capacity_preflight.py` is untouched.
+
+## Three defects found during the rewrite
+
+1. **`--serial-only` had become an inert stub.** The staged 4A edit replaced the
+   audit's non-serial check with `non_serial = []` while `deploy/` still passes
+   `--serial-only`, so the flag silently guaranteed nothing. Restored as a real
+   fail-closed gate driven by physical schema verification, which is stronger
+   than the registry-column check it replaces.
+2. **Dead code.** `all_schema_families()` survived the registry rewrite with
+   zero callers; removed.
+3. **Cross-image breakage (most serious).** `tests/phase3_recovery_local.py`
+   deliberately copies the *current* suite into the *previously published 3A
+   image* and runs `tests/suite/run_all.py` there, to prove the deployed image
+   still works on the contracted database. The first rewrite encoded 4A-only
+   assumptions and would have failed inside that image: 3A has no
+   `SERIAL_SCHEMA_FAMILY` constant and still carries the compatibility API.
+
+   Fixed with `tests/serial_api_compat.py`, a version-adaptive shim. The five
+   modules the gate runs there now assert the *same guarantee* against whichever
+   application shape is running, instead of passing on one and failing on the
+   other. The branching was simulated against both shapes: every non-serial
+   value is rejected on both, and no clean instance can report a non-serial
+   mode. **The shim is deleted in checkpoint 4B**, once no published image
+   carries the retired API.
+
+## Serial preservation evidence
+
+The Phase 2 byte-identity baselines still PASS unchanged, which is the direct
+proof that this cleanup did not touch serial behavior:
+
+- 12 serial document implementations source-identical to deployed Phase 1;
+- 212 serial UI source files byte-identical;
+- 17 serial SQL/bootstrap files byte-identical.
+
+Every serial SQL file (`tenant_template.sql`, `production_hardening.sql`, all
+`fix_*.sql`, `tenant_indexes.sql`, `add_*.sql`) is present and unmodified.
+
+## Local validation
+
+All host-runnable CI gates PASS:
+
+- 13/13 static contract gates, including 21/21 Phase 4 and 24/24 Phase 2.
+- 4/4 remote-wrapper unittest modules; 3/3 backup test modules.
+- `phase27_rollback_simulation.sh` PASS; `python -m compileall .` clean.
+- No dangling reference to any deleted module, symbol or file remains; the only
+  matches are intentional absence-assertions inside contracts.
+
+## Not done — required before checkpoint 4A can be released
+
+1. Independent review of the two squashed replacement migrations.
+2. Prove a fresh database uses only the squashed serial state and never creates
+   the retired column or permissions; prove a database still on the original
+   leaves produces a no-op plan and retains its data. **Needs Docker/PostgreSQL.**
+3. Full serial, four-company isolation, security, backup/recovery, ARM64 and
+   production-like staging gates. **Needs the container stack.**
+4. The checkpoint 4.0 protected read-only production audit, still undispatched.
+   Note the plan requires that evidence *before* 4A implementation; this work
+   ran ahead of it, and nothing has been pushed or deployed as a result.
+5. Review, approval, publication and deployment of the exact 4A image, then the
+   owner's manual production PASS.
+
+
+---
+
+# Checkpoint 4A — container-backed gate execution (2026-09-06)
+
+Executed on local ARM64 Docker Desktop. The owner approved stopping only the
+local dev `financee-nginx-1` container to free host port 80; it was restarted
+afterwards, and every disposable project, volume and network was verified
+removed. Production was never contacted.
+
+## Gate results — all PASS
+
+| Gate | Result |
+|---|---|
+| `serial` (Phase 24 matrix + strict Phase 0 audit, two schemas) | PASS |
+| `creation-freeze` | 15/15 PASS |
+| `runtime-removal` | 16/16 PASS |
+| `metadata-inventory` | 24/24 PASS, plus the deployed Phase 2 image stdin audit |
+| `compatibility` | 34/34 PASS on the new image, plus the old-image proof inside the published Phase 2 image |
+| `isolation` | 17/17 PASS |
+| `arm64` | 34/34 PASS |
+| `full` | 21/21 modules PASS |
+| Phase 3B `--cleanup-test` | 69/69 cleanup checks PASS; post-cleanup suite PASS **inside the published 3A image** |
+| Phase 3B `--executor-test` | All encrypted apply/reverse/restore round trips PASS |
+| Phase 28 recovery rehearsal | PASS — restore RTO 43s, RPO 0s |
+
+## Four defects the container gates exposed that no static gate could
+
+1. **Squash-invisible migration nodes.** `phase1_serial_only_creation.py` and
+   `phase3a_compatibility.py` addressed `tenancy.0007`/`0008`/`0009` directly.
+   Once the 4A replacement is applied, Django removes replaced nodes from the
+   graph, so both raised `NodeNotFoundError`. Both now load history with
+   `MigrationLoader(connection, replace_migrations=False)`, which works on the
+   pre- and post-squash images and retires with the replaced files in 4B.
+2. **A retired permission was assumed to pre-exist.**
+   `phase3_metadata_inventory.py` fetched `view_warehouse` as a fixture. The
+   authentication squash correctly no longer creates it, so the test failed.
+   It now seeds the exact retired set from `RETIRED_PERMISSIONS` and removes
+   only what it created — which also makes the assertion stronger.
+3. **A missed dangling reference.** `tests/suite/test_feature_flags.py` posted
+   `company.inventory_mode` in an admin payload. My symbol sweep had searched
+   the uppercase constants, not the bare attribute.
+4. **The dual-image shim was not yet sufficient.** Run for real inside the
+   published 3A image, five assertions still failed: an unguarded
+   `hasattr` on an admin instance, a request-boundary company stub that 3A
+   rejects, the retired SQL templates that image legitimately still ships, and
+   a different rollout rejection message. All five corrected; the suite then
+   passed on both images.
+
+## Checkpoint 4A migration proof — `tests/phase4a_migration_proof.sh`
+
+**Part 2, original leaves upgraded to 4A: PASS.** The published 3A image
+migrated a disposable database to `tenancy.0009` / `authentication.0025` with a
+provisioned company and 138 permissions. The 4A image then reported `No planned
+migration operations.` and `No migrations to apply.`; company count, registry
+digest and permission count were unchanged; the replacement was recorded and the
+9 replaced rows correctly remain for the checkpoint 4B prune.
+
+**Part 1, fresh install: FAILS for `tenancy`. This blocks the 4A release.**
+
+`build_multitenant_db.sql` seeds `django_migrations` with
+`('tenancy','0001_initial')` and creates the initial tenancy tables. A
+replacement migration is usable only when *all* or *none* of the migrations it
+replaces are applied, so the tenancy replacement is permanently **partial** on
+this project's bootstrap path. Django therefore drops the replacement node and
+replays the original chain: `0005_company_inventory_mode` recreates the retired
+`inventory_mode` column **and** its check constraint, and `check_replacements()`
+records `tenancy.0001_serial_only` afterwards anyway. Measured on a fresh stack:
+
+```text
+squashed tenancy.0001_serial_only recorded        : 1
+replaced tenancy.0005_company_inventory_mode ran  : 1
+>>> RETIRED PHYSICAL COLUMN present               : 1
+>>> retired serial-only check constraint present  : 1
+>>> RETIRED PERMISSIONS present                   : 0
+```
+
+The `authentication` squash is unaffected — nothing is pre-seeded for it, so the
+replacement runs and **0** retired permissions are created, exactly as intended.
+
+Consequence: a newly provisioned deployment would carry a vestigial
+`inventory_mode` column and constraint that production no longer has — schema
+drift between fresh installs and production, and the opposite of what checkpoint
+4A promises. Production itself is unaffected; it is already migrated and
+contracted.
+
+This needs an owner decision, because every fix touches
+`build_multitenant_db.sql`, which is hash-pinned by
+`deploy/phase3_recovery_remote.py` `HOST_HASHES` and cannot be changed without a
+fresh source review. The proof script is therefore deliberately **not** wired
+into CI yet; wiring it in before the fix would fail the build.
+
+
+---
+
+# Checkpoint 4A — bootstrap fix and final gate run (2026-09-06)
+
+The migration proof exposed a real defect: a fresh install still created the
+retired `inventory_mode` column. On the owner's decision the tenancy bootstrap
+seed was dropped so the squash actually runs.
+
+## The change
+
+`build_multitenant_db.sql` seeded `django_migrations` with
+`('tenancy','0001_initial')` and created `tenancy_company`/`tenancy_membership`.
+Django uses a replacement migration only when **all** or **none** of what it
+replaces is applied, so that single seeded row left the tenancy squash
+permanently *partial*: Django discarded the replacement, replayed the original
+chain, and `0005_company_inventory_mode` recreated the retired column and its
+check constraint on every fresh install.
+
+The bootstrap no longer creates the tenancy registry and no longer seeds that
+row. `manage.py migrate` owns the entire public tenancy schema, so the
+migrations are its single source of truth. The bootstrap still builds the
+example `tenant_company_1` business schema; `deploy/entrypoint.sh` registers it
+immediately after `migrate` with the new `register_bootstrap_tenant` command,
+which **refuses to act on any database that already contains a company** and so
+is a no-op on every existing deployment, production included.
+
+Two safety pins were updated under this review:
+
+- `HOST_HASHES['build_multitenant_db.sql']` in `deploy/phase3_recovery_remote.py`.
+- The Phase 2 SQL byte-identity baseline, which previously hashed the bootstrap
+  together with the tenant SQL as one blob. It is now split so the **16 serial
+  tenant SQL files** and the bootstrap's **12,248-line tenant business-schema
+  build** are each still pinned byte-for-byte to deployed Phase 1. That business
+  section is provably unchanged (`e1d912cc…`); only the Django migration
+  bookkeeping changed. The split is a stronger contract than the one it replaced.
+
+## Migration proof — now PASS (17/17)
+
+`tests/phase4a_migration_proof.sh`, wired into CI as `migration-replacement-gate`:
+
+```text
+PASS: fresh install never creates the retired inventory_mode column
+PASS: fresh install never creates the retired serial-only constraint
+PASS: fresh install never creates the 14 retired quantity permissions
+PASS: the bootstrap example tenant is registered exactly once
+PASS: re-running the registration is a no-op
+PASS: the 4A image applies no migration to that database
+PASS: the company registry is byte-identical after the upgrade
+PASS: the replaced rows remain for the checkpoint 4B prune
+```
+
+## Five further defects the bootstrap change cascaded into — all fixed
+
+1. **A third legitimate database state.** Tests assumed only pre-3B (column
+   present) or post-3B (column contracted with a 3B archive). A fresh 4A install
+   is neither: the column never existed, so there is no archive to find. The
+   Phase 1 and company-metadata tests now accept it — with no column, no row can
+   express a non-serial mode.
+2. **The Phase 3 inventory** audits the pre-3B estate and requires the column.
+   It now reconstructs that exact contract on its disposable stack.
+3. **The Phase 3A compatibility proof** drives migration 0009, a *replaced*
+   migration a fresh 4A install never executes. It now reconstructs the exact
+   post-0009 physical contract first, so the real executor is still exercised
+   forwards and backwards.
+4. **The Phase 28 rollback target was stale.** It pinned the Phase 2 image,
+   which still declares `inventory_mode` as a concrete ORM field and therefore
+   cannot run against any post-3B or fresh 4A database — its container
+   restart-looped. Corrected to the actually deployed 3A image `497b665`, and
+   the family check now reads the physical tenant schemas instead of the dropped
+   column.
+5. **The synthetic recovery estate** registered the bootstrap tenant after the
+   old image's entrypoint had already run `apply_sql_all_tenants`, so the live
+   source got 33 indexes while its restored copy got 86 and the structural
+   witnesses diverged. Registration now happens before the rollout, matching the
+   entrypoint's order.
+
+## Final local gate run — all PASS
+
+serial · creation-freeze · runtime-removal · metadata-inventory · compatibility ·
+isolation · full regression (21/21) · ARM64 · Phase 3B cleanup (69/69) · Phase 3B
+executor · migration-replacement proof (17/17) · Phase 28 encrypted recovery
+(RTO 44s, RPO 0s) — alongside every static contract gate and `compileall`.
+
+Production was never contacted. Nothing was pushed or deployed.
+
+
+---
+
+# Checkpoint 4.0 — audit evidence (reviewed 2026-09-07)
+
+Protected run **`33896979203`**, dispatched from exact source `4f7f49f`,
+completed successfully on 2026-09-04 against deployed 3A image `497b665`. The
+retained artifact was reviewed on 2026-09-07. It had previously been recorded in
+this document as "not dispatched"; that was a bookkeeping error, now corrected.
+
+```text
+PHASE4_AUDIT_SOURCE_SHA=4f7f49f1ea32d72a4c04bd4293344bc47c22bebe
+PHASE4_DEPLOYED_SHA=497b6650ed678bc462f85de6bff14692bffd6ace
+PHASE4_PRODUCTION_CONTAINER_UNCHANGED=yes
+PHASE4_ENTRY_RESULT=PASS
+PHASE4_REPLACEMENT_AUTHORIZED=no
+```
+
+| Required condition | Observed |
+|---|---|
+| Exact pre-squash tenancy leaf | `0009_inventory_mode_compatibility` |
+| Exact pre-squash authentication leaf | `0025_add_quantity_platform_permissions` |
+| Retired physical column absent | `inventory_mode_column_present: false` |
+| Retired permissions absent | `retired_permission_count: 0` |
+| Retired feature keys absent | `retired_feature_occurrences: 0` |
+| Phase 3B archive intact and applied | `archive_state: applied`, payload `a7b4b186…` |
+| Companies / physical schemas | 1 / 1, matched, no orphan or missing |
+| Serial tenant health | active, `ready`, serial v6, journal balanced |
+| Non-serial / invalid schemas | none |
+| Authority | `authorizes_migration_replacement: false` — evidence, not authority |
+
+The two leaves are exactly the ones `tenancy/0001_serial_only.py` and
+`authentication/0001_serial_only.py` list in `replaces`, which is the condition
+Django needs to treat the replacements as fully applied on the upgrade path.
+
+Production's tenant structure fingerprint is
+`b764c48d37849463a429f099d0817982e87a0803b7c4fbea2d360cc55331b1d3` with 86
+indexes — the same value the corrected synthetic recovery estate now reproduces.
+That independently confirms the index-ordering fix made to
+`tests/phase3_recovery_local.py`, which had produced a 33-index estate.
+
+A fresh confirmation run **`34080323205`** was dispatched on 2026-09-07 from the
+same `4f7f49f`. The agent verified the pending gate and did not submit the
+approval; the owner released it and the run **PASSED**, returning an identical
+state digest `3524c499…`, identical structure fingerprint `b764c48d…` (86
+indexes) and `PHASE4_PRODUCTION_CONTAINER_UNCHANGED=yes`. Production is
+therefore provably unchanged between the two audits, three days apart.
+
+
+---
+
+# Checkpoint 4A — independent migration review (2026-09-07)
+
+Reviewed against the exact leaves the protected audit confirmed in production:
+`tenancy.0009_inventory_mode_compatibility` and
+`authentication.0025_add_quantity_platform_permissions`.
+
+## Structural checks — both replacements
+
+| Check | tenancy | authentication |
+|---|---|---|
+| `replaces` matches the on-disk chain exactly | 9/9 | 25/25 |
+| Ends at the audited production leaf | yes | yes |
+| Nothing replaced that is not on disk | yes | yes |
+| `initial = True` | yes | yes |
+| Dependencies identical to the original head | `swappable_dependency(AUTH_USER_MODEL)` | `contenttypes`/`auth` `__latest__` |
+
+## tenancy — state equivalence proven, not assumed
+
+The final ORM state was built twice inside the release image: once from the
+original chain with `MigrationLoader(replace_migrations=False)` at
+`tenancy.0009`, once from the replacement. The two states are **identical**
+across all six models — fields, options, constraints and managers.
+
+- Constraints retained: `tenancy_company_valid_tax_environment`,
+  `tenancy_company_valid_provisioning_state`.
+- The retired `tenancy_company_valid_inventory_mode` is absent, and neither
+  `inventory_mode` nor `quantity` appears anywhere in the operations.
+- Operation order folds the history correctly: six `CreateModel`s, the currency
+  and tax fields, the seed/backfill data migration, the base-currency
+  `AlterField`, the tax constraint, the provisioning fields, the
+  ready-state backfill, then the provisioning constraint.
+- The only apparent data-migration difference is original `0006`'s named
+  `reverse_backfill` replaced by `migrations.RunPython.noop`. That is
+  behaviourally identical: `reverse_backfill` is an empty documented `pass`.
+- `makemigrations --check --dry-run` in the built image: **No changes detected.**
+
+## authentication — permission set verified two independent ways
+
+The chain is purely additive; no migration in it deletes a permission, so the
+union of all 25 is the correct target. The "versionN" migrations (0012, 0014)
+are additive `get_or_create` calls, not renames.
+
+*Static* — parsing every permission literal and keyword form out of all 25
+originals and out of the replacement, then comparing against the 14 retired
+codenames in `RETIRED_PERMISSIONS`:
+
+```text
+original chain : 90 custom codenames
+replacement    : 76 custom codenames
+dropped        : exactly the 14 retired codenames
+added          : none
+relabelled     : none
+```
+
+*Empirical* — migrating two fresh disposable databases, one with the published
+3A image (original chain) and one with the release image (replacement), then
+diffing the real `auth.user` permission rows:
+
+```text
+original chain :  94 rows  (90 custom + 4 Django defaults)
+replacement    :  80 rows  (76 custom + 4 Django defaults)
+present in the chain but not the replacement : the 14 retired codenames, exactly
+present in the replacement but not the chain : none
+```
+
+Both methods agree exactly. No serial permission is lost, none is relabelled,
+and no new permission is introduced.
+
+## Observations — no defects found; two notes for the record
+
+1. Both replacements inherit
+   `Permission.objects.get_or_create(codename=…, name=…, content_type=…)` from
+   the originals. Because `auth_permission` is unique on
+   `(content_type, codename)`, a pre-existing row with the same codename but a
+   different label would raise `IntegrityError` rather than match. This cannot
+   occur on a fresh install, which is the only path that executes the
+   replacement, and the pattern is inherited rather than introduced.
+2. `seed_and_backfill` imports application code
+   (`tenancy.currencies.seed_currency_catalogue`) inside a migration, so that
+   function's future behaviour would change this historical migration. This is
+   copied verbatim from original `0006`; changing it here would break the
+   audited equivalence, so it is recorded rather than altered.
+
+**Review verdict: both replacements are faithful to the audited history and
+safe to release under checkpoint 4A.**

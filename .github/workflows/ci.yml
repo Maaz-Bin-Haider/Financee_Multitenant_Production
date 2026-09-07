@@ -44,7 +44,6 @@ jobs:
       - run: python -m unittest tests.test_phase3_recovery_remote
       - run: python -m unittest tests.test_phase3b_cleanup_remote
       - run: python -m unittest tests.test_phase4_inventory_remote
-      - run: python -m unittest tests.test_phase2_static_retirement
       - run: python tests/phase27_release_gates.py
       - run: bash tests/phase27_rollback_simulation.sh
       - run: python tests/phase28_release_gates.py
@@ -136,6 +135,20 @@ jobs:
           docker pull redis:7-alpine
           python3 tests/phase3_recovery_local.py --cleanup-test
           python3 tests/phase3_recovery_local.py --executor-test
+
+  migration-replacement-gate:
+    name: Checkpoint 4A migration-replacement proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove fresh-install and original-leaves migration paths
+        run: |
+          set -euo pipefail
+          docker pull ghcr.io/maaz-bin-haider/financee-web:497b6650ed678bc462f85de6bff14692bffd6ace
+          docker build -f deploy/Dockerfile -t ghcr.io/maaz-bin-haider/financee-web:latest .
+          chmod +x tests/phase4a_migration_proof.sh
+          tests/phase4a_migration_proof.sh
 
   isolation-gate:
     name: Four-serial-company isolation gate

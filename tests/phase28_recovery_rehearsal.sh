@@ -10,7 +10,12 @@ restore_project="phase28_restore_$run_tag"
 source_project=${source_project//-/_}
 restore_project=${restore_project//-/_}
 current_image="financee-phase28-current:${GITHUB_SHA:-local}"
-old_image="${PHASE28_OLD_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:e44737f1f740fa936e853a3d6bbbd068a1b6d89d}"
+# Rollback target = the image currently deployed to production. Since
+# checkpoint 3A that is 497b665. The older Phase 2 image
+# (e44737f1f740fa936e853a3d6bbbd068a1b6d89d) still declares inventory_mode as
+# a concrete ORM field, so it cannot run against a database that no longer
+# has that column -- which is every post-3B and every fresh 4A database.
+old_image="${PHASE28_OLD_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:497b6650ed678bc462f85de6bff14692bffd6ace}"
 work_dir=$(mktemp -d)
 artifact_dir="${PHASE28_ARTIFACT_DIR:-$repo_root/phase28-artifacts}"
 mkdir -p "$artifact_dir"
@@ -184,24 +189,32 @@ WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T web \
 WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T web python manage.py release_preflight \
     >"$artifact_dir/old-image-preflight.txt"
 WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T web python -c \
-    'from pathlib import Path; p=Path("/app/staticfiles"); assert not list((p/"js").glob("quantity_*.js")); assert (p/"js/phase2-serial-cache-sentinel.012345abcdef.js").read_text()=="preserved-serial-cache"; print("PASS: deployed Phase 2 image preserves serial cached assets without quantity assets")' \
+    'from pathlib import Path; p=Path("/app/staticfiles"); assert not list((p/"js").glob("quantity_*.js")); assert (p/"js/phase2-serial-cache-sentinel.012345abcdef.js").read_text()=="preserved-serial-cache"; print("PASS: deployed image preserves serial cached assets without quantity assets")' \
     >"$artifact_dir/old-image-static.txt"
+# The retired inventory_mode column is absent after 3B and on every fresh 4A
+# database, so the family is proven from each physical tenant schema instead of
+# from a dropped registry column: a serial schema carries tenant_schema_version,
+# a retired quantity schema carried tenant_schema_metadata.
 WEB_IMAGE="$old_image" "${restore_compose[@]}" exec -T db psql \
     -U financee -d financee -Atc \
-    "SELECT inventory_mode || ':' || count(*) FROM tenancy_company GROUP BY inventory_mode ORDER BY inventory_mode" \
+    "SELECT family || ':' || count(*) FROM (SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema=n.nspname AND table_name='tenant_schema_version') THEN 'serial' WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema=n.nspname AND table_name='tenant_schema_metadata') THEN 'quantity' ELSE 'unknown' END AS family FROM pg_namespace n WHERE n.nspname LIKE 'tenant\_company\_%') s GROUP BY family ORDER BY family" \
     >"$artifact_dir/old-image-family-check.txt"
 grep -q '^serial:' "$artifact_dir/old-image-family-check.txt"
-if grep -q '^quantity:' "$artifact_dir/old-image-family-check.txt"; then
-    echo "Forward database unexpectedly contains a quantity Company row" >&2
+if grep -qE '^(quantity|unknown):' "$artifact_dir/old-image-family-check.txt"; then
+    echo "Forward database contains a non-serial tenant schema" >&2
     exit 1
 fi
+# The retired column and its constraint must be absent on a 4A database, and
+# exactly serial-only where a pre-3B database still carries them.
 "${restore_compose[@]}" exec -T db psql -U financee -d financee -Atc \
     "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname='tenancy_company_valid_inventory_mode' AND conrelid='public.tenancy_company'::regclass" \
     >"$artifact_dir/serial-only-constraint.txt"
-grep -q 'serial' "$artifact_dir/serial-only-constraint.txt"
-if grep -q 'quantity' "$artifact_dir/serial-only-constraint.txt"; then
-    echo "Forward database constraint still permits quantity" >&2
-    exit 1
+if [ -s "$artifact_dir/serial-only-constraint.txt" ]; then
+    grep -q 'serial' "$artifact_dir/serial-only-constraint.txt"
+    if grep -q 'quantity' "$artifact_dir/serial-only-constraint.txt"; then
+        echo "Forward database constraint still permits quantity" >&2
+        exit 1
+    fi
 fi
 
 echo "==> Returning to current image and rechecking serial tenants"

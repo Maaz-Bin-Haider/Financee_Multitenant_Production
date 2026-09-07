@@ -9,7 +9,8 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 
-from tenancy.models import Company, INVENTORY_MODE_SERIAL, PROVISIONING_READY
+from tenancy.models import Company, PROVISIONING_READY
+from tenancy.schema_families import SERIAL_SCHEMA_FAMILY
 
 
 TENANT_SCHEMA_PATTERN = r"^tenant_company_[0-9]+$"
@@ -337,7 +338,7 @@ class Command(BaseCommand):
                 for company in companies:
                     company["inventory_mode"] = (
                         legacy_modes.get(company["id"]) if has_legacy_mode
-                        else INVENTORY_MODE_SERIAL
+                        else SERIAL_SCHEMA_FAMILY
                     )
                 registered = {
                     row["schema_name"]: row
@@ -394,7 +395,7 @@ class Command(BaseCommand):
                 "active": row["is_active"],
             }
             for row in companies
-            if row["inventory_mode"] != INVENTORY_MODE_SERIAL
+            if row["inventory_mode"] != SERIAL_SCHEMA_FAMILY
         ]
         orphan_schemas = sorted(physical_set - registered_set)
         missing_schemas = sorted(registered_set - physical_set)
@@ -402,7 +403,7 @@ class Command(BaseCommand):
             row["schema"]
             for row in schemas
             if row["classification"] != "serial"
-            or row["registered_inventory_mode"] != INVENTORY_MODE_SERIAL
+            or row["registered_inventory_mode"] != SERIAL_SCHEMA_FAMILY
             or row["provisioning_state"] != PROVISIONING_READY
             or row["version"] != settings.TENANT_SCHEMA_VERSION
         ]

@@ -3,13 +3,12 @@
 from django.db import connection, transaction
 
 from .models import (
-    INVENTORY_MODE_SERIAL,
     PROVISIONING_FAILED,
     PROVISIONING_PROVISIONING,
     PROVISIONING_READY,
     Company,
 )
-from .schema_families import schema_family
+from .schema_families import SERIAL_SCHEMA_FAMILY, schema_family
 from .utils import (
     PUBLIC_SCHEMA,
     schema_has_tables,
@@ -18,8 +17,8 @@ from .utils import (
 )
 
 
-def _read_template(family_key: str) -> str:
-    definition = schema_family(family_key)
+def _read_template() -> str:
+    definition = schema_family()
     return definition.template_path.read_text(encoding="utf-8")
 
 
@@ -56,18 +55,18 @@ def provision_schema(
     schema_name: str,
     force: bool = False,
     *,
-    family: str = "serial",
+    family: str = SERIAL_SCHEMA_FAMILY,
 ) -> bool:
-    """Create one physical tenant schema from its registered family template."""
+    """Create one physical tenant schema from the serial template."""
     validate_schema_name(schema_name)
-    if family != INVENTORY_MODE_SERIAL:
+    if family != SERIAL_SCHEMA_FAMILY:
         raise ValueError("only serial tenant provisioning is supported")
-    definition = schema_family(family)
+    definition = schema_family()
 
     if not force and schema_has_tables(schema_name):
         return False
 
-    template_sql = _read_template(definition.key)
+    template_sql = _read_template()
     quoted = connection.ops.quote_name(schema_name)
     tenant_path = search_path_for(schema_name)
 
@@ -88,8 +87,6 @@ def provision_company(company: Company) -> bool:
     """Provision a company and persist a sanitized operational state."""
     if not company.schema_name:
         return False
-    if company.inventory_mode != INVENTORY_MODE_SERIAL:
-        raise ValueError("only serial companies can be provisioned")
     Company.objects.filter(pk=company.pk).update(
         provisioning_state=PROVISIONING_PROVISIONING,
         provisioning_error_code="",
@@ -97,7 +94,6 @@ def provision_company(company: Company) -> bool:
     try:
         created = provision_schema(
             company.schema_name,
-            family=company.inventory_mode,
         )
     except Exception:
         Company.objects.filter(pk=company.pk).update(

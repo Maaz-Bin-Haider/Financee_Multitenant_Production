@@ -12,7 +12,8 @@ from django.db import connection
 from django.urls import resolve, reverse
 
 from tenancy.admin import CompanyAdmin
-from tenancy.models import Company, INVENTORY_MODE_SERIAL, Membership
+from tenancy.models import Company, Membership
+from tenancy.schema_families import SERIAL_SCHEMA_FAMILY
 from tenancy.schema_verification import verify_company_schema
 from tenancy.utils import reset_search_path, set_search_path
 
@@ -24,7 +25,7 @@ def _digest(value) -> str:
 
 def _tenant_snapshot(company):
     verification = verify_company_schema(company, use_cache=False)
-    if not verification.ok or verification.family != INVENTORY_MODE_SERIAL:
+    if not verification.ok or verification.family != SERIAL_SCHEMA_FAMILY:
         raise CommandError(
             f"{company.schema_name}: serial schema verification failed "
             f"({verification.reason})"
@@ -131,19 +132,23 @@ class Command(BaseCommand):
         )
         if not companies:
             raise CommandError("no active tenant exists")
+        try:
+            tenants = [_tenant_snapshot(company) for company in companies]
+        finally:
+            reset_search_path()
+        # Checkpoint 4A retired the registry mode column, so "serial only" is
+        # now proven by physical schema verification rather than by a metadata
+        # value a caller could set. _tenant_snapshot already refuses any schema
+        # that does not verify as the serial family; this re-asserts it on the
+        # collected evidence so --serial-only stays a real, fail-closed gate.
         non_serial = [
-            company.schema_name
-            for company in companies
-            if company.inventory_mode != INVENTORY_MODE_SERIAL
+            row["schema"] for row in tenants
+            if row["family"] != SERIAL_SCHEMA_FAMILY
         ]
         if options["serial_only"] and non_serial:
             raise CommandError(
                 "Phase 30 forbids quantity tenants: " + ", ".join(non_serial)
             )
-        try:
-            tenants = [_tenant_snapshot(company) for company in companies]
-        finally:
-            reset_search_path()
         platform = _platform_contracts(companies[0])
         result = {
             "phase": 30,

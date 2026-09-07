@@ -123,9 +123,10 @@ def check_admin_form(company):
         all(form.fields[_feature_field_name(k)].initial == company.feature_enabled(k)
             for k in all_feature_keys()))
 
+    # The admin form has never exposed an inventory mode (3A excluded it; 4A
+    # removed the concept), so the payload must not carry one.
     data = {
         "name": company.name,
-        "inventory_mode": company.inventory_mode,
         "base_currency": company.base_currency_id,
         "tax_environment": company.tax_environment,
         "contact_email": company.contact_email or "",

@@ -1,108 +1,65 @@
 # Project Context
 
-Last updated: 2026-07-27
+Last updated: 2026-09-06
 
 This file is the persistent engineering context for Financee. Update it on every meaningful project change, especially changes to architecture, routes, permissions, tenant SQL, deployment behavior, environment variables, tests, or data model assumptions.
 
 ## Session Resume Checkpoint
 
-- **Last completed phase:** Phase 29 — Staging Acceptance and Security Review.
-- **Current phase:** Phase 30 — implementation and disposable rehearsal
-  complete; the protected production foundation deployment must pass before
-  Phase 31.
-- **Phase 30 delivered:** exact SHA/source/image enforcement, required
-  maintenance/change/rollback records, explicit external or encrypted backup
-  strategy, read-only
-  serial T9 audit, privacy-preserving before/after tenant continuity
-  fingerprints, serial-only enforcement, latency/5xx/connection/disk/CPU/memory
-  thresholds, retained evidence, and automatic previous-image rollback. Local
-  Phase 30 contracts passed 14/14 and serial continuity remained unchanged
-  across hardening. Evidence:
-  `tests/PHASE30_PRODUCTION_FOUNDATION_RESULTS.md`.
-- **Phase 29 delivered:** exact-source image identity verification, an isolated
-  production-like staging stack, 18 static security contracts, runtime
-  hardening, T4/T5/T6 and selected T7 execution, workflow/report UAT, initial
-  and final tenant preflight, operational health evidence, retained CI
-  artifacts, and a protected approval gate blocking publication. Local serial
-  51/51, quantity 20/20, isolation 17/17, hardening 5/5, and T7 smoke passed.
-  Evidence: `tests/PHASE29_STAGING_SECURITY_RESULTS.md`.
-- **Phase 28 status:** complete. Encrypted database/media backup, isolated
-  restore, two restored serial schemas, post-restore quantity provisioning,
-  forward migration, previous-image compatibility, corruption rejection, and
-  failed-health rollback passed. RPO was 0 seconds for the declared synthetic
-  recovery point and restore RTO was 43 seconds. Evidence:
-  `tests/PHASE28_BACKUP_RESTORE_ROLLBACK_RESULTS.md`.
-- **Phase 27 status:** complete. PR and main T8 gates passed, the immutable
-  multi-architecture image was published, and the protected deployment was
-  explicitly approved and completed on EC2 with a passing preflight. Evidence:
-  `tests/PHASE27_CICD_ARM64_RESULTS.md`.
-- **Phase 26 delivered:** a 2-vCPU/4-GiB constrained capacity profile,
-  production PostgreSQL/Gunicorn tuning, 100,000 SKUs, five million movements,
-  100,000 units, 100 simultaneous sessions, real 100,000-row CSV export,
-  representative daily writes, 10,000-event FIFO replay, report timing,
-  resource/lock/restart telemetry, reconciliation report optimization, and
-  complete serial/quantity/isolation regression.
-- **Phase 26 evidence:** `tests/PHASE26_PERFORMANCE_CAPACITY_RESULTS.md` and
-  `tests/phase26_target_results.json`.
-- **Quantity schema development baseline:** version 22.
-- **Phase 22 delivered:** central mode-aware 40-report catalogue, validated
-  report-filter contract, accounting/stock/FIFO/sales/purchase/return and
-  reconciliation SQL, quantity dashboard dispatch, permission and feature
-  enforcement, responsive report UI, and CSV plus native Excel exports.
-- **Phase 22 evidence:** `tests/PHASE22_QUANTITY_REPORTS_DASHBOARDS_RESULTS.md`.
-- **Phase 23 delivered:** a permanent two-tenant quantity certification gate
-  covering the complete domestic lifecycle, shared financial activity, every
-  quantity report, hostile inputs, isolation, inventory and journal
-  reconciliation, repeat rollout/hardening, monotonic upgrade registration,
-  P0/P1 evidence mapping, identical schema fingerprints, and zero quantity
-  XFAIL.
-- **Phase 23 evidence:** `tests/PHASE23_COMPLETE_QUANTITY_SUITE_RESULTS.md`.
-- **Phase 24 delivered:** a permanent two-fresh-serial-tenant matrix that
-  reruns unchanged legacy domains, system functions, and deep lifecycle;
-  compares the Phase 1 schema, accounting, and report contracts; reapplies
-  serial hardening/indexes; rejects XFAIL; and proves quantity database, route,
-  and navigation surfaces remain absent.
-- **Phase 24 evidence:** `tests/PHASE24_COMPLETE_SERIAL_REGRESSION_RESULTS.md`.
-- **Phase 25 delivered:** a permanent four-company mixed-mode concurrency
-  matrix (two serial, two quantity) covering simultaneous posting, returns,
-  transfers, counts, reports, exports, attachment probes, logouts, persistent
-  connections, rate-limit cache separation, exception reset/scrubbing, schema
-  mismatch rejection, and final `public` search paths. It also fixed
-  tenant-scoped rate-limit keys, real JSONB report response decoding, and the
-  completed quantity home/attachment/audit route allowlist.
-- **Phase 25 evidence:** `tests/PHASE25_FOUR_COMPANY_ISOLATION_RESULTS.md`.
-- **Phase 20 delivered:** quantity attachments and lifecycle cleanup, smart
-  descriptions, immutable cross-module audit events, new platform permissions,
-  a permission-gated audit UI/API, type-aware feature catalogue/route guards,
-  and verified shared subscription enforcement.
-- **Phase 20 evidence:** `tests/PHASE20_QUANTITY_PLATFORM_CONTROLS_RESULTS.md`.
-- **Phase 21 delivered:** central trusted-company capability dispatch,
-  cross-family payload rejection, shared quantity JSON/multipart parsing,
-  mode-aware template context/navigation, authoritative purchase/sale previews,
-  quantity warehouse management, and shared loading, Alerts, keyboard,
-  responsive, and accessibility behavior.
-- **Phase 21 evidence:** `tests/PHASE21_TYPE_AWARE_UI_RESULTS.md`.
-- **Phase 19 delivered:** quantity-compatible shared party and opening-balance
-  contracts, payments, receipts, contra, opening cash, owner equity, period
-  preview/close/reversal, shared financial UI routes, and universal closed-
-  period guards across quantity inventory and financial mutations.
-- **Phase 19 evidence:** `tests/PHASE19_QUANTITY_FINANCIAL_MODULES_RESULTS.md`.
-- **Phase 18 delivered:** foreign/base invoice and line snapshots, durable
-  payment/receipt allocations, partial/final cash or bank settlement, realized
-  exchange gain/loss journals and reporting, unsettled-balance-aware foreign
-  returns, and purchase/sale currency and settlement UI.
-- **Phase 18 evidence:** `tests/PHASE18_QUANTITY_CURRENCY_RESULTS.md`.
-- **Required Phase 17 scope:** tax/non-tax configuration, inclusive/exclusive
-  calculations, discounts, historical snapshots, returns, and control accounts.
-- **Phase 17 delivered:** tenant tax-environment snapshots,
-  tax-code/control-account administration functions, immutable document
-  calculation columns, and the canonical inclusive/exclusive discount-before-
-  tax calculator with deterministic invoice-discount allocation.
-- **Phase 17 evidence:** `tests/PHASE17_QUANTITY_TAX_DISCOUNTS_RESULTS.md`.
-- **Preserve:** all serial-company behavior and the completed quantity schema
-  version 12 count/adjustment lifecycle.
-- **Do not commit or push:** provide commit text to the owner after Phase 25;
-  the owner performs the commit.
+- **System state:** serial-only. The quantity company family is retired in
+  runtime, database and repository. Serial business behavior is unchanged.
+- **Governing plan:** `SERIAL_ONLY_REMOVAL_PLAN.md` (phase gates + audit
+  trail). Every phase requires an explicit owner production PASS before the
+  next begins.
+- **Phase 0 (discovery):** PASS. Read-only production audit; the individually
+  approved orphan quantity test schema `tenant_company_2` was retired after a
+  fresh encrypted backup and isolated restore.
+- **Phase 1 (creation freeze):** PASS, deployed. Company creation locked to
+  serial in admin, model, provisioning commands and database constraint.
+- **Phase 2 (runtime removal):** PASS, deployed. Quantity routes, adapters,
+  templates, static assets and startup SQL maintenance removed; retired paths
+  return 403/404.
+- **Phase 3 (database cleanup):** PASS. Checkpoint 3A deployed the
+  compatibility release (image `497b6650ed678bc462f85de6bff14692bffd6ace`);
+  checkpoint 3B dropped the physical `inventory_mode` column, its check
+  constraint, 14 retired permissions and the retired feature keys inside one
+  guarded, reversible transaction. The private Phase 3B archive remains in
+  state `applied` and is the reversal path — do not delete it.
+- **Phase 4 (repository hygiene):** in progress.
+  - Checkpoint 4.0 entry gate implemented (`serial_only_phase4_audit`,
+    `.github/workflows/phase4-migration-leaf-inspection.yml`, manual-only and
+    read-only). The protected production audit has **not** been dispatched.
+  - Checkpoint 4A implemented locally: retired quantity SQL templates, test
+    modules, design/result documents and the one-shot static-retirement code
+    are removed; the quantity schema-family registry and the temporary
+    inventory-mode compatibility API are gone; squashed replacement migrations
+    `tenancy/0001_serial_only.py` and `authentication/0001_serial_only.py` were
+    added **beside** the original files.
+  - Checkpoint 4B not started: only after every environment has run 4A may the
+    replaced migration files be deleted, `replaces` removed, and `migrate
+    --prune` validated.
+- **Bootstrap ownership changed in 4A (important).** `build_multitenant_db.sql`
+  no longer creates `tenancy_company`/`tenancy_membership` and no longer seeds
+  `('tenancy','0001_initial')`. Seeding it left the squashed replacement
+  *partially* applied, and Django only uses a replacement when **all** or
+  **none** of what it replaces is applied — so it replayed the original chain
+  and `0005` recreated the retired `inventory_mode` column on every fresh
+  install. Django migrations now own the whole public tenancy schema; the
+  bootstrap still builds the example `tenant_company_1` business schema, and
+  `deploy/entrypoint.sh` registers it afterwards with
+  `manage.py register_bootstrap_tenant`. That command refuses to act on any
+  database that already contains a company, so it is a no-op on every existing
+  deployment. Proven by `tests/phase4a_migration_proof.sh` (CI job
+  `migration-replacement-gate`).
+- **Production today:** one serial company, tenant schema version 6, ARM64
+  image `497b665`. No Phase 4 change has been deployed.
+- **Serial-only is now proven physically.** There is no registry mode value to
+  trust: `verify_company_schema` checks each schema's own
+  `tenant_schema_version`, and `Company` has no `inventory_mode` field,
+  property or choice list. The retired keyword is refused by `Model.__init__`.
+- **Do not:** delete the Phase 3B archive or its restore tooling, delete
+  applied migration history in a single release, or infer push/deploy
+  authorization from a local implementation instruction.
 
 ## System Identity
 
@@ -130,6 +87,8 @@ Financee is a multitenant accounting and inventory system for multiple companies
 - Docker production stack: `deploy/docker-compose.yml`, `deploy/Dockerfile`, `deploy/entrypoint.sh`
 - Functional test docs: `tests/README.md`
 - Fixed issue log: `FIXED_ISSUES.md`
+- Serial-only consolidation plan and audit trail: `SERIAL_ONLY_REMOVAL_PLAN.md`
+- Phase 3B reversal runbook: `PHASE3B_MAINTENANCE_RUNBOOK.md`
 
 ## Key Business Modules
 
@@ -173,6 +132,24 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
   `test_http.py`, `test_transaction_lifecycle_deep.py` inside the container).
   On `main` the tested image is pushed to
   `ghcr.io/maaz-bin-haider/financee-web` (`<sha>` + `latest`).
+- **Serial-only gates (mandatory on every push/PR).** `ci.yml` runs the phase
+  contract set in `checks` — `phase0_serial_only_discovery_contracts`,
+  `phase1_serial_only_creation_contracts`,
+  `phase2_serial_runtime_removal_contracts`,
+  `phase3_metadata_inventory_contracts`, `phase3a_compatibility_contracts`,
+  `phase3b_cleanup_contracts`, `phase3b_executor_contracts`,
+  `phase4_repository_hygiene_contracts` — plus the dedicated jobs
+  `serial-gate`, `creation-freeze-gate`, `runtime-removal-gate`,
+  `metadata-inventory-gate`, `compatibility-gate`, `cleanup-rehearsal-gate`,
+  `isolation-gate`, `arm64-smoke`, `full-regression`, `recovery-gate` and
+  `staging-security-gate`. Publication and deployment are blocked until they
+  pass, plus `migration-replacement-gate`, which proves a fresh database never
+  creates the retired column, constraint or permissions and that a database on
+  the original migration leaves upgrades as a no-op with its data intact. The
+  Phase 2 contracts additionally pin byte-identity baselines for the serial view
+  functions, 212 serial UI files, the 16 serial tenant SQL files and the
+  bootstrap's 12,248-line tenant business-schema build, so any accidental change
+  to serial behavior fails CI.
 - `deploy` job: gated by repo variable `DEPLOY_ENABLED=true` AND manual
   approval via the `production` GitHub environment; SSHes to EC2 (secrets
   `EC2_HOST`/`EC2_USER`/`EC2_SSH_KEY`/optional `EC2_APP_DIR`) and runs
@@ -457,6 +434,17 @@ Conventions:
 - `tests/suite/test_subscription_emails.py` covers the subscription email layer: BillingSettings singleton, expiry/suspension emails with per-cycle dedup and failure retry, contact-detail embedding, manual-suspension/test emails, and the admin email screens (locmem backend, nothing real sent).
 - `tests/suite/test_attachments.py` adds dedicated document-attachment coverage for sale, purchase, sale return, purchase return, payment, receipt, and contra documents: upload/update/replacement, preservation of the unselected file kind, metadata/preview/download endpoints, invalid file validation, cleanup, failed-delete preservation, attachment-only bypass for sale/purchase/returns, and no bypass for payments/receipts/contra.
 - `tests/run_tests.sh` runs both harnesses in Docker and can reset tenant schemas with `--reset`.
+- **Serial-only enforcement tests.** `tests/phase1_serial_only_creation.py`
+  proves no supported path can express a non-serial company (the retired
+  keyword is refused by `Model.__init__`, the database rejects a retired-mode
+  write, and the migration precondition still blocks conflicting rows).
+  `tests/phase2_serial_runtime_removal.py` proves retired routes/modules are
+  unreachable, the schema-family registry refuses the retired key, the request
+  boundary fails closed without a resolved tenant, and the rollout registry
+  refuses a retired SQL filename. `tests/phase24_serial_matrix.py` certifies no
+  retired table, function or route exists in a fresh serial schema;
+  `tests/phase25_four_company_isolation.py` runs four concurrent serial
+  companies and rejects a non-serial schema shape.
 
 ## Document Attachment Feature
 
@@ -496,250 +484,44 @@ Always roll out tenant SQL to **all** tenants via `apply_sql_all_tenants` to pre
 - The generated header comment in `financee/settings.py` says Django 5.2.6, but dependency files currently pin Django 6.0.6. Treat dependency files as source of truth unless code compatibility work says otherwise.
 - Some view files retain older commented-out implementations. Active functions are the uncommented definitions later in the files.
 
-## Approved Quantity-Company Requirements (Phase 0, 2026-07-25)
+## Retired Quantity-Company Family (design retired 2026-09)
 
-This is an approved design target, not an implemented feature. Existing
-companies remain serial-based. A future quantity company will use a separate
-schema family selected by an immutable company type during provisioning.
+The quantity/FIFO company family was designed and built across historical
+phases 5–23 but was **never used by a production customer**. It has been
+retired end to end under `SERIAL_ONLY_REMOVAL_PLAN.md`.
 
-- Inventory: FIFO costing; no negative stock; clear insufficient-stock
-  warnings; multiple warehouses; warehouse transfers; physical counts and
-  controlled/audited adjustments.
-- Quantities and units: `numeric(18, 3)` capacity; Pieces and Boxes must be
-  whole numbers; Kilograms, Grams, Litres, and Metres may use up to three
-  decimals; one inventory unit per item/variant and no unit conversions.
-- Products: brand, model, color, storage, RAM, region, and condition variants.
-  Every unique sellable combination has a unique SKU. The system suggests a
-  SKU, which may be edited only before transactions exist.
-- Transactions: backdating is allowed only in open periods and must safely
-  rebuild FIFO/COGS without creating negative stock. Posted documents are
-  editable only when downstream state can be atomically and safely rebuilt.
-  Document types have independent, gap-preserving sequences such as
-  `SAL-000001` and `PUR-000001`.
-- Returns: sale returns restore exact original FIFO COGS; purchase returns use
-  original purchase cost and require eligible stock; partial returns are
-  allowed but cumulative returns cannot exceed the source line.
-- Tax and discounts: company creation selects tax or non-tax environment.
-  Tax names/codes/rates are tenant-configurable. Tax-based companies support
-  inclusive/exclusive pricing, taxable/zero-rated/exempt lines, per-line
-  calculation, invoice summaries, and optional exemption references. Percentage
-  and fixed discounts work at line and invoice levels and reduce taxable value
-  before tax by default. Applied calculation inputs are stored historically.
-- Currency: admin selects the base currency from a worldwide catalogue during
-  company creation. Foreign invoices store transaction currency, foreign
-  amount, manually entered invoice rate, and base amount. Settlement stores its
-  manual rate and automatically posts proportional realized exchange gain/loss,
-  including partial settlements. No month-end unrealized revaluation is
-  required.
-- Reporting: the approved quantity report catalogue in `todo.md` replaces
-  serial-only reports with movement, valuation, reconciliation, aging, reorder,
-  margin, return-rate, purchase-variance, and fast/slow-moving reports.
-- Validation target: four isolated companies (two serial and two quantity),
-  concurrent tenant-leakage tests, 100 concurrent sessions, 100,000 SKUs, five
-  million stock movements, ordinary reports under three seconds, and a pilot
-  quantity wholesaler holding approximately 100,000 physical units across
-  warehouses.
-- Rollout: all three current paying companies remain serial-based. The first
-  quantity company is a new pilot after staging, full regression, backup,
-  security, performance, and rollback approval.
+What was removed, and where the record lives:
 
-Full phase gates, report definitions, tests, and rollout tasks are maintained in
-`todo.md`. The implementation-grade requirements baseline, requirement IDs,
-origin labels, acceptance criteria, and traceability register are maintained in
-`SRS_QUANTITY_BASED_COMPANY.md`. The authoritative implementation order,
-mandatory per-phase test gates, evidence format, staging process, deployment,
-rollback, pilot, and observation plan are maintained in
-`IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`.
+- **Runtime (Phase 2):** quantity HTTP routes, view adapters, dispatchers,
+  templates, static assets, dashboard branches and startup SQL maintenance.
+- **Database (Phase 3):** the `inventory_mode` column and its check
+  constraint, 14 retired permissions with their direct grants, and the retired
+  feature keys — removed in one guarded, reversible transaction with a private
+  archive retained in state `applied`.
+- **Repository (Phase 4A):** 18 quantity SQL templates/patches, 20 quantity
+  suite modules, the quantity phase result and design documents
+  (`ARCHITECTURE_QUANTITY_COMPANY.md`, `SRS_QUANTITY_BASED_COMPANY.md`,
+  `IMPLEMENTATION_ROLLOUT_PLAN_QUANTITY_COMPANY.md`,
+  `REQUIREMENTS_TRACEABILITY_QUANTITY_COMPANY.md`), the quantity schema-family
+  registry, the temporary inventory-mode compatibility API, the T7 quantity
+  benchmark harness and the one-shot static-retirement code.
 
-The detailed plan intentionally divides delivery into 33 phases (0–32). Tests
-are mandatory after every phase, including a relevant serial regression subset.
-Dependent work does not begin until the previous phase exit gate passes.
+What is deliberately **retained**:
 
-Phase 1 completed on 2026-07-25 against two fresh isolated serial tenants. The
-comprehensive suite, SQL harness, standalone HTTP harness, and deep lifecycle
-tests all pass. The baseline also fixed two test/deployment defects:
-`tests/test_http.py` now creates a temporary tenant membership and returns a
-non-zero exit on reported problems, and the web entrypoint applies
-`tenant_indexes.sql` so the bootstrap tenant receives the same required 50
-secondary indexes as runtime-provisioned tenants. Evidence is in
-`tests/PHASE1_BASELINE_RESULTS.md`.
+- The Phase 3B archive, its restore command, controller, workflow, tests and
+  `PHASE3B_MAINTENANCE_RUNBOOK.md` — these are the reversal path.
+- Phase 0–3 operational evidence under `tests/PHASE*_RESULTS.md`.
+- The replaced Django migration files, until the checkpoint 4B transition. They
+  create no retired column on a fresh install; the squashed replacements list
+  them in `replaces`.
+- `todo.md` and `tests/PHASE26_PERFORMANCE_CAPACITY_RESULTS.md` as historical
+  execution records. They describe a system that no longer exists — read them
+  as history, not as current behavior.
 
-Phase 2 completed on 2026-07-25 as a design-only gate. The approved dual-family
-architecture, logical quantity data model, FIFO/source lineage, deterministic
-backdated replay, canonical locks, idempotency, document lifecycles, precision,
-capability/payload contracts, reconciliation, provisioning, and rollback design
-are in `ARCHITECTURE_QUANTITY_COMPANY.md`. Requirement ownership and planned
-test evidence are in `REQUIREMENTS_TRACEABILITY_QUANTITY_COMPANY.md`; review
-evidence is in `tests/PHASE2_ARCHITECTURE_RESULTS.md`. No runtime code or SQL
-was introduced in Phase 2.
-
-Phase 3 completed on 2026-07-25. The public `Company` record now has an
-`inventory_mode` constrained to `serial` or `quantity`; migration
-`tenancy.0005_company_inventory_mode` safely assigns `serial` to all existing
-and bootstrap companies. The mode is immutable after creation at both model
-validation and normal `save()` boundaries, and the admin displays it as
-read-only on existing companies. Quantity creation is intentionally rejected
-until the quantity schema template and provisioning registry exist in Phase 5.
-Upgrade, clean-install, migration rollback/reapply, 14 focused metadata checks,
-all 16 suite modules, and the serial system/lifecycle regressions passed in
-isolated Docker environments. Evidence is in
-`tests/PHASE3_COMPANY_METADATA_RESULTS.md`. Base currency and tax-environment
-configuration remain Phase 4 work.
-
-Phase 4 completed on 2026-07-25. Public migration
-`tenancy.0006_currency_company_setup` adds the controlled `Currency` catalogue,
-required company base currency, and tax/non-tax environment. The frozen
-catalogue contains 178 entries from the official SIX/ISO 4217 List One
-published 2026-01-01; 165 entries with defined minor-unit precision are active
-for selection. Existing companies are safely backfilled to PKR/non-tax without
-changing tenant schemas or stored financial values. Base currency and tax
-environment can be corrected before tenant journal activity and are locked
-afterward. Admin and `provision_tenant` support the setup fields, and
-`seed_currencies` refreshes catalogue data idempotently. Upgrade, clean install,
-rollback/reapply, 30 focused checks, all 17 suite modules, and full serial
-accounting/lifecycle regressions passed. Evidence is in
-`tests/PHASE4_COMPANY_SETUP_RESULTS.md`.
-
-Phase 5 completed on 2026-07-25. A central schema-family registry now owns
-serial/quantity templates, hardening paths, required versions, fingerprints,
-and runtime gates. Quantity schema version 1 is independently provisionable
-from `quantity_tenant_template.sql` and maintained by the idempotent
-`quantity_production_hardening.sql`; it contains family/base-currency metadata,
-seed registry, document counters, a foundation sequence, and verification
-functions, with no serial inventory tables. Public migration
-`tenancy.0007_company_provisioning_state` adds pending/provisioning/ready/failed
-operational states and sanitized failure codes. Provisioning verifies the
-required fingerprint before commit, supports controlled failed-build retry, and
-rollout commands enforce family/file ownership plus post-upgrade verification.
-Middleware denies family/version/base-currency/fingerprint mismatch. Quantity
-business routes remain intentionally gated until later functional phases.
-Evidence from clean and upgraded mixed-family environments, 28 focused checks,
-all 18 suite modules, and full serial accounting/lifecycle regressions is in
-`tests/PHASE5_QUANTITY_FOUNDATION_RESULTS.md`.
-
-Phase 6 completed on 2026-07-25. Quantity schema version 2 adds an idempotently
-seeded 17-account system chart covering cash/bank, AR/AP, inventory, revenue,
-COGS, opening balance, capital/retained earnings, input/output tax, inventory
-adjustment gain/loss, realized exchange gain/loss, and rounding difference.
-The base-currency ledger uses `numeric(24,4)` journal lines, immutable posted
-journals, linked reversing journals, source-document uniqueness, and deferred
-database constraint triggers that reject empty or unbalanced direct writes.
-`quantity_post_journal`, `quantity_reverse_journal`, account lookup, trial
-balance, and atomic per-document numbering form the SQL boundary for later
-quantity modules. Existing version-1 quantity schemas upgrade through
-`quantity_accounting_foundation.sql`; fresh schemas receive the same objects
-from `quantity_tenant_template.sql`. The schema verifier now correctly
-fingerprints PostgreSQL identity sequences through `pg_class`. Evidence from
-the preserved Phase 5 upgrade database, two fresh quantity tenants, concurrent
-numbering, 39 focused checks, all 19 suite modules, and complete serial
-regressions is in `tests/PHASE6_ACCOUNTING_FOUNDATION_RESULTS.md`. Quantity
-business routes remain gated; Phase 7 is the product/variant/SKU/unit master.
-
-Phase 7 completed on 2026-07-25. Quantity schema version 3 adds controlled
-Piece, Box, Kilogram, Gram, Litre, and Metre units; normalized products; and
-sellable variants requiring brand, model, color, storage, RAM, region, and
-condition. The unit participates in normalized combination identity, so the
-same attributes stocked as Pieces and Boxes remain separate SKUs. Suggested
-SKUs are normalized, deterministic, collision-suffixed under an advisory lock,
-and may be manually supplied. SKU and unit become immutable when
-`variant_transaction_registry` records the first business reference. Piece/Box
-quantities are whole-only; measurement units accept at most three decimals,
-and exact numeric checks reject rather than silently round a fourth decimal.
-The `/items/quantity/` JSON API slice provides unit lookup, product/variant
-creation and updates, SKU suggestion, and active/inactive catalogue search.
-This path is centrally enabled for quantity tenants while all unimplemented
-quantity routes remain gated. Fresh provisioning composes the stable quantity
-base template with the current family hardening artifact, ensuring the same
-SQL upgrades fresh and existing tenants. Evidence from the preserved upgrade,
-two fresh quantity tenants, 60 focused checks, all 20 suite modules, and full
-serial regressions is in `tests/PHASE7_ITEM_MASTER_RESULTS.md`.
-
-Phase 8 completed on 2026-07-25. Quantity schema version 4 adds normalized
-multi-warehouse identity, address and active/inactive state, and at most one
-active default warehouse. Default creation, switching, deactivation,
-replacement, and unreferenced deletion are serialized with a tenant-local
-transaction advisory lock. `warehouse_reference_registry` is the integration
-contract for later stock/document tables and prevents any referenced warehouse
-from being hard-deleted while still permitting deactivation for future use.
-The `/warehouses/quantity/` JSON API provides lookup, default resolution,
-create, rename/update, deactivate/reactivate, and guarded deletion. Four
-explicit Django permissions are installed by
-`authentication.0022_add_quantity_warehouse_permissions`, and both central
-route mapping and view-level checks enforce them. Fresh quantity provisioning
-now executes ordered cumulative family upgrades (item master, then warehouse)
-after the stable base template; existing version-3 tenants receive only the
-idempotent Phase 8 artifact during deployment. Evidence from the preserved
-upgrade, migration rollback/reapply, two fresh quantity tenants, 38 focused
-checks, all 21 suite modules, and full serial regressions is in
-`tests/PHASE8_WAREHOUSE_RESULTS.md`. Transfers and warehouse stock remain in
-their assigned later phases.
-
-Phase 9 completed on 2026-07-25. Quantity schema version 5 adds the inventory
-core independently of invoice screens: immutable stock movements, atomic
-per-variant/per-warehouse balances, FIFO receipt layers, durable outbound
-allocation lineage, and current or historical availability. All writes pass
-through controlled SQL functions. Tenant-and-scope advisory locks serialize
-near-zero consumption, while multi-scope operations acquire warehouse/variant
-locks in a canonical order. Deterministic replay orders events by business
-date and effective sequence, rejects any backdated event that would make
-historical stock negative, and rebuilds projections and allocations
-atomically. Reconciliation compares movements, balances, FIFO remainder, and
-allocated outbound quantities. The focused suite passed 38/38, all 22
-mixed-family modules passed, and the complete serial system, HTTP, and deep
-lifecycle regressions remained green. Evidence is in
-`tests/PHASE9_FIFO_ENGINE_RESULTS.md`. Quantity invoice UI remains gated;
-Phase 10 adds opening stock through this engine.
-
-Phase 10 completed on 2026-07-25. Quantity schema version 6 adds immutable
-opening-stock documents and lines with independent `OPN-000001` numbering.
-Each document posts SKU quantities into their selected warehouses through the
-Phase 9 movement/FIFO engine and atomically debits Inventory while crediting
-Opening Balance. Piece and Box remain whole-only; measurement units retain
-three-decimal quantity precision and costs retain six decimals. An opening
-document can be reversed only while every original FIFO layer remains wholly
-unconsumed, preventing a reversal from substituting arbitrary current FIFO
-cost. Reversal uses linked stock movements and an immutable reversing journal.
-Opening Balance status and serialized reclassification move its exact balance
-to Owner's Capital, including the inverse direction when necessary. The shared
-opening-stock route now selects a quantity-specific no-serial UI for quantity
-tenants while preserving the existing serial screen and functions unchanged.
-Evidence from 37 focused checks, all 23 mixed-family modules, and complete
-serial system/HTTP/deep-lifecycle regressions is in
-`tests/PHASE10_OPENING_STOCK_RESULTS.md`. Phase 11 adds domestic quantity
-purchases.
-
-Phase 11 completed on 2026-07-25. Quantity schema version 7 adds domestic
-base-currency purchases with immutable invoice/line records, tenant-local
-`PUR-000001` numbering, required vendor-name snapshots, credit or cash mode,
-SKU/warehouse quantities, six-decimal unit costs, movement/FIFO lineage, and
-balanced journals. Credit purchases debit Inventory and credit Accounts
-Payable; cash purchases credit the selected Cash or Bank control account.
-Database advisory locking by tenant and idempotency key makes simultaneous
-duplicate submissions return one purchase. Edits preserve the document number,
-store the complete prior document in an immutable revision record, replace the
-source movements under controlled guards, replay every affected FIFO timeline,
-and reverse/repost accounting atomically. Any edit producing historical
-negative stock rolls back completely. Reversal is allowed only while every
-purchase layer remains wholly unconsumed. Quantity purchase navigation,
-summary, and the shared `/purchase/` routes now select a quantity-specific
-no-serial UI/API. The general quantity party master remains Phase 19, so Phase
-11 stores the vendor snapshot and uses the AP control account; tax, discounts,
-foreign currency, settlements, and attachments remain in their assigned
-phases. Evidence from 46 focused checks, all 24 mixed-family modules, and full
-serial regressions is in `tests/PHASE11_QUANTITY_PURCHASES_RESULTS.md`. Phase
-12 adds domestic quantity sales with FIFO COGS.
-
-Phase 12 completed on 2026-07-26. Quantity schema version 8 adds domestic
-base-currency quantity sales with immutable invoices, lines, revisions,
-tenant-local `SAL-000001` numbering, warehouse-scoped availability locks,
-durable FIFO allocations, line-level COGS, credit/cash modes, idempotency,
-guarded edit/replay and reversal, navigation/summary, and a no-serial sales UI.
-Credit sales debit Accounts Receivable while cash sales debit Cash/Bank; both
-credit Sales Revenue and post exact COGS/Inventory entries. Final-stock
-concurrency permits exactly one sale and cannot oversell. Evidence from 34
-focused checks, all 25 mixed-family modules, and full serial
-system/HTTP/deep-lifecycle regressions is in
-`tests/PHASE12_QUANTITY_SALES_RESULTS.md`. Phase 13 adds quantity sale returns.
+**Important for future work:** the ordinary word "quantity" is not by itself
+evidence that something belongs to the retired family. Serial purchases,
+sales, returns and stock reports legitimately store and display counts named
+`qty`/`quantity`. Those are serial business fields and must be preserved.
 
 ## Maintenance Checklist
 

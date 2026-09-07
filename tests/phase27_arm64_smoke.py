@@ -16,9 +16,9 @@ django.setup()
 
 from django.db import connection  # noqa: E402
 from django.core.management import call_command  # noqa: E402
-from django.core.exceptions import ValidationError  # noqa: E402
 from django.test import Client  # noqa: E402
-from tenancy.models import Company, Currency, INVENTORY_MODE_SERIAL  # noqa: E402
+from tenancy.models import Company, Currency  # noqa: E402
+from tenancy.schema_families import SERIAL_SCHEMA_FAMILY  # noqa: E402
 from tenancy.schema_verification import verify_company_schema  # noqa: E402
 
 
@@ -32,26 +32,30 @@ def main():
         for index in range(2):
             company = Company.objects.create(
                 name=f"PHASE27 ARM64 SERIAL {index} {time.time_ns()}",
-                inventory_mode=INVENTORY_MODE_SERIAL, base_currency=currency,
-                tax_environment="non_tax",
+                base_currency=currency, tax_environment="non_tax",
             )
             companies.append(company)
             company.refresh_from_db()
             verification = verify_company_schema(company, use_cache=False)
             checks.append((
                 f"serial tenant {index + 1} provisions and verifies",
-                verification.ok and verification.family == INVENTORY_MODE_SERIAL,
+                verification.ok and verification.family == SERIAL_SCHEMA_FAMILY,
             ))
         try:
             Company(
                 name=f"PHASE27 ARM64 BLOCK {time.time_ns()}",
                 inventory_mode="quantity",
                 base_currency=currency,
-            ).full_clean()
+            )
             quantity_blocked = False
-        except ValidationError:
+        except TypeError:
             quantity_blocked = True
         checks.append(("quantity company creation is rejected", quantity_blocked))
+        checks.append((
+            "retired mode is absent from the company model API",
+            not hasattr(Company, "inventory_mode")
+            and not hasattr(Company, "get_inventory_mode_display"),
+        ))
         response = Client(SERVER_NAME="localhost").get("/authentication/login/")
         checks.append(("HTTP login smoke", response.status_code == 200))
         try:

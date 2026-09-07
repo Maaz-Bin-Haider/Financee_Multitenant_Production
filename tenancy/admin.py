@@ -140,7 +140,6 @@ class _CompanyAdminFormBase(forms.ModelForm):
         model = Company
         exclude = (
             "disabled_features",
-            "inventory_mode",
             "provisioning_state",
             "provisioning_error_code",
         )

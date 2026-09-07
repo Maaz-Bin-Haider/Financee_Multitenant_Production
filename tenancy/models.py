@@ -52,14 +52,6 @@ SUBSCRIPTION_UNRESTRICTED = "unrestricted"  # no paid_until set: not enforced
 
 BLOCKED_STATES = frozenset({SUBSCRIPTION_SUSPENDED, SUBSCRIPTION_BLOCKED})
 
-INVENTORY_MODE_SERIAL = "serial"
-# Kept temporarily for Phase 2 runtime removal. It is no longer a valid value
-# for a Company row or any supported provisioning path.
-INVENTORY_MODE_QUANTITY = "quantity"
-INVENTORY_MODE_CHOICES = (
-    (INVENTORY_MODE_SERIAL, "Serial-number based"),
-)
-
 TAX_ENVIRONMENT_TAX = "tax"
 TAX_ENVIRONMENT_NON_TAX = "non_tax"
 TAX_ENVIRONMENT_CHOICES = (
@@ -108,23 +100,8 @@ class Currency(models.Model):
         return f"{self.code} — {self.name}"
 
 
-class CompanyQuerySet(models.QuerySet):
-    def bulk_create(self, objs, *args, **kwargs):
-        # Django skips save()/clean() for bulk inserts. Since the legacy input
-        # is no longer a column, reject it before it could be silently ignored.
-        objs = list(objs)
-        for obj in objs:
-            if obj.inventory_mode != INVENTORY_MODE_SERIAL:
-                raise ValidationError({
-                    "inventory_mode": "Only serial-number based companies are supported."
-                })
-        return super().bulk_create(objs, *args, **kwargs)
-
-
 class Company(models.Model):
     """A tenant. Its data lives in the schema named by ``schema_name``."""
-
-    objects = CompanyQuerySet.as_manager()
 
     name = models.CharField(max_length=150, unique=True)
     # Blank on first save; filled in automatically (see save() below). Unique so
@@ -140,27 +117,6 @@ class Company(models.Model):
         help_text="Inactive companies cannot have their schema activated for requests.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    # Compatibility API only, not an ORM field. Migration 0009 keeps the
-    # physical serial-only column/default for the previous deployed image.
-    # Preserve existing call sites and the displayed label without SELECTing
-    # or INSERTing that column. Explicit legacy non-serial input still fails
-    # clean()/save(); it is never silently converted into a serial company.
-    @property
-    def inventory_mode(self):
-        return getattr(self, "_requested_inventory_mode", INVENTORY_MODE_SERIAL)
-
-    @inventory_mode.setter
-    def inventory_mode(self, value):
-        self._requested_inventory_mode = value
-
-    def get_inventory_mode_display(self):
-        return dict(INVENTORY_MODE_CHOICES).get(self.inventory_mode, self.inventory_mode)
-
-    def refresh_from_db(self, using=None, fields=None, from_queryset=None):
-        super().refresh_from_db(using=using, fields=fields, from_queryset=from_queryset)
-        if fields is None:
-            self.__dict__.pop("_requested_inventory_mode", None)
-
     base_currency = models.ForeignKey(
         Currency,
         default="PKR",
@@ -271,12 +227,6 @@ class Company(models.Model):
 
     def clean(self):
         super().clean()
-        if self.inventory_mode != INVENTORY_MODE_SERIAL:
-            raise ValidationError({
-                "inventory_mode": (
-                    "Only serial-number based companies are supported."
-                )
-            })
         if self.base_currency_id:
             selected_currency = Currency.objects.filter(
                 pk=self.base_currency_id
@@ -329,7 +279,7 @@ class Company(models.Model):
         the *second* save, by which point schema_name is populated.
         """
         # ModelForm calls full_clean(), but programmatic saves must not bypass
-        # the serial-only registry invariant or the accounting-setup locks.
+        # the accounting-setup locks.
         self.clean()
 
         creating = self._state.adding and not self.schema_name
