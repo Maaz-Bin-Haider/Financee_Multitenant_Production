@@ -31,7 +31,7 @@ explicit production PASS for the current phase.
 | 1 | Close quantity-company creation | **PASS** | Local gates and protected exact-SHA workflow `33636045130` PASS; production deployed without rollback | **PASS** |
 | 2 | Remove quantity runtime and replace CI coverage | **PASS** | Local gates and all 12 jobs in protected exact-SHA workflow `33728502631` PASS; production controller PASS | **PASS** |
 | 3 | Remove quantity database metadata and approved orphan schemas | **PASS** | 3A workflow `33736055610`; 3B inventory/recovery; strengthened inspection `33879212477`; protected cleanup `33887331226` with `confirmed_committed` and final checks PASS | **PASS — owner confirmed the live site online and working after cleanup** |
-| 4 | Source, documentation, test, and migration hygiene | **In progress — checkpoint 4.0 closed; 4A implementation complete and fully gated locally** | Protected read-only production audit `33896979203` PASS and reviewed. Every static and container-backed gate PASS, including the new `migration-replacement-gate`: fresh installs create no retired column, constraint or permission, and an original-leaves database upgrades as a no-op with its data intact. No push or deployment | Required after each 4A/4B release and at final acceptance |
+| 4 | Source, documentation, test, and migration hygiene | **In progress — 4A committed and green in CI; awaiting release approval** | Protected audits `33896979203` and `34080323205` PASS with identical digests. Both replacements independently reviewed. Branch CI run `34081125290` on commit `d8e55c6`: 13/13 test jobs green including the new `migration-replacement-gate`; publish/deploy correctly skipped as branch-only. Not published or deployed | Required after each 4A/4B release and at final acceptance |
 
 ## Phase 0 — Production Discovery and Approved Test-Tenant Remediation
 
@@ -575,7 +575,9 @@ instances can finish the original chain; new installations use the replacements.
   full regression (21/21 modules), Phase 3B cleanup (69/69) and executor round
   trips, and the Phase 28 encrypted recovery rehearsal (restore RTO 43s, RPO
   0s). The post-cleanup suite also passes **inside the published 3A image**,
-  proving the dual-image shim. Production-like staging was not run separately.
+  proving the dual-image shim. All of it was then re-run in GitHub Actions on
+  the pushed branch, where the production-like staging/security gate also
+  passed: run `34081125290`, 13/13 test jobs green.
 - [ ] Review, approve, publish and deploy the exact 4A image through normal
   protected CI/CD. Stop for owner manual production PASS.
 
@@ -688,3 +690,5 @@ confirms the replacement migration records may the transition complete.
 | 2026-09-07 | Owner instructed "dispatch the phase 4.0 production audit"; fresh confirmation run queued | Run `34080323205` dispatched from `4f7f49f` with confirmation `INSPECT-PHASE4-MIGRATION-LEAVES` and expected deployed SHA `497b665`. It is held at the `production` environment approval gate with the owner as sole reviewer; the agent verified the pending gate and did not submit the approval |
 | 2026-09-07 | Owner released the protected gate; confirmation run `34080323205` PASS | Identical state digest `3524c499…`, identical structure fingerprint `b764c48d…` (86 indexes), container unchanged, `PHASE4_REPLACEMENT_AUTHORIZED=no`. Production provably unchanged across two audits three days apart. Checkpoint 4.0 fully closed |
 | 2026-09-07 | Independent review of both squashed replacements completed | `replaces` lists match the on-disk chains exactly and end at the audited leaves; dependencies identical to the originals. tenancy: final ORM state proven identical to the original chain across all 6 models, retired constraint absent, `RunPython.noop` shown behaviourally identical to the original empty `reverse_backfill`, no model drift. authentication: static parse and an empirical two-database diff agree exactly — 90 custom permissions become 76, the difference is precisely the 14 retired codenames, with none added or relabelled. No defects found; two inherited patterns recorded rather than changed |
+| 2026-09-07 | Checkpoint 4A committed as `d8e55c6` on branch `phase4a-serial-only-hygiene` | 116 files, +2,108 / -20,965. Committed to a branch rather than directly to `main`; `main` left at `4f7f49f`. No `[skip ci]`, so the branch push runs the full test gate set |
+| 2026-09-07 | Owner authorized pushing the branch; CI run `34081125290` PASS | All 13 test jobs green: static/release contracts, serial, creation-freeze, runtime-removal, metadata-inventory, compatibility, 3B cleanup rehearsal, isolation, ARM64, full regression, encrypted recovery, Phase 29 staging/security, and the new checkpoint 4A migration-replacement proof. `staging-release-approval`, `publish` and `deploy` correctly skipped — all three are gated on `refs/heads/main`. Nothing published or deployed |

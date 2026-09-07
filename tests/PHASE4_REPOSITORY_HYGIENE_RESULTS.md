@@ -531,3 +531,44 @@ and no new permission is introduced.
 
 **Review verdict: both replacements are faithful to the audited history and
 safe to release under checkpoint 4A.**
+
+
+---
+
+# Checkpoint 4A — committed and verified in CI (2026-09-07)
+
+Commit **`d8e55c6`** on branch `phase4a-serial-only-hygiene` — 116 files,
++2,108 / −20,965. Committed to a branch rather than directly to `main`, which is
+left at `4f7f49f`. The commit deliberately carries no `[skip ci]`, unlike the
+earlier preparation commits, because CI is the release gate for 4A.
+
+GitHub Actions run **`34081125290`** — conclusion **success**, 13/13 test jobs:
+
+| Job | Result |
+|---|---|
+| Static, Django, migration & release-contract checks | success |
+| Serial regression gate | success |
+| Serial-only company creation gate | success |
+| Serial-only runtime removal gate | success |
+| Phase 3 read-only metadata inventory gate | success |
+| Phase 3A old and new image compatibility gate | success |
+| Phase 3B reversible cleanup and contracted-database regression | success |
+| Four-serial-company isolation gate | success |
+| ARM64 image execution gate | success |
+| Complete production-stack regression | success |
+| Encrypted backup, restore & rollback gate | success |
+| Phase 29 exact-image staging, security & UAT gate | success |
+| **Checkpoint 4A migration-replacement proof** (new) | success |
+
+`Product, engineering & operations staging approval`, `Publish signed-off
+multi-architecture image` and `Deploy to EC2` were all **skipped**, as expected:
+each is gated on `github.ref == 'refs/heads/main'`. Nothing was published to the
+registry and nothing was deployed.
+
+This also closes the one local gap noted earlier: the production-like Phase 29
+staging and security gate, which had not been run separately on the workstation,
+passed in CI on this exact commit.
+
+**Remaining for checkpoint 4A:** land the commit on `main` so the protected
+CI/CD publishes the exact image, approve the deployment through the `production`
+environment, then the owner's manual production verification and PASS.
