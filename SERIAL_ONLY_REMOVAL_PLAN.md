@@ -604,10 +604,51 @@ instances can finish the original chain; new installations use the replacements.
 Only after every environment has run the 4A release and a new read-only audit
 confirms the replacement migration records may the transition complete.
 
+Started 2026-09-07 on the owner's explicit instruction. **No replaced migration
+file has been touched**: the plan gates the transition behind a fresh read-only
+audit, so the first work is that audit, not the deletions.
+
+##### Checkpoint 4B.0 — transition precondition audit
+
+- [x] Repin the protected audit, which still required the superseded deployed
+  SHA `497b665` and would have failed closed after the 4A release. The workflow
+  now accepts only images that actually passed protected production approval,
+  and pairs each with its correct stage: `497b665` with `entry`, the deployed
+  4A `a4f915f` with `transition`. Any other SHA is refused.
+- [x] Teach `serial_only_phase4_audit` two stages. `entry` (default) keeps the
+  checkpoint 4.0 semantics — the exact pre-squash chain. `transition` requires
+  that chain **plus both squashed replacement records**, which Django writes
+  once every replaced migration is applied and `check_replacements()` records
+  the replacement itself. That is the plan's stated 4B precondition. The audit
+  still authorizes nothing: it now also returns
+  `authorizes_replaced_file_removal=false`.
+- [x] Forward and validate the stage through the read-only SSH wrapper, which
+  refuses any unknown stage before running a single Docker command.
+- [x] Prove both stages fail closed against real PostgreSQL. In the disposable
+  post-cleanup fixture the entry stage passes and the transition stage is
+  refused; after inserting exactly the two rows Django would record, the
+  transition stage passes and the entry stage is refused, with distinct state
+  digests. Phase 3B cleanup fixture now 73/73.
+- [x] Pass every host-runnable gate, including 8/8 hostile wrapper tests
+  (3 new) and 29/29 Phase 4 contracts (5 new 4B contracts).
+- [ ] Review the exact local diff and obtain approval to push.
+- [ ] Separately authorize and dispatch the protected `transition` audit against
+  deployed `a4f915f`, then review its artifact. Only its PASS unlocks the
+  migration-file removal below.
+
+##### Checkpoint 4B.1 — the transition itself (blocked on 4B.0)
+
 - [ ] Remove the old replaced migration files, update dependencies to the
   squashed migrations, and remove `replaces` so each becomes a normal migration.
 - [ ] Validate `migrate --prune` on restored and synthetic databases before any
   separately approved pruning of obsolete migration-table rows.
+- [ ] Retire `tests/serial_api_compat.py` and its dual-image branches, and the
+  pre-3B fixture reconstruction in the Phase 3 inventory and 3A compatibility
+  proofs. **Sequencing constraint:** the accepted rollback image is still 3A
+  `497b665`, which carries the retired compatibility API, and the Phase 3B
+  cleanup rehearsal needs a pre-3B database that only that image produces.
+  Neither can be removed until the rollback target is itself a 4A-or-later
+  build, which happens only once 4B is deployed.
 - [ ] Reprove fresh install, upgraded original history, rollback compatibility,
   serial continuity, backup/restore and all mandatory CI/CD gates.
 - [ ] Deploy exact 4B through protected production approval; verify migration
@@ -715,3 +756,7 @@ confirms the replacement migration records may the transition complete.
 | 2026-09-07 | Owner approved the production deployment; EC2 deploy PASS at 04:19 UTC | Pinned image pulled, web recreated, nginx health recovered after two expected restart 502s, `tenant_indexes.sql` reapplied to the one serial schema, post-deploy check `serial version=6/6`, continuity fingerprints compared, operational thresholds captured, superseded image pruned, Phase 30 controller PASS. Independent public check: login page and root both HTTP 200 with a complete form. **Owner manual production verification still required to record the Phase 4A PASS** |
 | 2026-09-07 | Follow-up noted: the Phase 4 audit workflow pin is now stale | `.github/workflows/phase4-migration-leaf-inspection.yml` and `deploy/phase4_inventory_remote.sh` hard-assert the accepted deployed SHA `497b665`, which the 4A release superseded. The read-only audit will fail closed until that pin is moved to `a4f915f…`; it must be updated before checkpoint 4B's confirmation audit |
 | 2026-09-07 | Owner reported "the site is live and working fine" after the 4A release | **Checkpoint 4A manual production PASS.** The quantity-company family is now retired in runtime, database and repository, and the serial-only squashed replacements are deployed. Checkpoint 4B eligible but not started pending explicit instruction |
+| 2026-09-07 | Owner instructed "start phase 4B" | Checkpoint 4B started with its precondition audit, not with deletions, per the plan's gate. No replaced migration file touched; no push, dispatch or production change |
+| 2026-09-07 | Stale audit pin corrected and the audit taught two stages | The protected workflow still required the superseded deployed SHA `497b665` and would have failed closed after 4A. It now accepts only protected-approved images paired with their correct stage: `497b665`/`entry`, `a4f915f`/`transition`. `serial_only_phase4_audit --stage transition` requires the pre-squash chain plus both recorded replacements and returns `authorizes_replaced_file_removal=false` |
+| 2026-09-07 | Both stages proven fail-closed against real PostgreSQL | In the disposable post-cleanup fixture the entry stage passes and transition is refused; after inserting exactly the two rows Django records, transition passes and entry is refused, with distinct state digests. Phase 3B cleanup fixture 69/69 -> 73/73; hostile wrapper tests 5/5 -> 8/8; Phase 4 contracts 21 -> 29. All host-runnable gates PASS |
+| 2026-09-07 | Sequencing constraint recorded for 4B.1 | `tests/serial_api_compat.py` and the pre-3B fixture reconstruction cannot be removed while the accepted rollback image is 3A `497b665`, which still carries the retired compatibility API and is the only image that produces the pre-3B database the 3B cleanup rehearsal needs. Removal waits until the rollback target is a 4A-or-later build |

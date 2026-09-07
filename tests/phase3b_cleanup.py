@@ -36,6 +36,15 @@ def check(name, ok):
     print(f"{'PASS' if ok else 'FAIL'}: {name}", flush=True)
 
 
+def _stage_refused(stage):
+    """True when the audit fails closed for `stage` against the current state."""
+    try:
+        phase4_audit.inspect(stage)
+    except Exception:
+        return True
+    return False
+
+
 def sql(text, params=None):
     with connection.cursor() as c:
         c.execute(text, params)
@@ -271,6 +280,34 @@ def main():
           and not phase4_entry["inventory_mode_column_present"]
           and phase4_entry["retired_permission_count"] == 0
           and phase4_entry["retired_feature_occurrences"] == 0)
+    check("Phase 4 entry audit refuses the checkpoint 4B expectation on this state",
+          _stage_refused("transition"))
+
+    # Checkpoint 4B precondition. Django records every replaced migration when a
+    # replacement is applied and check_replacements() then records the
+    # replacement itself, so a post-4A database carries both. Reproduce exactly
+    # those two rows in this disposable fixture and prove the transition stage
+    # accepts them while the entry stage now correctly refuses.
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """INSERT INTO django_migrations (app, name, applied)
+               VALUES ('tenancy', '0001_serial_only', now()),
+                      ('authentication', '0001_serial_only', now())"""
+        )
+    phase4_transition = phase4_audit.inspect("transition")
+    check("Phase 4 transition audit accepts the recorded replacement migrations",
+          phase4_transition["mode"] == "database-enforced-read-only"
+          and phase4_transition["stage"] == "transition"
+          and phase4_transition["replacements_recorded"]
+          and not phase4_transition["authorizes_replaced_file_removal"]
+          and phase4_transition["archive_state"] == "applied"
+          and not phase4_transition["inventory_mode_column_present"]
+          and phase4_transition["retired_permission_count"] == 0)
+    check("Phase 4 entry audit now correctly refuses the post-4A history",
+          _stage_refused("entry"))
+    check("the two audit stages produce distinct state digests",
+          phase4_transition["state_sha256"] != phase4_entry["state_sha256"])
+
     print(f"{sum(RESULTS)}/{len(RESULTS)} Phase 3B cleanup checks passed", flush=True)
     return 0 if all(RESULTS) else 1
 

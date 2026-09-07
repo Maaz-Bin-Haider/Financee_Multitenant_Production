@@ -38,8 +38,9 @@ elif args[:1] == ["compose"] and args[-3:] == ["ps", "-q", "web"]:
 elif args[:1] == ["compose"] and "exec" in args:
     if "PGOPTIONS=-c default_transaction_read_only=on" not in args:
         raise SystemExit(93)
-    if args[-3:] == ["python", "-", "--strict"]:
+    if args[-5:-1] == ["python", "-", "--strict", "--stage"]:
         pathlib.Path(os.environ["PHASE4_FAKE_INPUT"]).write_text(sys.stdin.read())
+        pathlib.Path(os.environ["PHASE4_FAKE_STAGE"]).write_text(args[-1])
         print('{"mode":"database-enforced-read-only"}')
         raise SystemExit(1 if scenario == "audit-failed" else 0)
     if args[-4:] == ["manage.py", "serial_only_phase0_audit", "--include-continuity", "--strict-serial"]:
@@ -52,7 +53,7 @@ else:
 
 
 class Phase4RemoteInventoryTests(unittest.TestCase):
-    def run_wrapper(self, scenario="success", sha=SHA, tls=False):
+    def run_wrapper(self, scenario="success", sha=SHA, tls=False, stage=None):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             app = root / "application with spaces"
@@ -65,6 +66,7 @@ class Phase4RemoteInventoryTests(unittest.TestCase):
             fake.chmod(0o755)
             log = root / "calls.jsonl"
             sent = root / "input.txt"
+            stage_file = root / "stage.txt"
             result = subprocess.run(
                 [
                     "bash",
@@ -72,6 +74,7 @@ class Phase4RemoteInventoryTests(unittest.TestCase):
                     str(app),
                     sha,
                     "f" * 40,
+                    *( [stage] if stage is not None else [] ),
                 ],
                 input="phase4-audit-source-sentinel\n",
                 text=True,
@@ -81,6 +84,7 @@ class Phase4RemoteInventoryTests(unittest.TestCase):
                     "PATH": str(root) + os.pathsep + os.environ["PATH"],
                     "PHASE4_FAKE_LOG": str(log),
                     "PHASE4_FAKE_INPUT": str(sent),
+                    "PHASE4_FAKE_STAGE": str(stage_file),
                     "PHASE4_FAKE_COUNTER": str(root / "counter"),
                     "PHASE4_FAKE_SHA": SHA,
                     "PHASE4_FAKE_SCENARIO": scenario,
@@ -90,6 +94,9 @@ class Phase4RemoteInventoryTests(unittest.TestCase):
                 json.loads(line) for line in log.read_text().splitlines()
             ] if log.exists() else []
             body = sent.read_text() if sent.exists() else None
+            self.last_stage = (
+                stage_file.read_text() if stage_file.exists() else None
+            )
             return result, calls, body
 
     def test_exact_image_receives_stdin_and_only_read_operations(self):
@@ -131,6 +138,23 @@ class Phase4RemoteInventoryTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(calls, [])
 
+    def test_stage_defaults_to_the_checkpoint_4_0_entry_gate(self):
+        result, _calls, _body = self.run_wrapper()
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(self.last_stage, "entry")
+        self.assertIn("PHASE4_STAGE=entry", result.stdout)
+
+    def test_transition_stage_is_forwarded_to_the_audited_source(self):
+        result, _calls, _body = self.run_wrapper(stage="transition")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(self.last_stage, "transition")
+        self.assertIn("PHASE4_STAGE=transition", result.stdout)
+
+    def test_unknown_stage_is_refused_before_any_docker_command(self):
+        result, calls, _body = self.run_wrapper(stage="authorize-everything")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("invalid audit stage", result.stderr)
+        self.assertEqual(calls, [])
 
 if __name__ == "__main__":
     unittest.main()

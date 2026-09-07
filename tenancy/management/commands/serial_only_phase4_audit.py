@@ -1,8 +1,17 @@
-"""Read-only Phase 4 entry audit for migration replacement and hygiene.
+"""Read-only Phase 4 audit for migration replacement and hygiene.
 
-This command verifies the exact post-Phase-3 public state and migration leaves.
-It never changes migration records, the retirement archive, company rows, tenant
-schemas, permissions, grants, containers, or application files.
+Two stages, selected with --stage:
+
+* ``entry`` (default, checkpoint 4.0) requires the exact pre-squash chain, i.e.
+  the migration history a database has before the 4A release runs.
+* ``transition`` (checkpoint 4B) requires that same chain *plus* both squashed
+  replacement records, which Django writes once every migration a replacement
+  replaces is applied. That is the plan's precondition for removing the
+  replaced files.
+
+The command verifies the public state and migration history and never changes
+migration records, the retirement archive, company rows, tenant schemas,
+permissions, grants, containers, or application files.
 """
 from __future__ import annotations
 
@@ -12,6 +21,9 @@ import re
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
+
+STAGES = ("entry", "transition")
+REPLACEMENT = "0001_serial_only"
 
 
 TENANCY_MIGRATIONS = (
@@ -92,7 +104,26 @@ def scalar(cursor, query, params=None):
     return cursor.fetchone()[0]
 
 
-def inspect():
+def expected_history(stage):
+    """Migration names expected for the given stage, in django_migrations order.
+
+    Django records every replaced migration when a replacement is applied, and
+    ``check_replacements`` additionally records the replacement itself, so a
+    post-4A database carries both. Names sort ahead of the replacement because
+    "initial"/"payments_permissions" precede "serial_only".
+    """
+    if stage == "entry":
+        return TENANCY_MIGRATIONS, AUTHENTICATION_MIGRATIONS
+    return (
+        tuple(sorted(TENANCY_MIGRATIONS + (REPLACEMENT,))),
+        tuple(sorted(AUTHENTICATION_MIGRATIONS + (REPLACEMENT,))),
+    )
+
+
+def inspect(stage="entry"):
+    if stage not in STAGES:
+        raise CommandError(f"unknown stage {stage!r}")
+    expected_tenancy, expected_authentication = expected_history(stage)
     with transaction.atomic():
         with connection.cursor() as cursor:
             cursor.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
@@ -110,12 +141,14 @@ def inspect():
             for app, name in cursor.fetchall():
                 observed[app].append(name)
             require(
-                tuple(observed["tenancy"]) == TENANCY_MIGRATIONS,
-                "tenancy migration history is not at the exact 0009 leaf",
+                tuple(observed["tenancy"]) == expected_tenancy,
+                f"tenancy migration history does not match the exact {stage} "
+                f"expectation",
             )
             require(
-                tuple(observed["authentication"]) == AUTHENTICATION_MIGRATIONS,
-                "authentication migration history is not at the exact 0025 leaf",
+                tuple(observed["authentication"]) == expected_authentication,
+                f"authentication migration history does not match the exact "
+                f"{stage} expectation",
             )
 
             column_present = scalar(
@@ -220,6 +253,8 @@ def inspect():
 
             state = {
                 "archive_payload_sha256": archive_rows[0][1],
+                "replacements_recorded": stage == "transition",
+                "stage": stage,
                 "archive_state": archive_rows[0][2],
                 "authentication_leaf": AUTHENTICATION_MIGRATIONS[-1],
                 "company_count": len(companies),
@@ -231,8 +266,9 @@ def inspect():
             }
             encoded = json.dumps(state, sort_keys=True, separators=(",", ":")).encode()
             return {
-                "audit": "serial-only-phase4-entry",
+                "audit": f"serial-only-phase4-{stage}",
                 "authorizes_migration_replacement": False,
+                "authorizes_replaced_file_removal": False,
                 "mode": "database-enforced-read-only",
                 "state_sha256": hashlib.sha256(encoded).hexdigest(),
                 **state,
@@ -244,9 +280,12 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--strict", action="store_true")
+        parser.add_argument("--stage", choices=STAGES, default="entry")
 
     def handle(self, *args, **options):
-        self.stdout.write(json.dumps(inspect(), indent=2, sort_keys=True))
+        self.stdout.write(
+            json.dumps(inspect(options["stage"]), indent=2, sort_keys=True)
+        )
 
 
 if __name__ == "__main__":

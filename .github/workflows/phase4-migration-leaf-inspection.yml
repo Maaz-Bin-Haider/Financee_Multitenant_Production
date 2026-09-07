@@ -11,7 +11,13 @@ on:
         description: "Exact accepted deployed image SHA"
         required: true
         type: string
-        default: 497b6650ed678bc462f85de6bff14692bffd6ace
+        default: a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00
+      stage:
+        description: "entry = checkpoint 4.0 gate; transition = checkpoint 4B precondition"
+        required: true
+        type: choice
+        options: [transition, entry]
+        default: transition
 
 permissions:
   contents: read
@@ -29,6 +35,7 @@ jobs:
     env:
       CONFIRMATION: ${{ inputs.confirmation }}
       EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_deployed_sha }}
+      AUDIT_STAGE: ${{ inputs.stage }}
       APP_DIR: ${{ secrets.EC2_APP_DIR }}
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +43,13 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$CONFIRMATION" == INSPECT-PHASE4-MIGRATION-LEAVES ]]
-          [[ "$EXPECTED_DEPLOYED_SHA" == 497b6650ed678bc462f85de6bff14692bffd6ace ]]
+          # Accept only images that have actually been through protected
+          # production approval: 3A (pre-4A) or the deployed 4A release.
+          case "$EXPECTED_DEPLOYED_SHA" in
+            497b6650ed678bc462f85de6bff14692bffd6ace) [[ "$AUDIT_STAGE" == entry ]] ;;
+            a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00) [[ "$AUDIT_STAGE" == transition ]] ;;
+            *) echo "unaccepted deployed SHA" >&2; exit 1 ;;
+          esac
           python3 tests/phase4_repository_hygiene_contracts.py
           python3 -m unittest tests.test_phase4_inventory_remote
           bash -n deploy/phase4_inventory_remote.sh
@@ -58,8 +71,9 @@ jobs:
         run: |
           set -euo pipefail
           remote_script=$(< deploy/phase4_inventory_remote.sh)
-          printf -v remote_command 'bash -c %q -- %q %q %q' \
-            "$remote_script" "$APP_DIR" "$EXPECTED_DEPLOYED_SHA" "$GITHUB_SHA"
+          printf -v remote_command 'bash -c %q -- %q %q %q %q' \
+            "$remote_script" "$APP_DIR" "$EXPECTED_DEPLOYED_SHA" "$GITHUB_SHA" \
+            "$AUDIT_STAGE"
           ssh -i ~/.ssh/id_deploy "$EC2_USER@$EC2_HOST" "$remote_command" \
             < tenancy/management/commands/serial_only_phase4_audit.py \
             | tee phase4-migration-leaf-inspection.log

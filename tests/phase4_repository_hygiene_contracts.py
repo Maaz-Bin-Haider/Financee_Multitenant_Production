@@ -86,11 +86,15 @@ checks = {
         and all(statement.lstrip().upper().startswith(("SELECT", "SET"))
                 for statement in audit_sql)
     ),
-    "exact pre-squash migration leaves are required": (
+    "exact pre-squash migration leaves are required at the entry stage": (
         '"0009_inventory_mode_compatibility"' in audit
         and '"0025_add_quantity_platform_permissions"' in audit
-        and "tuple(observed[\"tenancy\"]) == TENANCY_MIGRATIONS" in audit
-        and "tuple(observed[\"authentication\"]) == AUTHENTICATION_MIGRATIONS" in audit
+        # The comparison is now stage-derived, but the entry stage must still
+        # resolve to exactly the original chain with no replacement record.
+        and 'if stage == "entry":\n        return TENANCY_MIGRATIONS, AUTHENTICATION_MIGRATIONS'
+        in audit
+        and "tuple(observed[\"tenancy\"]) == expected_tenancy" in audit
+        and "tuple(observed[\"authentication\"]) == expected_authentication" in audit
     ),
     "post-cleanup column permissions and features must be absent": (
         "retired inventory_mode column is present" in audit
@@ -200,6 +204,36 @@ checks = {
         and "'tenancy', '0001_initial'" not in bootstrap_sql
         and "register_bootstrap_tenant" in entrypoint_sh
         and "Company.objects.exists()" in bootstrap_command
+    ),
+    "4B: the audit distinguishes the entry and transition stages": (
+        'STAGES = ("entry", "transition")' in audit
+        and "def expected_history(stage)" in audit
+        and "check_replacements" in audit
+        and '"--stage", choices=STAGES, default="entry"' in audit
+        and '"authorizes_replaced_file_removal": False,' in audit
+    ),
+    "4B: the transition stage requires both replacement records": (
+        "TENANCY_MIGRATIONS + (REPLACEMENT,)" in audit
+        and "AUTHENTICATION_MIGRATIONS + (REPLACEMENT,)" in audit
+    ),
+    "4B: the remote wrapper validates and forwards the stage": (
+        "stage=${4:-entry}" in wrapper
+        and '"$stage" == entry || "$stage" == transition' in wrapper
+        and 'invalid audit stage' in wrapper
+        and '--strict --stage "$stage"' in wrapper
+        and "PHASE4_STAGE=%s" in wrapper
+    ),
+    "4B: the workflow accepts only approved deployed SHAs per stage": (
+        "a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00) [[ \"$AUDIT_STAGE\" == transition ]] ;;" in workflow
+        and "497b6650ed678bc462f85de6bff14692bffd6ace) [[ \"$AUDIT_STAGE\" == entry ]] ;;" in workflow
+        and "unaccepted deployed SHA" in workflow
+        and "%q %q %q %q" in workflow
+    ),
+    "4B: the real PostgreSQL fixture proves both stages fail closed": (
+        'phase4_audit.inspect("transition")' in postgres_fixture
+        and "_stage_refused(\"transition\")" in postgres_fixture
+        and "_stage_refused(\"entry\")" in postgres_fixture
+        and "distinct state digests" in postgres_fixture
     ),
     "real PostgreSQL cleanup fixture executes the Phase 4 audit": (
         "phase4_audit.inspect()" in postgres_fixture
