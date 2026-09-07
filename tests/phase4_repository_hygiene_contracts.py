@@ -196,10 +196,14 @@ checks = {
         and "Do not reintroduce an inventory-mode concept" in claude_md
         and "There is no inventory-mode concept left to configure" in readme
     ),
-    "4B: the migration rules future work must know are documented": (
-        "`migrate --prune` is a one-way door" in project_context
+    "the migration rules future work must know are documented": (
+        # Not "one-way": checkpoint 4C proved the prune reversible via its
+        # archive. The rule that matters is that a rollback attempted after a
+        # prune corrupts the history rather than failing cleanly.
+        "a rollback attempted afterwards corrupts the" in project_context
         and "Prune is per-app" in project_context
         and "no pre-4B rollback path" in project_context
+        and "serial_only_phase4c_prune --action restore" in project_context
     ),
     "4A: documentation still warns that serial line quantities are not the family": (
         'ordinary word "quantity" is not by itself' in project_context

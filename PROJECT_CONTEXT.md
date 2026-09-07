@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-09-06
+Last updated: 2026-09-07
 
 This file is the persistent engineering context for Financee. Update it on every meaningful project change, especially changes to architecture, routes, permissions, tenant SQL, deployment behavior, environment variables, tests, or data model assumptions.
 
@@ -18,14 +18,20 @@ This file is the persistent engineering context for Financee. Update it on every
     4A (`a4f915f`) shipped the squashed replacements beside the originals;
     checkpoint 4B (`5f42cd1`) deleted the replaced files and removed
     `replaces`, so each squash is now an ordinary initial migration.
-- **Production today:** image `5f42cd1c871dc0e93b205b92eb5e8eb5f04a034b`, one
-  serial company, tenant schema version 6, no `inventory_mode` column, no
-  retired permissions or feature keys. The Phase 3B archive remains `applied`
-  and is the reversal path — do not delete it.
-- **Migrations:** only `tenancy/0001_serial_only.py` and
-  `authentication/0001_serial_only.py` exist. Production still carries the 36
-  historical `django_migrations` rows; they have **not** been pruned, and that
-  is deliberate — see below.
+- **Production today:** image
+  `39dc506d610e930531271ef4e7c0a48a4d06ef80`, one serial company, tenant schema
+  version 6, no `inventory_mode` column, no retired permissions or feature keys.
+  The Phase 3B archive remains `applied` and is the reversal path — do not
+  delete it.
+- **Deployed image is not `main` HEAD.** `main` carries later documentation
+  commits made with `[skip ci]`, which deliberately publish and deploy nothing.
+  Check the last successful `CI/CD` run for what is actually deployed rather
+  than assuming `main` HEAD.
+- **Migrations:** only `tenancy/migrations/0001_serial_only.py` and
+  `authentication/migrations/0001_serial_only.py` exist on disk. Production's
+  `django_migrations` holds **36** rows for these two apps — 34 replaced
+  (9 tenancy + 25 authentication) plus the 2 replacements. The 34 have **not**
+  been pruned, deliberately; see the prune section below.
 - **Serial-only is proven physically.** There is no registry mode value to
   trust: `verify_company_schema` checks each schema's own
   `tenant_schema_version`, and `Company` has no `inventory_mode` field,
@@ -33,12 +39,18 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ### Three migration rules to know before touching this again
 
-1. **`migrate --prune` is a one-way door.** Django drops a replacement from
-   `applied_migrations` when the migrations it replaces are absent, even though
-   the replacement's own row exists. Pruning therefore makes every
-   `replaces`-carrying image believe nothing is applied; it re-plans the initial
-   migration and PostgreSQL refuses it. Pruning permanently removes the rollback
-   path. Nothing in the deployment path prunes, and a contract enforces that.
+1. **Pruning breaks rollback, and a rollback attempted afterwards corrupts the
+   history.** Django drops a replacement from `applied_migrations` when the
+   migrations it replaces are absent, *even though the replacement's own row
+   exists*. So after a prune every `replaces`-carrying image believes nothing is
+   applied and re-plans the initial migration. That does **not** fail cleanly:
+   the `authentication` replacement is pure `RunPython`, so it re-applies and
+   re-records its rows before the `tenancy` replacement dies on `CREATE TABLE`,
+   leaving a half-applied history and an app that will not start.
+   The loss is recoverable — `serial_only_phase4c_prune --action restore` resets
+   the rows from its archive and repairs even that damaged state — but only if
+   whoever rolls back knows to run it. Nothing in the deployment path prunes,
+   and a contract enforces that.
 2. **Prune is per-app.** Django refuses a project-wide prune:
    `migrate tenancy --prune`, `migrate authentication --prune`.
 3. **A fresh install has no pre-4B rollback path**, because it never had the
@@ -57,7 +69,7 @@ repinning after a release.
 
 ### The migration-record prune — decided: skipped
 
-Production keeps 34 inert historical `django_migrations` rows. `migrate --prune`
+Production keeps the 34 replaced `django_migrations` rows. `migrate --prune`
 would remove them, and `serial_only_phase4c_prune` implements that guarded and
 **reversibly** (it archives the rows first). It was proven on real PostgreSQL and
 then deliberately not run.
@@ -71,9 +83,21 @@ without knowing. Removing 34 inert rows is not worth it.
 
 If it is ever run: `inspect` first for the digest, then `apply` with the typed
 confirmation and a backup reference under 30 minutes old. Never plain
-`migrate --prune`, which is also refused project-wide and must be per-app.
-- `tests/serial_api_compat.py` and the pre-3B fixture reconstruction stay while
-  the Phase 3B cleanup rehearsal needs a pre-3B database from the 3A image.
+`migrate --prune`, which is refused project-wide and must be per-app.
+
+### Deliberate leftovers, not oversights
+
+- **`tests/serial_api_compat.py`** and the pre-3B fixture reconstruction in the
+  Phase 3 inventory proof. The Phase 3B cleanup rehearsal still needs a pre-3B
+  database, which only the 3A image produces, so the shim must survive as long
+  as that rehearsal targets 3A. Every gate passes with it present.
+- **`tests/retired_permissions_reference.json`** — the 14 retired permission
+  codenames frozen from the deleted migrations, so the Phase 3 audit and
+  Phase 3B cleanup catalogues keep an *independent* cross-check instead of the
+  tooling agreeing with itself.
+- **The Phase 3B archive** in production and its restore tooling.
+- **19 `tests/PHASE*_RESULTS.md` evidence documents** and `todo.md`, which is
+  banner-marked as a historical record of the retired family.
 
 ### Do not
 
@@ -164,9 +188,12 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
   `metadata-inventory-gate`, `compatibility-gate`, `cleanup-rehearsal-gate`,
   `isolation-gate`, `arm64-smoke`, `full-regression`, `recovery-gate` and
   `staging-security-gate`. Publication and deployment are blocked until they
-  pass, plus `migration-replacement-gate`, which proves a fresh database never
-  creates the retired column, constraint or permissions and that a database on
-  the original migration leaves upgrades as a no-op with its data intact. The
+  pass, plus `migration-transition-gate`, which proves on disposable stacks that
+  a fresh database records only the two squashed migrations and creates no
+  retired column, constraint or permission; that a database carrying the
+  post-4A history upgrades as a no-op with a byte-identical registry; that
+  per-app `--prune` removes exactly the stale rows; and that the release stays
+  rollback-safe before pruning. The
   Phase 2 contracts additionally pin byte-identity baselines for the serial view
   functions, 212 serial UI files, the 16 serial tenant SQL files and the
   bootstrap's 12,248-line tenant business-schema build, so any accidental change
