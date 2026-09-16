@@ -112,6 +112,15 @@ and after (Hassan Traders 1,111,600.00), confirming the change is surgical. A
 tenant provisioned fresh from the updated template carries the fixed view;
 rerunning `production_hardening.sql` on an already-patched tenant is a no-op.
 
+**Deployed to production 2026-09-16** as
+`3c50327197e55cb7a35f585c239e9d48265fdc4c` (PR #2, workflow run
+`35116450398`), replacing `39dc506d610e930531271ef4e7c0a48a4d06ef80`. The
+Phase 30 controller passed every gate: preflight, the pre/post continuity
+fingerprint comparison across all tenant balances, health through nginx, and
+the latency / 5xx / CPU / memory thresholds. No rollback was triggered. The
+tenant SQL step reported `ok -> tenant_company_1 (serial v6)`, confirming the
+fix rolled out with the schema version unchanged.
+
 ### Why there is no schema version bump
 
 The first attempt bumped the tenant schema version to 7, following the
