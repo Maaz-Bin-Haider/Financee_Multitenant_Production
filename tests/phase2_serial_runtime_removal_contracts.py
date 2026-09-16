@@ -138,12 +138,24 @@ checks = {
     "212 serial UI source files are byte-identical to deployed Phase 1":
         len(serial_ui_paths) == 212
         and files_hash(serial_ui_paths) == "cae8e5e425906e5b8b26deb33a8a15b8dc73ef0a665473b55d307c0faf648bb6",
-    "16 serial tenant SQL files are byte-identical to deployed Phase 1":
-        len(serial_sql_paths) == 16
-        and files_hash(serial_sql_paths) == "6785de6f44dbb4d5e70775626e9e21352f5b3578bad51eb3b9f9ce1afbc3ecb1",
-    "bootstrap tenant business schema is byte-identical to deployed Phase 1":
+    # Re-pinned 2026-09-16 for the dashboard receivables fix (tenant schema
+    # version 7). These baselines exist to catch ACCIDENTAL drift in serial
+    # behaviour; this change was deliberate and reviewed, so the pins move with
+    # it exactly as checkpoint 4A moved the bootstrap pin. What changed:
+    #   * new file tenancy/sql/fix_dashboard_expense_receivables.sql (16 -> 17)
+    #   * tenant_template.sql + production_hardening.sql: vw_dash_party_ar_balance
+    #     constrained to jl.account_id = p.ar_account_id, and the v7 bump
+    #   * build_multitenant_db.sql: the same view change and v7 bump inside the
+    #     example tenant section
+    # Nothing in the serial document lifecycle (purchase/sale/return) changed —
+    # the 12 serial document implementations above are still pinned to their
+    # deployed Phase 1 hashes and still pass untouched. See FIXED_ISSUES.md.
+    "17 serial tenant SQL files are byte-identical to the reviewed v7 baseline":
+        len(serial_sql_paths) == 17
+        and files_hash(serial_sql_paths) == "7bafec22874d31560c1e70ae0e73de87e2d51fd300fb9fd61024b79345fb9dfd",
+    "bootstrap tenant business schema is byte-identical to the reviewed v7 baseline":
         hashlib.sha256(bootstrap_tenant_section.encode()).hexdigest()
-        == "e1d912cccffc584fc83056e37b62e9f8523862a690444360c181a9957d5d25b9",
+        == "3bcaee4ae0eeb12cc09b806417b595658c11cc973fda1b96ad54619c6ec43713",
     "bootstrap no longer defeats the serial-only squashed migration":
         "CREATE TABLE IF NOT EXISTS public.tenancy_company" not in bootstrap
         and "'tenancy', '0001_initial'" not in bootstrap

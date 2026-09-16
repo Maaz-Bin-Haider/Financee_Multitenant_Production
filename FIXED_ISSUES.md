@@ -2,6 +2,117 @@
 
 This file records production/setup issues that were diagnosed and fixed, including the root cause, code or SQL changes, and verification steps.
 
+## 2026-09-16: Expense Parties Counted as Receivables on the Dashboard
+
+### Symptoms
+
+Paying an ordinary shop expense — rent, salaries, a utility bill — made that
+expense head appear on the dashboard as a customer who owed the business
+money. The Smart Alerts popup raised entries such as:
+
+```text
+Risky Customer: Staff Salaries
+High receivable PKR 165000.00 with no payment received in the last 45 days.
+
+Stale Receivable: Shop Rent
+Balance PKR 85000.00 - last activity 12 days ago.
+```
+
+`fn_dash_receivables_aging` counted the same amounts in its aging buckets and
+in `total_overdue_amount` / `total_medium_amount` / `total_fresh_amount`, so
+the dashboard's receivables totals were overstated by the value of every
+expense paid.
+
+Found while seeding realistic demo data for the user guide; reproduced on a
+fresh serial tenant.
+
+### Root Cause
+
+`add_party_from_json` wires an **Expense** party with *both* `ar_account_id`
+(the shared Accounts Receivable account) **and** `ap_account_id` (its own newly
+created Expense chart-of-accounts row). That is correct: `make_payment` then
+debits the Expense account and credits Cash, tagging the line with the expense
+party's id.
+
+`vw_dash_party_ar_balance` summed **every** journal line carrying a party id,
+regardless of which account the line was posted to, and admitted any party
+whose `ar_account_id` was not null:
+
+```sql
+WHERE (p.ar_account_id IS NOT NULL)
+GROUP BY ...
+HAVING (COALESCE(sum(jl.debit) - sum(jl.credit), 0) > 0)
+```
+
+So the expense debit was counted as a receivable. Inspecting a real tenant made
+the shape of the bug obvious:
+
+| party_type | account its party-tagged lines hit | `= ar_account_id` |
+|---|---|---|
+| Customer | Accounts Receivable | always |
+| Both | Accounts Receivable | always |
+| Expense | its own Expense account | never |
+| Vendor | Accounts Payable | n/a (`ar_account_id` is NULL) |
+
+**Not affected:** `get_accounts_receivable_json_excluding` reads
+`vw_trial_balance` and already filtered `type NOT ILIKE '%Expense%'`, so the
+Accounts Receivable *report* was always correct. Only the dashboard was wrong,
+which is why this survived so long — the two surfaces disagreed and nobody
+compared them.
+
+### Fix
+
+Added `tenancy/sql/fix_dashboard_expense_receivables.sql` (idempotent; folded
+into `tenancy/sql/tenant_template.sql`,
+`tenancy/sql/production_hardening.sql` and `build_multitenant_db.sql`; tenant
+schema version bumped to **7**). The view is constrained to lines actually
+posted to the party's own receivables account:
+
+```sql
+WHERE (p.ar_account_id IS NOT NULL)
+  AND (jl.account_id = p.ar_account_id)
+```
+
+This is deliberately an **account** test rather than `party_type <> 'Expense'`,
+so the rule stays correct if a new party type is ever added. Customer and Both
+parties are untouched (all their party-tagged lines are already on the AR
+account); Vendors were already excluded.
+
+Both consumers of the view — `fn_dash_smart_alerts` (the "Stale Receivable" and
+"Risky Customer" alerts) and `fn_dash_receivables_aging` — are fixed by the
+view change alone and needed no edit.
+
+**Behaviour note.** For a *Both* party the view previously netted receivable
+against payable, because it summed every line. It now reports only what they
+owe, which is what a receivables view should show; their payable is still
+reported by the payables report and the trial balance.
+
+### Verification
+
+On an isolated seeded stack (never production):
+
+```bash
+./fc.sh exec -T web python tests/suite/test_reports.py      # before: 61/65, 4 FAIL
+./fc.sh exec -T web python manage.py apply_sql_all_tenants \
+    tenancy/sql/fix_dashboard_expense_receivables.sql
+./fc.sh exec -T web python tests/suite/test_reports.py      # after: 65/65
+```
+
+The four new checks in `tests/suite/test_reports.py`
+(`_receivables_exclude_expenses`) fail against the old view and pass against
+the new one, covering the view, `fn_dash_smart_alerts` and
+`fn_dash_receivables_aging`, plus a guard that a genuine credit customer is
+still reported.
+
+Full regression after the patch: `tests/suite/run_all.py` **ALL MODULES
+PASSED** (21 modules, including the phase gates), `tests/test_system.py` 0
+failures, `tests/test_transaction_lifecycle_deep.py` fully passed,
+`manage.py release_preflight` OK at `version=7/7`. Customer balances were
+byte-identical before and after (Hassan Traders 1,111,600.00), confirming the
+change is surgical. A tenant provisioned fresh from the updated template
+reports version 7 and carries the fixed view; rerunning
+`production_hardening.sql` on an already-patched tenant is a no-op.
+
 ## 2026-07-27: Phase 28 Recovery Rehearsal Isolation and Portable Evidence
 
 ### Symptoms
