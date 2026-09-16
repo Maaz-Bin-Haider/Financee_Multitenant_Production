@@ -64,8 +64,8 @@ compared them.
 
 Added `tenancy/sql/fix_dashboard_expense_receivables.sql` (idempotent; folded
 into `tenancy/sql/tenant_template.sql`,
-`tenancy/sql/production_hardening.sql` and `build_multitenant_db.sql`; tenant
-schema version bumped to **7**). The view is constrained to lines actually
+`tenancy/sql/production_hardening.sql` and `build_multitenant_db.sql`). The view
+is constrained to lines actually
 posted to the party's own receivables account:
 
 ```sql
@@ -107,11 +107,37 @@ still reported.
 Full regression after the patch: `tests/suite/run_all.py` **ALL MODULES
 PASSED** (21 modules, including the phase gates), `tests/test_system.py` 0
 failures, `tests/test_transaction_lifecycle_deep.py` fully passed,
-`manage.py release_preflight` OK at `version=7/7`. Customer balances were
-byte-identical before and after (Hassan Traders 1,111,600.00), confirming the
-change is surgical. A tenant provisioned fresh from the updated template
-reports version 7 and carries the fixed view; rerunning
-`production_hardening.sql` on an already-patched tenant is a no-op.
+`manage.py release_preflight` OK. Customer balances were byte-identical before
+and after (Hassan Traders 1,111,600.00), confirming the change is surgical. A
+tenant provisioned fresh from the updated template carries the fixed view;
+rerunning `production_hardening.sql` on an already-patched tenant is a no-op.
+
+### Why there is no schema version bump
+
+The first attempt bumped the tenant schema version to 7, following the
+precedent of the v3/v4/v5 behaviour fixes. CI rejected it, and the reason is
+worth recording: three separate places pin the serial schema version, and one
+of them is
+`serial_only_phase3_cleanup.registry`, which requires every tenant to be at
+**exactly** version 6 before it will act. `operate()` routes *all* actions
+through that guard — including `--action restore`, the Phase 3B reversal path
+that `CLAUDE.md` says must be preserved. Bumping to 7 would therefore have left
+a booby trap in disaster recovery: the reversal would refuse to run on a
+production database until somebody edited a guarded, hash-pinned maintenance
+command under incident pressure.
+
+The bump bought nothing here. This change replaces one reporting view and is
+compatible in both directions, and `production_hardening.sql` already applies
+it to every tenant on every container start. The version gate exists for schema
+changes that code depends on structurally; a reporting view is not one.
+
+Two version pins were nevertheless made robust while investigating, because
+both were latent bugs that would desync on any future bump:
+`tests/phase0_serial_only_discovery_contracts.py` and
+`serial_only_phase3_audit` now read the expected version from
+`settings.TENANT_SCHEMA_VERSION` instead of a hardcoded literal (as the Phase 0
+audit already did). `serial_only_phase3_cleanup` was deliberately left
+untouched so its reviewed-source hash pin stays intact.
 
 ## 2026-07-27: Phase 28 Recovery Rehearsal Isolation and Portable Evidence
 

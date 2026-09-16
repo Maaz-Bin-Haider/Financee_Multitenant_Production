@@ -1,6 +1,13 @@
 -- ============================================================================
 -- fix_dashboard_expense_receivables.sql
--- Tenant schema version 7.
+--
+-- No tenant schema version bump. The change replaces one reporting view and is
+-- compatible in both directions — the old code reads the new view fine, and the
+-- new code reads the old view (it just shows the bug). Raising the version gate
+-- would buy nothing and would block the Phase 3B reversal path, whose registry
+-- guard requires the tenant to be at exactly serial version 6. Every tenant
+-- still receives this fix: production_hardening.sql carries it and is applied
+-- on every web container start, before gunicorn accepts traffic.
 --
 -- Idempotent patch. Apply to every tenant:
 --   python manage.py apply_sql_all_tenants \
@@ -68,7 +75,3 @@ CREATE OR REPLACE VIEW vw_dash_party_ar_balance AS
   GROUP BY p.party_id, p.party_name, p.party_type, p.contact_info
  HAVING (COALESCE((sum(jl.debit) - sum(jl.credit)), (0)::numeric) > (0)::numeric);
 
-UPDATE tenant_schema_version
-SET version = GREATEST(version, 7),
-    applied_at = CURRENT_TIMESTAMP
-WHERE id = true;

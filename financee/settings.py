@@ -244,4 +244,4 @@ else:
 # Cross-tenant admin activity is useful for small installations but expensive
 # at scale. Keep it opt-in in the hardened copy.
 TENANCY_CROSS_TENANT_ACTIVITY = env.bool("TENANCY_CROSS_TENANT_ACTIVITY", default=False)
-TENANT_SCHEMA_VERSION = env.int("TENANT_SCHEMA_VERSION", default=7)
+TENANT_SCHEMA_VERSION = env.int("TENANT_SCHEMA_VERSION", default=6)

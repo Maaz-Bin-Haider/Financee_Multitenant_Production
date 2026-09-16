@@ -13125,9 +13125,3 @@ UPDATE tenant_schema_version
 SET version = GREATEST(version, 5),
     applied_at = CURRENT_TIMESTAMP
 WHERE id = true;
-
--- Bump tenant schema version (dashboard receivables fix).
-UPDATE tenant_schema_version
-SET version = GREATEST(version, 7),
-    applied_at = CURRENT_TIMESTAMP
-WHERE id = true;

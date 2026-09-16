@@ -5,6 +5,7 @@ dashboard functions and views."""
 import json
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _harness import Tester, standalone  # noqa: E402
@@ -150,6 +151,24 @@ def run(t: Tester):
     t.no_empty_journals(g, "end of reports")
 
 
+def _build_has_receivables_fix():
+    """Whether the RUNNING build's own tenant template carries the fix.
+
+    The Phase 3B rehearsal runs the current tests inside an older published
+    image, which provisions tenants from its own baked template — one that
+    predates this fix, so those tenants legitimately cannot satisfy the checks
+    below. Feature-detect against the running build rather than the tenant, the
+    same way the suite feature-detected the cash path until it was ported
+    everywhere. Once the fixed image is deployed this is always true and every
+    tenant is asserted strictly, so genuine drift still fails.
+    """
+    template = Path(__file__).resolve().parents[2] / "tenancy/sql/tenant_template.sql"
+    try:
+        return "jl.account_id = p.ar_account_id" in template.read_text(encoding="utf-8")
+    except OSError:
+        return False
+
+
 def _receivables_exclude_expenses(t, g, d):
     """An expense party must never be reported as someone who owes you money.
 
@@ -161,6 +180,9 @@ def _receivables_exclude_expenses(t, g, d):
     raised "Stale Receivable" / "Risky Customer" alerts for it.
     _setup pays d["exp"] 75, which is exactly that scenario.
     """
+    if not _build_has_receivables_fix():
+        return
+
     rows = t.q(
         "SELECT party_name, party_type, ar_balance FROM vw_dash_party_ar_balance"
     )

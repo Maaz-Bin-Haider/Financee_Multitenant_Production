@@ -2,11 +2,23 @@
 """Static safety contracts for the Phase 0 read-only discovery command."""
 import ast
 import json
+import re
 import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# The CI known-drift assertion below pins the tenant schema version the two CI
+# schemas must report. Read it from settings instead of hardcoding a literal:
+# a hardcoded 6 silently desynced this gate when the version moved to 7.
+EXPECTED_SCHEMA_VERSION = int(
+    re.search(
+        r'TENANT_SCHEMA_VERSION\s*=\s*env\.int\(\s*"TENANT_SCHEMA_VERSION"\s*,\s*default=(\d+)\s*\)',
+        (ROOT / "financee/settings.py").read_text(encoding="utf-8"),
+    ).group(1)
+)
+
 audit = (
     ROOT
     / "tenancy/management/commands/serial_only_phase0_audit.py"
@@ -105,12 +117,12 @@ if len(sys.argv) == 3 and sys.argv[1] == "--assert-known-ci-drift":
             and len(report["schemas"]) == 2,
         "CI report contains no registry schema or continuity exception":
             all(not report[field] for field in empty_exception_fields),
-        "both CI schemas are ready balanced serial version 6":
+        f"both CI schemas are ready balanced serial version {EXPECTED_SCHEMA_VERSION}":
             all(
                 row["classification"] == "serial"
                 and row["registered_inventory_mode"] == "serial"
                 and row["provisioning_state"] == "ready"
-                and row["version"] == 6
+                and row["version"] == EXPECTED_SCHEMA_VERSION
                 and row["continuity"]["journal_balanced"]
                 for row in report["schemas"]
             ),

@@ -12761,11 +12761,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS document_attachments_one_per_kind
 CREATE INDEX IF NOT EXISTS document_attachments_document_idx
     ON document_attachments (document_type, document_id);
 
--- Bump tenant schema version.
-UPDATE tenant_schema_version
-SET version = GREATEST(version, 7),
-    applied_at = CURRENT_TIMESTAMP
-WHERE id = true;
 
 
 -- reset search_path back to shared after building the tenant schema

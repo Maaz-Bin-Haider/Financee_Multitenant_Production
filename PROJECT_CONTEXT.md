@@ -23,12 +23,12 @@ This file is the persistent engineering context for Financee. Update it on every
   version 6, no `inventory_mode` column, no retired permissions or feature keys.
   The Phase 3B archive remains `applied` and is the reversal path — do not
   delete it.
-- **`main` now targets tenant schema version 7** (dashboard receivables fix,
-  2026-09-16). Production moves to 7 on the next release: `production_hardening.sql`
-  applies the patch and bumps the version on container start, before gunicorn
-  accepts traffic, so there is no window in which the middleware's version gate
-  can reject a tenant. Rollback stays safe because the old image requires only
-  `version >= 6`.
+- **Tenant schema version stays at 6** after the 2026-09-16 dashboard
+  receivables fix. That fix replaces one reporting view and is compatible in
+  both directions, so it needs no version gate — and bumping would have blocked
+  the Phase 3B reversal path, whose registry guard requires each tenant to be at
+  exactly serial version 6 (`serial_only_phase3_cleanup.registry`). Reserve
+  version bumps for schema changes that code actually depends on.
 - **Deployed image is not `main` HEAD.** `main` carries later documentation
   commits made with `[skip ci]`, which deliberately publish and deploy nothing.
   Check the last successful `CI/CD` run for what is actually deployed rather
@@ -532,7 +532,7 @@ Always roll out tenant SQL to **all** tenants via `apply_sql_all_tenants` to pre
 - `tenancy/sql/fix_tenant_drift.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; tenant schema version 4) heals tenant drift found by `tests/suite/`: adds the `create_purchase_return` in-stock guard, drops the redundant ambiguous `item_transaction_history(text)` overload, and qualifies the ambiguous column in `get_item_names_like`.
 - `tenancy/sql/fix_cash_party_port.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; tenant schema version 5) ports the cash-party feature and its invoice-description prerequisite to every tenant: `parties.is_cash`, `get_cash_party_id`, the four cash-aware `rebuild_*` journal builders, cash-aware `detailed_ledger`/`detailed_ledger2`, the four invoice `description` columns, the description-aware `get_current_*` fetchers, and eager seeding of the "Cash Sale"/"Cash Purchase" parties. The journal-builder bodies are the ones proven live on `tenant_company_2` alongside the integrity guards (no integrity patch redefines them, so no regression risk). It also **backfills pre-flag journals**: cash-party documents posted before the party carried `is_cash` had AR/AP party lines instead of Cash lines (invisible to the cash-party ledger, residual party balance); the patch rebuilds any cash-party document journal that still carries a party-tagged line (balance-sheet neutral, no-op on reruns).
 - `tenancy/sql/add_document_attachments.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; tenant schema version 6) adds the generic `document_attachments` metadata table for sale, purchase, sale return, purchase return, payment, receipt, and contra files. Files are stored outside invoice JSON and served through authenticated Django endpoints so previous/next navigation remains lightweight.
-- `tenancy/sql/fix_dashboard_expense_receivables.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; tenant schema version 7) stops Expense parties being reported as receivables on the dashboard. `add_party_from_json` gives an Expense party both `ar_account_id` (shared AR) and `ap_account_id` (its own Expense account), and `vw_dash_party_ar_balance` summed every party-tagged journal line regardless of account — so paying rent or salaries surfaced that expense head as a customer owing money, and raised "Stale Receivable" / "Risky Customer" alerts. The view is now constrained to `jl.account_id = p.ar_account_id`, an account test rather than a `party_type` test so it stays correct if a party type is ever added. Fixes `fn_dash_smart_alerts` and `fn_dash_receivables_aging` with no edit to either. `get_accounts_receivable_json_excluding` was never affected (it filters expense types over `vw_trial_balance`). Note: a `Both` party's receivable is no longer netted against their payable in this view. See `FIXED_ISSUES.md`.
+- `tenancy/sql/fix_dashboard_expense_receivables.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; no version bump) stops Expense parties being reported as receivables on the dashboard. `add_party_from_json` gives an Expense party both `ar_account_id` (shared AR) and `ap_account_id` (its own Expense account), and `vw_dash_party_ar_balance` summed every party-tagged journal line regardless of account — so paying rent or salaries surfaced that expense head as a customer owing money, and raised "Stale Receivable" / "Risky Customer" alerts. The view is now constrained to `jl.account_id = p.ar_account_id`, an account test rather than a `party_type` test so it stays correct if a party type is ever added. Fixes `fn_dash_smart_alerts` and `fn_dash_receivables_aging` with no edit to either. `get_accounts_receivable_json_excluding` was never affected (it filters expense types over `vw_trial_balance`). Note: a `Both` party's receivable is no longer netted against their payable in this view. See `FIXED_ISSUES.md`.
 - Keep `tenancy/sql/tenant_template.sql`, `build_multitenant_db.sql`, and `production_hardening.sql` aligned when tenant SQL behavior changes.
 
 ## Known Documentation Caveats

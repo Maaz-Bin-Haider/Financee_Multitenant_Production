@@ -31,7 +31,7 @@ def serial_schema_family() -> SchemaFamily:
         key=SERIAL_SCHEMA_FAMILY,
         template_path=SQL_DIR / "tenant_template.sql",
         hardening_path=SQL_DIR / "production_hardening.sql",
-        required_version=getattr(settings, "TENANT_SCHEMA_VERSION", 7),
+        required_version=getattr(settings, "TENANT_SCHEMA_VERSION", 6),
         metadata_table="tenant_schema_version",
         runtime_enabled=True,
         required_tables=(
