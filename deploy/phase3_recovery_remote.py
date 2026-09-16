@@ -30,7 +30,11 @@ HOST_HASHES = {
     "deploy/docker-compose.yml": "ff147c3786bb5ebf009e75d23916268f07519967499b23de961be05034c0d07a",
     "deploy/restore_database_backup_rehearsal.sh": "47d92415a4ef280ae48fbfa191f75016bb7672698b9fd77de802d9395caf226d",
     "deploy/database_backup_status.sh": "f5f8180addae3ec0f4340dabaa91ab33e850105a77f6e2214d9369367935c0bc",
-    "build_multitenant_db.sql": "af82358870d3146795cbe7e0744d5fba7e4f8d48ad1b1184acd2b1d39d951e34",
+    # Re-reviewed 2026-09-16 for the dashboard receivables fix: the example
+    # tenant section gained the corrected vw_dash_party_ar_balance. No schema
+    # version bump, and nothing in the backup, restore or rollback path
+    # changed. See FIXED_ISSUES.md.
+    "build_multitenant_db.sql": "51681ca1ed056f80532b2e5f3b7f9e13d4bb46a8c0251a2e9d619d479e022f53",
 }
 LIMITS = {"db": (768 * 1024**2, 500000000),
           "web": (512 * 1024**2, 350000000),

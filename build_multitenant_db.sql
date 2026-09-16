@@ -7761,6 +7761,7 @@ CREATE VIEW vw_dash_party_ar_balance AS
      JOIN journallines jl ON ((jl.party_id = p.party_id)))
      JOIN journalentries je ON ((je.journal_id = jl.journal_id)))
   WHERE (p.ar_account_id IS NOT NULL)
+    AND (jl.account_id = p.ar_account_id)
   GROUP BY p.party_id, p.party_name, p.party_type, p.contact_info
  HAVING (COALESCE((sum(jl.debit) - sum(jl.credit)), (0)::numeric) > (0)::numeric);
 --
@@ -12760,11 +12761,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS document_attachments_one_per_kind
 CREATE INDEX IF NOT EXISTS document_attachments_document_idx
     ON document_attachments (document_type, document_id);
 
--- Bump tenant schema version.
-UPDATE tenant_schema_version
-SET version = GREATEST(version, 6),
-    applied_at = CURRENT_TIMESTAMP
-WHERE id = true;
 
 
 -- reset search_path back to shared after building the tenant schema

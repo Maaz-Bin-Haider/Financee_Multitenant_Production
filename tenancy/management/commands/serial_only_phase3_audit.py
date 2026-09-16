@@ -11,6 +11,7 @@ import json
 import re
 from datetime import datetime, timezone
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 
@@ -197,9 +198,13 @@ def inventory(cursor):
             row["inventory_mode_is_serial"] and row["provisioning_ready"]
             and row["canonical_schema_name"] for row in companies),
         "registered_schemas_exist": registered.issubset(set(physical)),
+        # Read the expected version from settings, as the Phase 0 audit does.
+        # A hardcoded literal silently desynced this check when the tenant
+        # schema version moved to 7 for the dashboard receivables fix.
         "no_orphan_noncanonical_or_nonserial_schema": all(
             row["schema"] and row["registered"]
-            and row["classification"] == "serial" and row["serial_version"] == 6
+            and row["classification"] == "serial"
+            and row["serial_version"] == settings.TENANT_SCHEMA_VERSION
             for row in schemas),
         "feature_metadata_is_classified": all(
             row["features"]["valid_list_of_strings"]

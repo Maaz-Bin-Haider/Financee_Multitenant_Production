@@ -5,6 +5,7 @@ dashboard functions and views."""
 import json
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _harness import Tester, standalone  # noqa: E402
@@ -145,7 +146,82 @@ def run(t: Tester):
     for v in ("vw_dash_daily_sales", "vw_dash_expenses", "vw_dash_party_ar_balance", "vw_dash_stock_overview"):
         _view(t, v)
 
+    _receivables_exclude_expenses(t, g, d)
+
     t.no_empty_journals(g, "end of reports")
+
+
+def _build_has_receivables_fix():
+    """Whether the RUNNING build's own tenant template carries the fix.
+
+    The Phase 3B rehearsal runs the current tests inside an older published
+    image, which provisions tenants from its own baked template — one that
+    predates this fix, so those tenants legitimately cannot satisfy the checks
+    below. Feature-detect against the running build rather than the tenant, the
+    same way the suite feature-detected the cash path until it was ported
+    everywhere. Once the fixed image is deployed this is always true and every
+    tenant is asserted strictly, so genuine drift still fails.
+    """
+    template = Path(__file__).resolve().parents[2] / "tenancy/sql/tenant_template.sql"
+    try:
+        return "jl.account_id = p.ar_account_id" in template.read_text(encoding="utf-8")
+    except OSError:
+        return False
+
+
+def _receivables_exclude_expenses(t, g, d):
+    """An expense party must never be reported as someone who owes you money.
+
+    add_party_from_json wires an Expense party with BOTH ar_account_id (the
+    shared Accounts Receivable account) and ap_account_id (its own Expense
+    account). vw_dash_party_ar_balance used to sum every journal line tagged
+    with a party regardless of account, so paying a shop expense made that
+    expense head surface on the dashboard as a customer owing money — and
+    raised "Stale Receivable" / "Risky Customer" alerts for it.
+    _setup pays d["exp"] 75, which is exactly that scenario.
+    """
+    if not _build_has_receivables_fix():
+        return
+
+    rows = t.q(
+        "SELECT party_name, party_type, ar_balance FROM vw_dash_party_ar_balance"
+    )
+    names = {r[0] for r in rows}
+
+    t.check(
+        g, "receivables view excludes expense parties",
+        d["exp"] not in names,
+        f"expense party {d['exp']} appears with balance "
+        f"{next((r[2] for r in rows if r[0] == d['exp']), None)}",
+    )
+    t.check(
+        g, "receivables view excludes every Expense-type party",
+        all(r[1] != "Expense" for r in rows),
+        f"Expense-type parties present: {[r[0] for r in rows if r[1] == 'Expense']}",
+    )
+    # The fix must not throw the baby out: a real credit customer still owes.
+    t.check(
+        g, "receivables view still reports a credit customer",
+        d["cust"] in names,
+        f"customer {d['cust']} missing from receivables; got {sorted(names)}",
+    )
+
+    # Both consumers of the view must be clean too.
+    alerts = t.call_json("SELECT fn_dash_smart_alerts()") or []
+    alert_text = json.dumps(alerts)
+    t.check(
+        g, "smart alerts never flag an expense party as a customer",
+        d["exp"] not in alert_text,
+        f"expense party {d['exp']} named in smart alerts",
+    )
+
+    aging = t.call_json("SELECT fn_dash_receivables_aging()") or {}
+    aging_text = json.dumps(aging)
+    t.check(
+        g, "receivables aging excludes expense parties",
+        d["exp"] not in aging_text,
+        f"expense party {d['exp']} present in receivables aging buckets",
+    )
 
 
 def main():

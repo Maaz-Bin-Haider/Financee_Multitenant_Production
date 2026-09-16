@@ -1960,3 +1960,26 @@ UPDATE tenant_schema_version
 SET version = GREATEST(version, 6),
     applied_at = CURRENT_TIMESTAMP
 WHERE id = true;
+
+-- ── Dashboard receivables: exclude expense-party lines (schema version 7) ──
+-- vw_dash_party_ar_balance summed every journal line tagged with a party,
+-- whatever account it hit, so paying a shop expense made that expense head
+-- look like a customer owing money on the dashboard (and raised "Stale
+-- Receivable" / "Risky Customer" alerts). Restrict it to lines actually posted
+-- to the party's own receivables account. See
+-- tenancy/sql/fix_dashboard_expense_receivables.sql for the full rationale.
+CREATE OR REPLACE VIEW vw_dash_party_ar_balance AS
+ SELECT p.party_id,
+    p.party_name,
+    p.party_type,
+    p.contact_info,
+    COALESCE((sum(jl.debit) - sum(jl.credit)), (0)::numeric) AS ar_balance,
+    max(je.entry_date) AS last_transaction_date
+   FROM ((parties p
+     JOIN journallines jl ON ((jl.party_id = p.party_id)))
+     JOIN journalentries je ON ((je.journal_id = jl.journal_id)))
+  WHERE (p.ar_account_id IS NOT NULL)
+    AND (jl.account_id = p.ar_account_id)
+  GROUP BY p.party_id, p.party_name, p.party_type, p.contact_info
+ HAVING (COALESCE((sum(jl.debit) - sum(jl.credit)), (0)::numeric) > (0)::numeric);
+
