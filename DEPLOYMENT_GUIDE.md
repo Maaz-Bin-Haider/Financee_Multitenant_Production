@@ -1,10 +1,14 @@
 # Financee — Full Deployment + CI/CD Guide (fresh EC2)
 
 Step-by-step, from a brand-new Ubuntu EC2 instance to a running production
-stack with automated, approval-gated deploys from GitHub Actions.
+stack with automated, approval-gated deploys from GitHub Actions and a daily
+encrypted database backup.
+
+*Last checked against the repository: 2026-09-26.*
 
 Written for this concrete setup (adjust if yours differs):
 
+- **Instance:** AWS EC2 `t4g.medium` — ARM64 Graviton, 2 vCPU / 4 GiB, Ubuntu
 - **EC2 host:** `ec2-13-206-58-237.ap-south-1.compute.amazonaws.com` (user `ubuntu`)
 - **SSH from Windows:**
   ```powershell
@@ -23,8 +27,14 @@ Written for this concrete setup (adjust if yours differs):
 
 ### A1. Instance and firewall (AWS console)
 
-1. Recommended size: **t3.small (2 GB) or larger** (Postgres 16 + Redis +
-   Gunicorn + Nginx all run on this box). On 1 GB instances add swap (A4).
+1. Size: production runs on a **`t4g.medium`** (ARM64 Graviton, 2 vCPU /
+   4 GiB) from an Ubuntu **64-bit (Arm)** AMI; Postgres 16, Redis, Gunicorn and
+   Nginx all run on this box. `deploy/docker-compose.yml` is tuned for 4 GiB
+   (`shared_buffers=768MB`, `max_connections=120`, Gunicorn 4 workers × 4
+   threads). The image is multi-arch, so an x86 instance of the same size works
+   too. On a smaller box, set lower `WEB_CONCURRENCY` / `GUNICORN_THREADS` in
+   `deploy/.env` and add swap (A4). Give the root EBS volume room for a few
+   images: deploys refuse to start with less than 1 GiB free (Part E).
 2. EC2 console → your instance → **Security** tab → security group →
    **Edit inbound rules**. You need:
    - **SSH (22)** — from `0.0.0.0/0` (GitHub Actions runners have changing
@@ -68,7 +78,7 @@ Reconnect (same `ssh` command), then verify:
 docker --version && docker compose version
 ```
 
-### A4. (Only for 1 GB instances) add swap
+### A4. (Optional) add swap on smaller instances
 
 ```bash
 sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
@@ -137,10 +147,13 @@ docker compose -f docker-compose.yml up -d --build
 ```
 
 (`-f docker-compose.yml` matters: it ignores the local-dev override file.)
-First run takes a few minutes: it builds the image, boots Postgres (which
-self-seeds `build_multitenant_db.sql`, creating the example **Company One**
-tenant), then the web entrypoint applies public migrations and the tenant
-hardening SQL.
+First run takes a few minutes. It builds the image and boots Postgres, which
+runs `build_multitenant_db.sql` once on the empty volume: the Django/auth
+tables plus the example `tenant_company_1` business schema. The web entrypoint
+then applies the public migrations, registers that schema as the **Company
+One** tenant (`register_bootstrap_tenant`, first boot only), applies
+`production_hardening.sql` (which also lifts the seeded schema to version 6)
+and `tenant_indexes.sql`, and starts Gunicorn.
 
 Verify:
 
@@ -166,8 +179,9 @@ Log in at `http://<your-ec2-dns>/admin/` with it.
 In the admin panel:
 
 1. **Companies & Subscriptions → Add** — creating a company automatically
-   provisions its isolated tenant schema. (You can also rename/reuse the
-   seeded "Company One".)
+   provisions its isolated tenant schema. Pick its **base currency** and **tax
+   environment** now: both lock once the company has financial activity. (You
+   can also rename/reuse the seeded "Company One".)
 2. **Users → Add** — create each client user.
 3. **Memberships → Add** — attach each user to their company (one company per
    user), and assign permissions/groups.
@@ -184,23 +198,33 @@ All under `https://github.com/Maaz-Bin-Haider/Financee_Multitenant_Production/se
 ### C1. Repository secrets
 
 Settings → **Secrets and variables → Actions** → *Secrets* tab →
-**New repository secret**, three times:
+**New repository secret**, one per row (the first three are required):
 
 | Name | Value |
 |---|---|
 | `EC2_HOST` | `ec2-13-206-58-237.ap-south-1.compute.amazonaws.com` |
 | `EC2_USER` | `ubuntu` |
 | `EC2_SSH_KEY` | The **full contents** of `C:\Users\SWISS TECH\Documents\SSHfianacee_pk\financee_pk_key.pem` — open it in Notepad, Select All, copy, paste, including the `-----BEGIN RSA PRIVATE KEY-----` / `-----END RSA PRIVATE KEY-----` lines |
+| `EC2_APP_DIR` | *Optional.* Only if you cloned somewhere other than `/home/ubuntu/Financee_Multitenant_Production` (B1) |
+| `BACKUP_DEST` | *Only with `PHASE30_BACKUP_MODE=encrypted` (C4).* Absolute path on the server of an off-server (mounted or synced) directory for the pre-deploy backup |
+| `BACKUP_PASSPHRASE_FILE` | *Only with encrypted mode.* Path on the server of the root-readable passphrase file for that backup |
 
-(`EC2_APP_DIR` is not needed — you cloned to the default path in B1.)
+### C2. The approval gates
 
-### C2. The approval gate
+Every release from `main` stops twice for a person:
 
-Settings → **Environments** → **New environment** → name it exactly
-`production` → **Configure environment** → tick **Required reviewers** → add
-your own GitHub account → **Save protection rules**.
+1. **`staging-release-approval`** — after all test gates pass, before the image
+   is published to GHCR.
+2. **`production`** — before the deploy job touches the server.
 
-This makes every deploy pause until you click **Approve** on the run.
+For **each** of the two names: Settings → **Environments** → **New
+environment** → name it exactly as above → **Configure environment** → tick
+**Required reviewers** → add your own GitHub account → **Save protection
+rules**.
+
+Create both before the first release. GitHub creates a missing environment on
+first use with **no** protection rules, and that job then runs without
+waiting for anyone.
 
 ### C3. GHCR image access for the server
 
@@ -232,49 +256,97 @@ Settings → **Secrets and variables → Actions** → *Variables* tab →
 |---|---|
 | `DEPLOY_ENABLED` | `true` |
 
-Do this **last** — while it is unset, pushes to `main` still build + test +
-publish the image but skip the deploy job entirely.
+Do this **last** — while it is unset, pushes to `main` still run every gate
+and (after the staging approval) publish the image, but skip the deploy job
+entirely.
+
+Optional variables — the deploy job fills in a default when one is unset:
+
+| Name | Default when unset | Purpose |
+|---|---|---|
+| `PHASE30_BACKUP_MODE` | `external` | `encrypted` makes every deploy take and verify an encrypted database + media backup first (needs the `BACKUP_*` secrets). `external` records that backups are handled separately (Part G) |
+| `MAINTENANCE_NOTICE_REFERENCE` | `github-production-approval-<run id>` | Customer/operator notice recorded with the release |
+| `MAINTENANCE_WINDOW_UTC` | `approved-production-run-<run id>` | Approved maintenance window recorded with the release |
+| `ROLLBACK_OWNER` | the GitHub user who triggered the run | Operator accountable for a rollback |
 
 ### C5. First automated deploy (verify the pipeline)
 
-1. Push any commit to `main` (or Actions tab → latest **CI/CD** run →
-   **Re-run all jobs**).
-2. Watch the run: **checks** and **test** go green (~15 min), then
-   **Deploy to EC2** shows *Waiting for review*.
-3. Click **Review deployments** → tick `production` → **Approve and deploy**.
-4. The job SSHes to the server and runs `deploy/deploy_pull.sh`, which:
-   - pulls the exact SHA-tagged image that just passed the full test suite,
-   - recreates `web` + `nginx` (no 502s: nginx re-resolves `web` via Docker
-     DNS — the resolver fix in `deploy/nginx/financee.conf`),
-   - health-checks `http://localhost/authentication/login/` through nginx,
-   - **rolls back to the previous image automatically** if that check fails,
-   - applies idempotent tenant SQL to every tenant schema.
+1. Push a commit to `main` (or Actions tab → latest **CI/CD** run →
+   **Re-run all jobs**). A commit whose message contains `[skip ci]` starts no
+   run at all; the repo uses that for docs-only changes.
+2. Watch the run: `checks` and the stack gates (serial, creation-freeze,
+   runtime-removal, metadata-inventory, compatibility, cleanup-rehearsal,
+   isolation, arm64-smoke, full-regression, recovery) run in parallel, then
+   `staging-security-gate`.
+3. **Product, engineering & operations staging approval** shows *Waiting for
+   review* → **Review deployments** → tick `staging-release-approval` →
+   **Approve and deploy**. `publish` then builds the multi-arch image and
+   pushes `:<sha>` and `:latest` to GHCR.
+4. **Deploy to EC2 (manual approval)** shows *Waiting for review* → approve
+   `production` the same way.
+5. The job SSHes to the server, runs `git pull --ff-only` in the checkout, and
+   starts `deploy/phase30_foundation_deploy.sh`
+   (`PHASE30_PRODUCTION_FOUNDATION_RUNBOOK.md`), which:
+   - refuses to run unless the checkout is exactly the release commit and the
+     image is pinned to that SHA;
+   - runs `release_preflight` and, using the new image with its entrypoint
+     disabled, records a read-only continuity fingerprint of every tenant;
+   - takes the encrypted backup when `PHASE30_BACKUP_MODE=encrypted`;
+   - calls `deploy_pull.sh`, which frees unused images, requires ≥ 1 GiB free
+     disk, pulls the SHA-tagged image, recreates `web` (+ `nginx` when its
+     config changed), health-checks `http://localhost/authentication/login/`
+     through nginx, then re-applies `tenant_indexes.sql` and re-runs
+     `release_preflight` (the new container's entrypoint has already applied
+     migrations and `production_hardening.sql`);
+   - checks that the continuity fingerprint is unchanged (balances, journals,
+     serial state), then requires container health, three straight 200s
+     through nginx, and the thresholds: login ≤ 5 s, ≤ 100 database
+     connections, ≥ 1 GiB free disk, zero 5xx, container CPU and memory
+     ≤ 90 %;
+   - **rolls `web` back to the previous image automatically if any step after
+     the deploy starts fails**, and writes `rollback-incident.txt`.
+
+   Evidence for every run lands in `deploy/phase30-evidence/<release-sha>/` on
+   the server. Nginx re-resolves `web` through Docker DNS on every request
+   (`deploy/nginx/financee_common.conf`), so recreating `web` causes no 502s.
+
+> **Approve promptly.** The controller insists that the server checkout equals
+> the release commit, so a deploy approved after something else lands on
+> `main` stops at that check without changing anything. Deploy the newest
+> commit instead: merge the next change, or push a commit without `[skip ci]`
+> to start a fresh run.
 
 ---
 
 ## Part D — Day-to-day workflow after setup
 
 1. Commit and push to `main` (or merge a PR).
-2. CI builds the image and runs the entire test pyramid against a
-   from-scratch stack (fresh seeded DB, two tenants). Red run = nothing
-   deployable, production untouched.
-3. Green run pauses at **Deploy to EC2** → you approve → it ships.
+2. CI builds the image and runs every gate on disposable from-scratch stacks
+   (fresh seeded database, extra tenants). Red run = nothing publishable,
+   production untouched.
+3. A green run pauses twice — staging approval, then production — and the
+   Phase 30 controller ships it (C5).
 4. Nothing else to do on the server. The old `deploy/deploy.sh`
-   (build-on-server) remains as a manual fallback:
+   (build-on-server) remains as a manual fallback, but it has no preflight, no
+   real health check (a fixed 5-second wait) and no rollback, so prefer
+   re-running the CI deploy:
    ```bash
    cd ~/Financee_Multitenant_Production/deploy && ./deploy.sh
    ```
 
-**Caveat to remember:** a rollback swaps the web *image* back, but public
-migrations / tenant SQL already applied by the failed release are **not**
-reverted — keep migrations and tenant patches backward-compatible (the
+**Caveat to remember:** a rollback swaps the web *image* back, but it does
+**not** revert public migrations, tenant SQL (the new container's entrypoint
+applies `production_hardening.sql` before the health check), nginx, or the
+server checkout — keep migrations and tenant patches backward-compatible (the
 existing idempotent-patch discipline).
 
 ### Encrypted database and media recovery
 
 Production recovery covers PostgreSQL and the media volume as one encrypted,
-checksummed bundle. The destination must be off the EC2 instance and the
-passphrase must be stored separately:
+checksummed bundle. With `PHASE30_BACKUP_MODE=encrypted` (C4) every deploy
+takes one first; otherwise run it yourself before risky changes. It is
+separate from the daily database-only backup (Part G). The destination must be
+off the EC2 instance and the passphrase must be stored separately:
 
 ```bash
 cd ~/Financee_Multitenant_Production/deploy
@@ -300,10 +372,12 @@ plain `docker image prune -f` does not remove superseded releases. On a small
 EC2 root disk they can accumulate until containerd cannot extract a new ARM64
 image.
 
-`deploy_pull.sh` now removes all images not referenced by a container and clears
-unused build cache before every pull. It never prunes volumes, and Docker keeps
-the image used by the currently running web container for health-check rollback.
-If a host failed before receiving that fix, run:
+`deploy_pull.sh` removes all images not referenced by a container and clears
+unused build cache before its pull. It never prunes volumes, and Docker keeps
+the image used by the currently running web container for rollback. The Phase
+30 controller, though, pulls the candidate once earlier (for its read-only
+audit), before that cleanup, so a nearly full disk can still fail there. To
+recover:
 
 ```bash
 cd ~/Financee_Multitenant_Production/deploy
@@ -311,7 +385,7 @@ docker system df
 docker image prune -af
 docker builder prune -af
 df -h
-WEB_IMAGE=ghcr.io/maaz-bin-haider/financee-web:<commit-sha> bash deploy_pull.sh
+# then re-run the failed "Deploy to EC2" job in GitHub Actions
 ```
 
 If less than 1 GiB remains after cleanup, expand the instance's root EBS volume
@@ -339,10 +413,16 @@ docker compose -f docker-compose.yml logs -f web nginx     # follow live
   `docker compose -f docker-compose.yml restart nginx`. With the current
   config this should no longer happen.
 - **Login redirect loop / 403 after login** → see `FIXED_ISSUES.md` (tenant
-  schema version); re-apply hardening:
+  schema version).
+  `docker compose -f docker-compose.yml exec -T web python manage.py release_preflight`
+  shows which tenant fails and why; re-apply hardening with:
   `docker compose -f docker-compose.yml exec -T web python manage.py apply_sql_all_tenants tenancy/sql/production_hardening.sql`
-- **Deploy job failed in GitHub** → open the job log; the health-check step
-  prints the last 100 web log lines before rolling back.
+- **Deploy job failed in GitHub** → open the job log (a failed `deploy_pull.sh`
+  health check prints the last 100 web log lines), then the evidence on the
+  server in `deploy/phase30-evidence/<release-sha>/`: preflight, continuity,
+  deploy, monitoring and container logs, plus `rollback-incident.txt` when it
+  rolled back. `Checked-out source does not match PHASE30_RELEASE_SHA` means
+  `main` moved on before approval (C5).
 
 ---
 
@@ -372,9 +452,10 @@ with SSL mode **Full (strict)** — a free cert valid up to 15 years, so there i
 - `deploy/nginx/financee_common.conf` — the shared proxy/static/media body
   included by **both**, so they never drift.
 - `deploy/docker-compose.tls.yml` — overlay that publishes 443 and mounts the
-  cert. `deploy_pull.sh` / `deploy.sh` add it **automatically once
-  `/etc/nginx/cloudflare/origin.pem` exists on the host** — so nothing here
-  breaks HTTP-only deploys before the cert is installed.
+  cert. `phase30_foundation_deploy.sh`, `deploy_pull.sh` and `deploy.sh` add
+  it **automatically once `/etc/nginx/cloudflare/origin.pem` exists on the
+  host** — so nothing here breaks HTTP-only deploys before the cert is
+  installed.
 
 > **Ordering rule:** install the origin cert on the host **before** the first
 > TLS-enabled deploy. The deploy scripts only switch nginx to 443 after they see
@@ -434,10 +515,11 @@ CSRF_TRUSTED_ORIGINS=https://financee-swisstech.com,https://www.financee-swisste
 The nginx/compose files above ship via git. Get them onto the server and bring
 nginx up on 443. Either:
 
-- **Via CI (normal path):** merge to `main`, approve the deploy. `deploy_pull.sh`
-  git-pulls, sees `origin.pem`, adds the TLS overlay, and recreates nginx on
-  443. Because you changed `.env` (not baked into the image), also recreate web
-  once so the new cookie/host settings load — the deploy recreates web anyway.
+- **Via CI (normal path):** merge to `main` and approve both gates. The deploy
+  job git-pulls the checkout; the controller and `deploy_pull.sh` see
+  `origin.pem`, add the TLS overlay, and recreate nginx on 443. Because you
+  changed `.env` (not baked into the image), web must be recreated too so the
+  new cookie/host settings load — the deploy recreates web anyway.
 
 - **Manually on the server (immediate):**
   ```bash
@@ -487,3 +569,43 @@ Nothing to do — a Cloudflare Origin Certificate is valid up to 15 years. Set a
 calendar reminder ~1 month before expiry to regenerate it (repeat F1.2 + F2 +
 recreate nginx). Cloudflare's *edge* certificate (what visitors see) is
 auto-managed and renews itself.
+
+---
+
+## Part G — Daily database backup (one time)
+
+Separately from deploys, a systemd timer on the server takes an encrypted
+PostgreSQL backup — the `public` schema plus every tenant schema, **but no
+uploaded media** — and uploads it as a GitHub Release to the private repository
+`Maaz-Bin-Haider/financee_pk_backup`. The full procedure (credentials, the
+attended first run, the restore rehearsal, token rotation) is in
+**`DATABASE_BACKUP_GITHUB_RUNBOOK.md`**. In short:
+
+1. Put a fine-grained token scoped to that one repository in
+   `/etc/financee-backup/github.env` and a strong passphrase in
+   `/etc/financee-backup/passphrase`, both root-only (`0600`). Keep an offline
+   copy of the passphrase: without it no backup can be restored.
+2. Install `gh` and `jq`, run one attended backup with
+   `run_database_backup.sh`, and pass an isolated restore rehearsal before
+   relying on the timer.
+3. Install and start the timer:
+   ```bash
+   cd ~/Financee_Multitenant_Production/deploy
+   sudo FINANCEE_APP_DIR=/home/ubuntu/Financee_Multitenant_Production \
+     bash install_database_backup_timer.sh
+   sudo systemctl start financee-db-backup.timer
+   systemctl list-timers financee-db-backup.timer
+   ```
+   It runs daily at 02:15 UTC (with up to 15 minutes of random delay) and
+   catches up after downtime. Retention keeps the newest 30 daily releases
+   plus the first one in each of the newest 12 months.
+4. Check on it:
+   ```bash
+   sudo /home/ubuntu/Financee_Multitenant_Production/deploy/database_backup_status.sh
+   ```
+   It prints `STALE` and exits 1 when the newest backup is more than 26 hours
+   old. Nothing runs this check on a schedule, so look at it regularly or hook
+   it into your monitoring.
+
+For a full recovery point that includes uploaded invoices, use the encrypted
+database-and-media bundle in Part D.

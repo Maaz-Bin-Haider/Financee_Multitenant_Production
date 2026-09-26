@@ -547,7 +547,7 @@ flowchart TB
 - **Static:** collected at image build; entrypoint syncs the baked tree into the shared volume so nginx serves current hashed assets after every deploy. The one-shot allowlist that removed retired quantity assets completed its rollout and was itself retired in checkpoint 4A. The previous image repopulates its own assets on rollback.
 - **Ports:** only 22 / 80 / 443 open; Postgres & Redis stay internal to the Docker network.
 
-Full step-by-step (fresh EC2 → running stack → CI/CD → HTTPS) is in **`DEPLOYMENT_GUIDE.md`**.
+Full step-by-step (fresh EC2 → running stack → CI/CD → HTTPS → daily backup) is in **`DEPLOYMENT_GUIDE.md`**.
 
 ---
 
@@ -729,7 +729,7 @@ Financee_Multitenant_Production/
 | **`CLAUDE.md`** | Instructions & guardrails for AI-assisted work in this repo |
 | **`PROJECT_CONTEXT.md`** | Persistent engineering context — **keep current** |
 | **`FIXED_ISSUES.md`** | Diagnosed production/setup bugs, root causes & fixes |
-| **`DEPLOYMENT_GUIDE.md`** | Fresh EC2 → running stack → CI/CD → HTTPS, step by step (predates the t4g.medium host and the Phase 30 deploy controller) |
+| **`DEPLOYMENT_GUIDE.md`** | Fresh EC2 → running stack → CI/CD → HTTPS → daily backup, step by step |
 | **`PHASE30_PRODUCTION_FOUNDATION_RUNBOOK.md`** | The Phase 30 deploy controller that every production release runs |
 | **`PHASE29_STAGING_SECURITY_RUNBOOK.md`** | Staging acceptance & security gate |
 | **`DATABASE_BACKUP_GITHUB_RUNBOOK.md`** · **`PHASE28_RECOVERY_RUNBOOK.md`** | Backup & restore runbooks |

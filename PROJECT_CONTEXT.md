@@ -48,9 +48,9 @@ This file is the persistent engineering context for Financee. Update it on every
   trust: `verify_company_schema` checks each schema's own
   `tenant_schema_version`, and `Company` has no `inventory_mode` field,
   property or choice list. The retired keyword is refused by `Model.__init__`.
-- **Docs audited 2026-09-26.** `README.md`, `CLAUDE.md` and this file were
-  corrected against the code (no code or SQL changed). Known remaining doc
-  drift is listed under Known Documentation Caveats.
+- **Docs audited 2026-09-26.** `README.md`, `CLAUDE.md`, `DEPLOYMENT_GUIDE.md`
+  and this file were corrected against the code (no code or SQL changed).
+  Known remaining doc drift is listed under Known Documentation Caveats.
 
 ### Three migration rules to know before touching this again
 
@@ -574,7 +574,6 @@ Always roll out tenant SQL to **all** tenants via `apply_sql_all_tenants` to pre
 
 - The generated header comment in `financee/settings.py` says Django 5.2.6, but dependency files currently pin Django 6.0.6. Treat dependency files as source of truth unless code compatibility work says otherwise.
 - Some view files retain older commented-out implementations. Active functions are the uncommented definitions later in the files.
-- `DEPLOYMENT_GUIDE.md` predates the t4g.medium host (it recommends a t3.small) and the Phase 30 controller (it still says the CI deploy runs `deploy_pull.sh` and refers to a CI `test` job), and it never mentions the daily database backup.
 - `tests/suite/RESULTS.md` is the 2026-07-06 matrix (12 modules). The newest full-run evidence is in `FIXED_ISSUES.md` (2026-09-16, 21 modules).
 - `build_multitenant_db.sql` seeds `tenant_company_1` at tenant schema version 4; it reaches 6 only because the entrypoint applies `production_hardening.sql`. Its header still says 15 `authentication` migrations are left unseeded (there is now one).
 - Stale comments inside CI byte-pinned SQL (editing them means re-pinning): `production_hardening.sql` labels the dashboard receivables fix "schema version 7" (the bump was dropped), and `tenant_template.sql` says `add_document_attachments.sql` and the bootstrap carry the v6 bump (neither does).
