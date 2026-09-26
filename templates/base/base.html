@@ -156,7 +156,8 @@
             </a>
             {% endif %}
             {% if features.sales_reports.enabled %}
-            {% if perms.auth.can_view_sales_summary or perms.auth.can_view_product_profitability or ... %}
+            {# Any one of SALES_REPORT_PERMS (financee/security.py) opens the page; keep this list in sync. #}
+            {% if perms.auth.can_view_sales_summary or perms.auth.can_view_product_profitability or perms.auth.can_view_customer_profitability or perms.auth.can_view_sales_by_product or perms.auth.can_view_sales_by_customer or perms.auth.can_view_sale_wise_profit or perms.auth.can_view_sales_trend or perms.auth.can_view_invoice_register %}
             <a href="{% url 'sales_reports:sales_reports' %}" class="{% if request.resolver_match.url_name == 'sales_reports' %}active{% endif %}">
                 <i class="fa-solid fa-chart-line"></i> Sales Reports
             </a>
@@ -175,10 +176,6 @@
             <div class="user_name"><i class="fa-solid fa-user"></i>  <span id="username">-</span></div>
             {% if request.tenant_company %}
             <div class="user_name company_name"><i class="fa-solid fa-building"></i>  <span id="companyname">{{ request.tenant_company.name }}</span></div>
-            <div class="user_name company-mode" aria-label="Inventory mode">
-              <i class="fa-solid fa-barcode"></i>
-              <span>{{ request.tenant_company.get_inventory_mode_display }}</span>
-            </div>
             {% endif %}
             <hr>
 

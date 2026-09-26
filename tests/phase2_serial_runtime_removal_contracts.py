@@ -80,6 +80,22 @@ workflow = read(".github/workflows/ci.yml")
 stack = read("tests/ci_phase27_stack.sh")
 suite = read("tests/suite/run_all.py")
 
+# The sidebar shows Sales Reports when the user holds ANY of the route guard's
+# SALES_REPORT_PERMS. The template has to repeat that list, and a literal "..."
+# placeholder once hid the link from users holding only six of the eight.
+sales_report_perms = next(
+    ast.literal_eval(node.value)
+    for node in ast.parse(security).body
+    if isinstance(node, ast.Assign)
+    and any(getattr(target, "id", None) == "SALES_REPORT_PERMS"
+            for target in node.targets)
+)
+sales_sidebar_condition = next(
+    (line for line in base.splitlines()
+     if line.strip().startswith("{% if perms.auth.can_view_sales_summary")),
+    "",
+)
+
 # Extracted from deployed Phase 1 commit 102e55e857bbffa8bd4318e6afaec42e048c8e67.
 # These are independent regression anchors, not hashes of the candidate itself.
 SERIAL_FUNCTION_BASELINES = {
@@ -224,10 +240,16 @@ checks = {
     "serial attachment lookup contains no schema-family fallback":
         "QUANTITY_DOCUMENT_CONFIG" not in attachments
         and "manage_quantity_attachments" not in attachments,
-    "shared base template has no quantity branch or link":
+    "shared base template has no quantity branch, link or inventory-mode badge":
         "is_quantity_company" not in base
         and "quantity_" not in base
-        and "Quantity Reports" not in base,
+        and "Quantity Reports" not in base
+        and "inventory_mode" not in base,
+    "sidebar Sales Reports link accepts every SALES_REPORT_PERMS entry":
+        bool(sales_report_perms)
+        and all(f"perms.{perm}" in sales_sidebar_condition
+                for perm in sales_report_perms)
+        and "..." not in sales_sidebar_condition,
     "quantity SQL and the replaced migration history are both retired":
         not any((ROOT / "tenancy/sql").glob("quantity_*.sql"))
         # Checkpoint 4B removed the replaced files; only the squashed

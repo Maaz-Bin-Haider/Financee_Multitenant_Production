@@ -2,6 +2,57 @@
 
 This file records production/setup issues that were diagnosed and fixed, including the root cause, code or SQL changes, and verification steps.
 
+## 2026-09-26: Sidebar Hid Sales Reports From Most Report Permissions and Showed an Empty Inventory Badge
+
+### Symptoms
+
+Two defects in the tenant sidebar (`templates/base/base.html`), found while
+auditing the README against the code:
+
+1. A user granted only some of the sales-report permissions (for example only
+   *Sales Trend* or *Invoice Register*) saw no **Sales Reports** link in the
+   sidebar, although `/sales-reports/` itself opened for them.
+2. Every tenant page showed an empty badge with a barcode icon under the
+   company name (`aria-label="Inventory mode"`).
+
+### Root Cause
+
+1. The link's condition ended in a literal placeholder:
+   `{% if perms.auth.can_view_sales_summary or perms.auth.can_view_product_profitability or ... %}`.
+   Django parses `...` as a variable, which resolves to an empty string
+   (false), so only the first two of the eight `SALES_REPORT_PERMS` counted.
+   The route guard in `financee/security.py` correctly accepts any one of all
+   eight (mode `any`).
+2. The badge rendered `request.tenant_company.get_inventory_mode_display`. That
+   method went away with `Company.inventory_mode` in the serial-only
+   consolidation, and Django renders a missing attribute as an empty string,
+   so the badge stayed on screen with no text.
+
+### Fix
+
+- The condition now lists all eight `SALES_REPORT_PERMS`, with a comment
+  pointing at `financee/security.py`.
+- The inventory-mode badge is removed; there is no inventory mode left to
+  display.
+- `tests/phase2_serial_runtime_removal_contracts.py` now fails if any
+  `SALES_REPORT_PERMS` entry is missing from the sidebar condition (or the
+  condition contains `...`), and if `inventory_mode` appears in `base.html`.
+  `base.html` is excluded from the UI byte-identity pin, so no hash changed.
+
+Template only: no SQL, schema version, migration or static-file change.
+
+### Verification
+
+- The old and new templates were rendered with Django 6.0.6 for each of the
+  eight permissions on its own. The old template hid the link for six of them;
+  the new one shows it for all eight, and still hides it with no sales-report
+  permission or when the `sales_reports` feature is switched off. The old
+  template rendered the empty badge; the new one does not and still shows the
+  company name.
+- The two new contract checks pass on the fixed tree and fail against the old
+  `base.html`. All 13 database-free contract scripts from the CI `checks` job
+  pass.
+
 ## 2026-09-16: Expense Parties Counted as Receivables on the Dashboard
 
 ### Symptoms

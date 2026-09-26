@@ -457,6 +457,7 @@ count. Tests: `tests/suite/test_feature_flags.py` (wired into `run_all.py`).
 - Admin/auth/static/media routes are tenant-guard exempt.
 - JSON errors are scrubbed by middleware to avoid leaking internal exception details.
 - Login, dashboard, report, and lookup endpoints have lightweight cache-backed rate limits.
+- The sidebar's Sales Reports link shows when the user holds any one of the eight `SALES_REPORT_PERMS`, the same rule as the `/sales-reports/` route guard. The template has to repeat that list; `tests/phase2_serial_runtime_removal_contracts.py` fails CI if the two drift (a literal `...` placeholder hid the link from six of the eight until 2026-09-26).
 
 ## Admin UI Notes
 
@@ -487,7 +488,9 @@ count. Tests: `tests/suite/test_feature_flags.py` (wired into `run_all.py`).
 - The tenant sidebar footer shows the logged-in username **and the company
   name** (`request.tenant_company.name`, server-rendered, hidden when the
   request has no tenant company). Styles: `.company_name` in
-  `static/css/base_styling.css`.
+  `static/css/base_styling.css`. The retired inventory-mode badge that sat
+  under the company name (and had rendered empty since the serial-only
+  consolidation) was removed on 2026-09-26.
 
 ## Frontend Alert Layer (SweetAlert2)
 
