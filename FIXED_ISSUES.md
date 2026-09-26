@@ -53,6 +53,17 @@ Template only: no SQL, schema version, migration or static-file change.
   `base.html`. All 13 database-free contract scripts from the CI `checks` job
   pass.
 
+**Deployed to production 2026-09-26** (19:18 UTC) as
+`53a12e0966f6519e8372f652b215c85b71fc31c3` (pushed directly to `main`,
+workflow run `36264512993`), replacing
+`3c50327197e55cb7a35f585c239e9d48265fdc4c`. All 15 gate, staging and publish
+jobs passed first. The Phase 30 controller then passed every gate: preflight
+before and after (`tenant_company_1`, serial v6, identical contract
+fingerprint), the continuity comparison across all tenant balances, health
+through nginx, and the latency / 5xx / CPU / memory thresholds. No rollback
+was triggered. The tenant SQL step reported
+`ok -> tenant_company_1 (serial v6)`; no tenant SQL changed in this release.
+
 ## 2026-09-16: Expense Parties Counted as Receivables on the Dashboard
 
 ### Symptoms

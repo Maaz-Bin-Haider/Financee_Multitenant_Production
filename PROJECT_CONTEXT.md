@@ -18,17 +18,19 @@ This file is the persistent engineering context for Financee. Update it on every
     4A (`a4f915f`) shipped the squashed replacements beside the originals;
     checkpoint 4B (`5f42cd1`) deleted the replaced files and removed
     `replaces`, so each squash is now an ordinary initial migration.
-- **Last release after the plan:** PR #2 (`3c50327`, merged 2026-09-16) fixed
-  the dashboard reporting expense parties as receivables. First ordinary
-  feature release since the consolidation closed; it changed one reporting view
-  and no serial lifecycle code. See `FIXED_ISSUES.md`.
+- **Last release:** `53a12e0` (pushed to `main` 2026-09-26) fixed two sidebar
+  bugs in `templates/base/base.html`: the Sales Reports link now honours all
+  eight `SALES_REPORT_PERMS`, and the empty inventory-mode badge is gone.
+  Template only; no SQL or schema change. The release before it was PR #2
+  (`3c50327`, 2026-09-16), which stopped the dashboard reporting expense
+  parties as receivables. See `FIXED_ISSUES.md`.
 - **Production today:** image
-  `3c50327197e55cb7a35f585c239e9d48265fdc4c` (deployed 2026-09-16, workflow run
-  `35116450398`, Phase 30 controller PASS with matching before/after continuity
+  `53a12e0966f6519e8372f652b215c85b71fc31c3` (deployed 2026-09-26, workflow run
+  `36264512993`, Phase 30 controller PASS with matching before/after continuity
   fingerprints and no rollback), one serial company, tenant schema version 6,
   no `inventory_mode` column, no retired permissions or feature keys. The
   Phase 3B archive remains `applied` and is the reversal path — do not delete
-  it. The previous release was `39dc506d610e930531271ef4e7c0a48a4d06ef80`.
+  it. The previous release was `3c50327197e55cb7a35f585c239e9d48265fdc4c`.
 - **Tenant schema version stays at 6** after the 2026-09-16 dashboard
   receivables fix. That fix replaces one reporting view and is compatible in
   both directions, so it needs no version gate — and bumping would have blocked
