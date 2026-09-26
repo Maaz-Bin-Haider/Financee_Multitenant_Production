@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-09-07
+Last updated: 2026-09-26
 
 This file is the persistent engineering context for Financee. Update it on every meaningful project change, especially changes to architecture, routes, permissions, tenant SQL, deployment behavior, environment variables, tests, or data model assumptions.
 
@@ -48,6 +48,9 @@ This file is the persistent engineering context for Financee. Update it on every
   trust: `verify_company_schema` checks each schema's own
   `tenant_schema_version`, and `Company` has no `inventory_mode` field,
   property or choice list. The retired keyword is refused by `Model.__init__`.
+- **Docs audited 2026-09-26.** `README.md`, `CLAUDE.md` and this file were
+  corrected against the code (no code or SQL changed). Known remaining doc
+  drift is listed under Known Documentation Caveats.
 
 ### Three migration rules to know before touching this again
 
@@ -174,21 +177,27 @@ For any tenant business database change:
 
 1. Update `tenancy/sql/tenant_template.sql` for new tenants.
 2. Add or update an idempotent patch SQL file under `tenancy/sql/` for existing tenants.
-3. Apply with `python manage.py apply_sql_all_tenants <sql-file>`.
-4. Update this file and `README.md` if the operational contract changes.
+3. Register a new patch filename in `rollout_files` (`tenancy/schema_families.py`); `apply_sql_all_tenants` refuses unregistered files (8 of the 17 are registered today).
+4. Apply with `python manage.py apply_sql_all_tenants <sql-file>`.
+5. Fold critical changes into `tenancy/sql/production_hardening.sql` and the example-tenant section of `build_multitenant_db.sql`, and re-pin the Phase 2 byte-identity contract (`tests/phase2_serial_runtime_removal_contracts.py`) in the same commit.
+6. Leave the tenant schema version at 6 unless code depends on the change — the Phase 3B restore guard requires exactly 6.
+7. Update this file and `README.md` if the operational contract changes.
 
 Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, and `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
 
 ## CI/CD
 
-- `.github/workflows/ci.yml`: on every push/PR — `checks` job (django check +
-  missing-migration guard on a plain runner) and `test` job (builds the
-  production image, boots the real compose stack with a throwaway
-  `deploy/.env`, bootstraps a CI superuser + a second tenant via
-  `provision_tenant`, and runs `tests/suite/run_all.py`, `test_system.py`,
-  `test_http.py`, `test_transaction_lifecycle_deep.py` inside the container).
-  On `main` the tested image is pushed to
-  `ghcr.io/maaz-bin-haider/financee-web` (`<sha>` + `latest`).
+- `.github/workflows/ci.yml`: on every push/PR — a `checks` job on a plain
+  runner (compile, django check, missing-migration guard, the database-free
+  contracts and release gates below, `pip check`) plus stack gates that each
+  boot a disposable Compose stack through `tests/ci_phase27_stack.sh`.
+  `full-regression` builds the production image, bootstraps a CI superuser +
+  a second tenant via `provision_tenant`, and runs `tests/suite/run_all.py`
+  inside the container; `test_system.py`, `test_http.py` and
+  `test_transaction_lifecycle_deep.py` are not run in CI. On `main`, after the
+  protected `staging-release-approval`, `publish` rebuilds the commit as a
+  multi-arch image and pushes it to `ghcr.io/maaz-bin-haider/financee-web`
+  (`<sha>` + `latest`).
 - **Serial-only gates (mandatory on every push/PR).** `ci.yml` runs the phase
   contract set in `checks` — `phase0_serial_only_discovery_contracts`,
   `phase1_serial_only_creation_contracts`,
@@ -200,25 +209,42 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
   `metadata-inventory-gate`, `compatibility-gate`, `cleanup-rehearsal-gate`,
   `isolation-gate`, `arm64-smoke`, `full-regression`, `recovery-gate` and
   `staging-security-gate`. Publication and deployment are blocked until they
-  pass, plus `migration-transition-gate`, which proves on disposable stacks that
-  a fresh database records only the two squashed migrations and creates no
-  retired column, constraint or permission; that a database carrying the
-  post-4A history upgrades as a no-op with a byte-identical registry; that
-  per-app `--prune` removes exactly the stale rows; and that the release stays
-  rollback-safe before pruning. The
-  Phase 2 contracts additionally pin byte-identity baselines for the serial view
-  functions, 212 serial UI files, the 16 serial tenant SQL files and the
-  bootstrap's 12,248-line tenant business-schema build, so any accidental change
-  to serial behavior fails CI.
+  pass. `migration-transition-gate` also runs on every push: it proves on
+  disposable stacks that a fresh database records only the two squashed
+  migrations and creates no retired column, constraint or permission; that a
+  database carrying the post-4A history upgrades as a no-op with a
+  byte-identical registry; that per-app `--prune` removes exactly the stale
+  rows; and that the release stays rollback-safe before pruning. It is **not**
+  listed in the `needs` of `staging-release-approval` or `publish`, so today it
+  does not block publication. The
+  Phase 2 contracts additionally pin byte-identity baselines for the 12 serial
+  document view implementations, 212 serial UI files (everything under
+  `static/` and `templates/` except `templates/base/base.html`), the 17 serial
+  tenant SQL files (re-pinned 2026-09-16) and the bootstrap's 12,248-line
+  tenant business-schema build, so any accidental change to serial behavior
+  fails CI; a deliberate change must re-pin in the same commit.
 - `deploy` job: gated by repo variable `DEPLOY_ENABLED=true` AND manual
   approval via the `production` GitHub environment; SSHes to EC2 (secrets
-  `EC2_HOST`/`EC2_USER`/`EC2_SSH_KEY`/optional `EC2_APP_DIR`) and runs
-  `deploy/deploy_pull.sh` with the SHA tag.
+  `EC2_HOST`/`EC2_USER`/`EC2_SSH_KEY`/optional `EC2_APP_DIR`, plus
+  `BACKUP_DEST`/`BACKUP_PASSPHRASE_FILE`), runs `git pull --ff-only` in the host
+  checkout, then `deploy/phase30_foundation_deploy.sh` with the SHA tag and the
+  `PHASE30_*` release metadata (see `PHASE30_PRODUCTION_FOUNDATION_RUNBOOK.md`).
+- `deploy/phase30_foundation_deploy.sh`: requires the host HEAD to equal the
+  release SHA, runs `release_preflight`, audits the candidate image, takes an
+  encrypted backup only when `PHASE30_BACKUP_MODE=encrypted` (default
+  `external`), calls `deploy_pull.sh`, then checks the continuity fingerprint,
+  container health, three consecutive nginx 200s and resource thresholds. Its
+  EXIT trap rolls web back to the previous image on **any** failure after the
+  deploy starts.
 - `deploy/deploy_pull.sh`: pull-based deploy — pulls the pinned image,
   recreates web+nginx, health-checks through nginx, rolls back web to the
   previous image on failure, then `apply_sql_all_tenants tenant_indexes.sql`.
-  `deploy/deploy.sh` stays as the manual build-on-server fallback. DB changes
-  are not rolled back — keep migrations/tenant SQL backward-compatible.
+  `deploy/deploy.sh` stays as the manual build-on-server fallback (a fixed
+  5-second wait instead of a health check, no preflight, no rollback). A
+  rollback restores the web image only: public migrations, tenant SQL (the new
+  container's entrypoint has already applied `production_hardening.sql`), nginx
+  and the host checkout are not rolled back — keep migrations/tenant SQL
+  backward-compatible.
 - `deploy/docker-compose.yml` web service now carries
   `image: ${WEB_IMAGE:-ghcr.io/maaz-bin-haider/financee-web:latest}` so local
   builds tag the same name CI pushes and the server can `compose pull web`.
@@ -237,7 +263,7 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
   (`/etc/nginx/cloudflare/{origin.pem,origin.key}`, server-only, uncommitted)
   live in the `deploy/docker-compose.tls.yml` overlay, which
   `deploy_pull.sh`/`deploy.sh` add **automatically once `origin.pem` exists on
-  the host** (HTTP-only before that — no flag day). Local dev + the CI test job
+  the host** (HTTP-only before that — no flag day). Local dev + the CI stack gates
   use base `docker-compose.yml` only, so neither needs a cert. Once HTTPS is
   live, drop `SECURE_COOKIES=False` from the server `.env` and set
   `CSRF_TRUSTED_ORIGINS` to the `https://` origins. Full runbook:
@@ -264,7 +290,7 @@ Clients pay monthly outside the system (direct bank transfer, no payment
 gateway). The operator controls access entirely from the custom admin panel.
 Everything lives in the **public** schema (Django ORM) — no tenant SQL involved.
 
-Data model (`tenancy/models.py`, migration `tenancy/0002_subscription_control`):
+Data model (`tenancy/models.py`; introduced by migration `0002_subscription_control`, now squashed into `tenancy/migrations/0001_serial_only.py`):
 
 - `Company.paid_until` (date, nullable): subscription paid through this date
   (inclusive). **NULL disables enforcement** for that company (default for
@@ -328,8 +354,10 @@ registry fields and restores them in `finally`.
 ### Subscription notification emails
 
 Automatic emails to the **company's billing address** (`Company.contact_email`
-— never to individual users), fully configured from the admin panel. Migration
-`tenancy/0003_subscription_emails`; engine in `tenancy/subscription_emails.py`.
+— never to individual users), fully configured from the admin panel. Introduced by migration
+`0003_subscription_emails` (now squashed into
+`tenancy/migrations/0001_serial_only.py`); engine in
+`tenancy/subscription_emails.py`.
 
 - Two date-driven emails per billing cycle: **expired** (sent the day
   `paid_until` lapses: "you have N grace days, access restricted after X") and
@@ -366,8 +394,9 @@ Automatic emails to the **company's billing address** (`Company.contact_email`
 ## Per-Company Feature Flags (admin-controlled)
 
 The operator can switch features on/off **per company** from the company admin
-form. Everything lives in the public schema — no tenant SQL. Migration
-`tenancy/0004_company_feature_flags`; registry and enforcement helpers in
+form. Everything lives in the public schema — no tenant SQL. Introduced by
+migration `0004_company_feature_flags` (now squashed into
+`tenancy/migrations/0001_serial_only.py`); registry and enforcement helpers in
 `tenancy/features.py`.
 
 Feature keys (stable, persisted): group switches `accounts_reports`,
@@ -433,7 +462,7 @@ count. Tests: `tests/suite/test_feature_flags.py` (wired into `run_all.py`).
 
 - Custom admin templates live in `templates/admin/`.
 - The admin theme is owned by `static/css/financee_admin.css`.
-- The admin UI is not stock Django only; it includes a custom dashboard, KPI strip, quick links, user activity overview/detail pages, PDF export links, tenant/company management, and custom user delete behavior.
+- The admin UI is not stock Django only; it includes a custom dashboard, KPI strip, quick links, user activity overview/detail pages, PDF export links, tenant/company management, and custom user delete behavior. User activity aggregates across tenant schemas only when `TENANCY_CROSS_TENANT_ACTIVITY=True`; it defaults to False in `financee/settings.py`, so those pages are empty by default (the comment in `tenancy/apps.py` saying "on by default" is outdated).
 - The current admin visual direction is a responsive professional theme with an off-white background, rounded cards, grey admin text/links, and restrained muted accents.
 - Admin home KPI cards use subtle per-card accent colors: soft blue for total users, soft violet for superusers, soft green for active users, soft slate for groups and client companies, soft amber for recorded actions, and soft red for blocked subscriptions. These accents should stay muted, not vibrant.
 - Admin action buttons follow a semantic color system: default/primary buttons are dark grey with off-white text, add buttons are light green with dark green text, change/reset-password buttons are light yellow with dark muted-yellow text, and delete buttons are light red with maroon text.
@@ -490,11 +519,11 @@ Conventions:
 - `tests/test_transaction_lifecycle_deep.py` also asserts financial invariants at every checkpoint (trial balance balances, no orphaned journal lines, no negative amounts, in_stock vs active-Sold coherence) and supports a `known_bug`/`XFAIL` channel for documenting confirmed-but-unfixed defects without failing the suite.
 - `tests/TRANSACTION_LIFECYCLE_FLOW_RESULTS.md` records the latest deep lifecycle flow matrix and current pass/fail status.
 - `tests/suite/` is the comprehensive full-system suite (own harness `_harness.py`, one module per domain plus `test_reports.py` for every report and `test_http.py` for endpoints; run with `python tests/suite/run_all.py`). It runs against every active tenant and asserts real accounting invariants (double-entry balance, party balances, COGS, stock/serial coherence), not just "did not error". It reuses the `XFAIL`/`known_bug` convention. See `tests/suite/README.md` and `tests/suite/RESULTS.md`.
-- `tests/suite/test_reports.py` asserts that an Expense party which has been paid never appears in `vw_dash_party_ar_balance`, `fn_dash_smart_alerts` or `fn_dash_receivables_aging`, while a genuine credit customer still does (`_receivables_exclude_expenses`). These four checks fail against the pre-version-7 view.
+- `tests/suite/test_reports.py` asserts that an Expense party which has been paid never appears in `vw_dash_party_ar_balance`, `fn_dash_smart_alerts` or `fn_dash_receivables_aging`, while a genuine credit customer still does (`_receivables_exclude_expenses`). These four checks fail against the pre-2026-09-16 view.
 - `tests/suite/test_subscription.py` covers the subscription-control layer: the paid-until/grace/suspension state machine, calendar-aware payment extension, and HTTP enforcement (suspension page, JSON denial, exemptions, warning banner).
 - `tests/suite/test_subscription_emails.py` covers the subscription email layer: BillingSettings singleton, expiry/suspension emails with per-cycle dedup and failure retry, contact-detail embedding, manual-suspension/test emails, and the admin email screens (locmem backend, nothing real sent).
 - `tests/suite/test_attachments.py` adds dedicated document-attachment coverage for sale, purchase, sale return, purchase return, payment, receipt, and contra documents: upload/update/replacement, preservation of the unselected file kind, metadata/preview/download endpoints, invalid file validation, cleanup, failed-delete preservation, attachment-only bypass for sale/purchase/returns, and no bypass for payments/receipts/contra.
-- `tests/run_tests.sh` runs both harnesses in Docker and can reset tenant schemas with `--reset`.
+- `tests/run_tests.sh` runs `test_system.py` and `test_http.py` in Docker and can reset tenant schemas with `--reset`. `test_system.py` always exits 0, so read its `TOTAL FAILURES` line.
 - **Serial-only enforcement tests.** `tests/phase1_serial_only_creation.py`
   proves no supported path can express a non-serial company (the retired
   keyword is refused by `Model.__init__`, the database rejects a retired-mode
@@ -545,6 +574,12 @@ Always roll out tenant SQL to **all** tenants via `apply_sql_all_tenants` to pre
 
 - The generated header comment in `financee/settings.py` says Django 5.2.6, but dependency files currently pin Django 6.0.6. Treat dependency files as source of truth unless code compatibility work says otherwise.
 - Some view files retain older commented-out implementations. Active functions are the uncommented definitions later in the files.
+- `DEPLOYMENT_GUIDE.md` predates the t4g.medium host (it recommends a t3.small) and the Phase 30 controller (it still says the CI deploy runs `deploy_pull.sh` and refers to a CI `test` job), and it never mentions the daily database backup.
+- `tests/suite/RESULTS.md` is the 2026-07-06 matrix (12 modules). The newest full-run evidence is in `FIXED_ISSUES.md` (2026-09-16, 21 modules).
+- `build_multitenant_db.sql` seeds `tenant_company_1` at tenant schema version 4; it reaches 6 only because the entrypoint applies `production_hardening.sql`. Its header still says 15 `authentication` migrations are left unseeded (there is now one).
+- Stale comments inside CI byte-pinned SQL (editing them means re-pinning): `production_hardening.sql` labels the dashboard receivables fix "schema version 7" (the bump was dropped), and `tenant_template.sql` says `add_document_attachments.sql` and the bootstrap carry the v6 bump (neither does).
+- Other stale comments: the re-pin note in `tests/phase2_serial_runtime_removal_contracts.py` also mentions version 7; `deploy/docker-compose.yml` says the bootstrap builds the tenancy tables; `deploy/entrypoint.sh`'s header lists only three steps; `tenancy/apps.py` calls cross-tenant activity "on by default".
+- Several runbooks carry stale status lines: `PHASE30_PRODUCTION_FOUNDATION_RUNBOOK.md` still says approved production execution is required, and `PHASE3B_MAINTENANCE_RUNBOOK.md` says production remains on the 3A image.
 
 ## Retired Quantity-Company Family (design retired 2026-09)
 
@@ -573,9 +608,9 @@ What is deliberately **retained**:
 - The Phase 3B archive, its restore command, controller, workflow, tests and
   `PHASE3B_MAINTENANCE_RUNBOOK.md` — these are the reversal path.
 - Phase 0–3 operational evidence under `tests/PHASE*_RESULTS.md`.
-- The replaced Django migration files, until the checkpoint 4B transition. They
-  create no retired column on a fresh install; the squashed replacements list
-  them in `replaces`.
+- The 34 replaced `django_migrations` rows in production. The files themselves
+  were deleted in checkpoint 4B and `replaces` was removed; the row prune was
+  deliberately skipped (see the prune section above).
 - `todo.md` and `tests/PHASE26_PERFORMANCE_CAPACITY_RESULTS.md` as historical
   execution records. They describe a system that no longer exists — read them
   as history, not as current behavior.
