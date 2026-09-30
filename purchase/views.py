@@ -929,6 +929,7 @@ def _serial_purchasing(request):
                                 
                                 sold_serials = result.get("sold_serials", [])
                                 returned_serials = result.get("returned_serials", [])
+                                reserved_serials = result.get("reserved_serials", [])
 
                                 # Build detailed message lines
                                 details = []
@@ -936,10 +937,13 @@ def _serial_purchasing(request):
                                     details.append(f"• Sold Serials: {', '.join(sold_serials)}")
                                 if returned_serials:
                                     details.append(f"• Returned Serials: {', '.join(returned_serials)}")
+                                if reserved_serials:
+                                    details.append(f"• Reserved on a Draft Invoice: {', '.join(reserved_serials)}")
 
                                 message = (
                                     "Update blocked: some serial numbers you are trying to remove "
-                                    "have already been sold or returned to the vendor.\n\n"
+                                    "have already been sold, returned to the vendor, or are reserved "
+                                    "on a draft invoice (release them from the draft first).\n\n"
                                     + "\n".join(details)
                                 )
 
@@ -1033,6 +1037,7 @@ def _serial_purchasing(request):
                     if not result["is_valid"]:
                         sold_serials = result.get("sold_serials", [])
                         returned_serials = result.get("returned_serials", [])
+                        reserved_serials = result.get("reserved_serials", [])
 
                         # Build detailed message lines
                         details = []
@@ -1040,10 +1045,13 @@ def _serial_purchasing(request):
                             details.append(f"• Sold Serials: {', '.join(sold_serials)}")
                         if returned_serials:
                             details.append(f"• Returned Serials: {', '.join(returned_serials)}")
+                        if reserved_serials:
+                            details.append(f"• Reserved on a Draft Invoice: {', '.join(reserved_serials)}")
 
                         message = (
                             "Delete blocked: some serial numbers you are trying to remove "
-                            "have already been sold or returned to the vendor.\n\n"
+                            "have already been sold, returned to the vendor, or are reserved "
+                            "on a draft invoice (release them from the draft first).\n\n"
                             + "\n".join(details)
                         )
 

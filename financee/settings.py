@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'opening_stock',
     'tenancy',
     'attachments',
+    'draft',
 ]
 
 MIDDLEWARE = [
@@ -94,6 +95,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'tenancy.context_processors.subscription_notice',
                 'tenancy.context_processors.company_features',
+                'draft.context_processors.draft_feature',
             ],
         },
     },
@@ -245,3 +247,12 @@ else:
 # at scale. Keep it opt-in in the hardened copy.
 TENANCY_CROSS_TENANT_ACTIVITY = env.bool("TENANCY_CROSS_TENANT_ACTIVITY", default=False)
 TENANT_SCHEMA_VERSION = env.int("TENANT_SCHEMA_VERSION", default=6)
+
+# --- 8. Draft sale invoices (proforma) -------------------------------------
+# Deployment-wide switch; each company also has its own `draft_invoices`
+# feature flag in the admin. Switching drafts off hides the screens only: the
+# tenant trigger that protects reserved serials keeps refusing to sell, return
+# or delete them, so release or convert open drafts first (draft/feature.py).
+DRAFT_SALES_ENABLED = env.bool("DRAFT_SALES_ENABLED", default=True)
+# After how many days an open draft is flagged as ageing.
+DRAFT_AGE_WARNING_DAYS = env.int("DRAFT_AGE_WARNING_DAYS", default=30)

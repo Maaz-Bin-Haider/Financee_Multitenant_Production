@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-09-26
+Last updated: 2026-09-30
 
 This file is the persistent engineering context for Financee. Update it on every meaningful project change, especially changes to architecture, routes, permissions, tenant SQL, deployment behavior, environment variables, tests, or data model assumptions.
 
@@ -53,6 +53,10 @@ This file is the persistent engineering context for Financee. Update it on every
 - **Docs audited 2026-09-26.** `README.md`, `CLAUDE.md`, `DEPLOYMENT_GUIDE.md`
   and this file were corrected against the code (no code or SQL changed).
   Known remaining doc drift is listed under Known Documentation Caveats.
+- **Draft Sale Invoices (Proforma)** were added on 2026-09-30 (branch
+  `feature/draft-invoices`; not yet released when this was written). See the
+  section of that name below: new tenant SQL, a `draft` app, 11 permissions
+  seeded without a migration, and a Phase 30 audit change.
 
 ### Three migration rules to know before touching this again
 
@@ -159,6 +163,7 @@ Financee is a multitenant accounting and inventory system for multiple companies
 - Item master: `items`
 - Purchases: `purchase`
 - Sales: `sale`
+- Draft sale invoices (proforma), their conversion and returns: `draft`
 - Purchase returns: `purchaseReturn`
 - Sales returns: `saleReturn`
 - Payments: `payments`
@@ -179,7 +184,7 @@ For any tenant business database change:
 
 1. Update `tenancy/sql/tenant_template.sql` for new tenants.
 2. Add or update an idempotent patch SQL file under `tenancy/sql/` for existing tenants.
-3. Register a new patch filename in `rollout_files` (`tenancy/schema_families.py`); `apply_sql_all_tenants` refuses unregistered files (8 of the 17 are registered today).
+3. Register a new patch filename in `rollout_files` (`tenancy/schema_families.py`); `apply_sql_all_tenants` refuses unregistered files (9 of the 18 are registered today).
 4. Apply with `python manage.py apply_sql_all_tenants <sql-file>`.
 5. Fold critical changes into `tenancy/sql/production_hardening.sql` and the example-tenant section of `build_multitenant_db.sql`, and re-pin the Phase 2 byte-identity contract (`tests/phase2_serial_runtime_removal_contracts.py`) in the same commit.
 6. Leave the tenant schema version at 6 unless code depends on the change — the Phase 3B restore guard requires exactly 6.
@@ -220,9 +225,9 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
   listed in the `needs` of `staging-release-approval` or `publish`, so today it
   does not block publication. The
   Phase 2 contracts additionally pin byte-identity baselines for the 12 serial
-  document view implementations, 212 serial UI files (everything under
-  `static/` and `templates/` except `templates/base/base.html`), the 17 serial
-  tenant SQL files (re-pinned 2026-09-16) and the bootstrap's 12,248-line
+  document view implementations, 223 serial UI files (everything under
+  `static/` and `templates/` except `templates/base/base.html`), the 18 serial
+  tenant SQL files (re-pinned 2026-09-30 for draft invoices) and the bootstrap's 12,248-line
   tenant business-schema build, so any accidental change to serial behavior
   fails CI; a deliberate change must re-pin in the same commit.
 - `deploy` job: gated by repo variable `DEPLOY_ENABLED=true` AND manual
@@ -459,6 +464,7 @@ count. Tests: `tests/suite/test_feature_flags.py` (wired into `run_all.py`).
 - Admin/auth/static/media routes are tenant-guard exempt.
 - JSON errors are scrubbed by middleware to avoid leaking internal exception details.
 - Login, dashboard, report, and lookup endpoints have lightweight cache-backed rate limits.
+- `/draft/` is not in `PROTECTED_PREFIX_PERMS`: each draft view checks its own permission (screen and endpoint differ, e.g. Confirm Draft needs `confirm_draft_invoice`, not `view_draft_invoice`), after the deployment switch and before any cursor opens. The 11 draft permissions are seeded by a `post_migrate` handler in `draft/apps.py`, not by a migration (see Draft Sale Invoices).
 - The sidebar's Sales Reports link shows when the user holds any one of the eight `SALES_REPORT_PERMS`, the same rule as the `/sales-reports/` route guard. The template has to repeat that list; `tests/phase2_serial_runtime_removal_contracts.py` fails CI if the two drift (a literal `...` placeholder hid the link from six of the eight until 2026-09-26).
 
 ## Admin UI Notes
@@ -527,6 +533,7 @@ Conventions:
 - `tests/suite/test_reports.py` asserts that an Expense party which has been paid never appears in `vw_dash_party_ar_balance`, `fn_dash_smart_alerts` or `fn_dash_receivables_aging`, while a genuine credit customer still does (`_receivables_exclude_expenses`). These four checks fail against the pre-2026-09-16 view.
 - `tests/suite/test_subscription.py` covers the subscription-control layer: the paid-until/grace/suspension state machine, calendar-aware payment extension, and HTTP enforcement (suspension page, JSON denial, exemptions, warning banner).
 - `tests/suite/test_subscription_emails.py` covers the subscription email layer: BillingSettings singleton, expiry/suspension emails with per-cycle dedup and failure retry, contact-detail embedding, manual-suspension/test emails, and the admin email screens (locmem backend, nothing real sent).
+- `tests/suite/test_drafts.py` covers draft sale invoices on every tenant (the reservation guard against sale, purchase return, purchase delete and sale return; the lifecycle; a books snapshot proving no draft operation moves the journal, stock, invoices or balances; conversion; the Confirmed Draft Return incl. its date and segregation; reports; a two-connection proof that a reservation and a sale of one serial serialise on the row lock) plus the HTTP layer as a non-superuser (permission per endpoint, the deployment switch, the company flag, the read-only group, and the Sale / Sale Return / Purchase Return lookups). It prints SKIP and exits 0 on a build without the feature (the Phase 3B rehearsal runs it inside the 3A image).
 - `tests/suite/test_attachments.py` adds dedicated document-attachment coverage for sale, purchase, sale return, purchase return, payment, receipt, and contra documents: upload/update/replacement, preservation of the unselected file kind, metadata/preview/download endpoints, invalid file validation, cleanup, failed-delete preservation, attachment-only bypass for sale/purchase/returns, and no bypass for payments/receipts/contra.
 - `tests/run_tests.sh` runs `test_system.py` and `test_http.py` in Docker and can reset tenant schemas with `--reset`. `test_system.py` always exits 0, so read its `TOTAL FAILURES` line.
 - **Serial-only enforcement tests.** `tests/phase1_serial_only_creation.py`
@@ -554,6 +561,106 @@ The `attachments` app adds optional image/PDF support for sale, purchase, sale r
 - Frontend: `templates/components/document_attachments.html`, `static/css/document_attachments.css`, and `static/js/document_attachments.js` provide the shared widget. Metadata loads asynchronously after the business document renders; file bytes load only on explicit preview/download.
 - Update locking: sale, purchase, sale-return, and purchase-return views detect attachment-only updates and save files without calling the stored update function when the submitted business payload matches the current document. Payments, receipts, and contra intentionally do not use this bypass.
 
+## Draft Sale Invoices (Proforma)
+
+Goods are often promised to a customer before the price is agreed. A **draft**
+reserves specific serial numbers for a named customer and moves nothing else —
+no stock, journal or balance. When the rate is agreed, a tranche converts into
+an ordinary **credit** sale invoice and the rest stays reserved. Ported on
+2026-09-30 from the single-tenant Financee (`Accounting-Plus-Inventory-System`,
+commit `80e8f8a` plus its post-release fixes; design in its
+`DRAFT_SALES_PLAN.md`, user guide `DRAFT_INVOICE_FEATURE_GUIDE.md`). Its
+Spotlight search, Team Activity and lookup-by-id pickers do not exist here and
+were not ported.
+
+- **Tenant SQL:** `tenancy/sql/add_draft_invoices.sql`, registered in
+  `rollout_files` and appended byte-identically to the end of
+  `tenant_template.sql` and `production_hardening.sql` (the serial gate allows
+  only stored functions to differ between the bootstrap tenant and a
+  provisioned one, so tables, indexes, triggers and views must match). It is
+  deliberately **not** in `build_multitenant_db.sql`: the bootstrap tenant gets
+  it from `production_hardening.sql` at first start, like `tenant_indexes.sql`.
+  That keeps the bootstrap pins (including the hash in
+  `deploy/phase3_recovery_remote.py`) and the Phase 3B rehearsal — which seeds
+  this bootstrap under the old 3A image and its 24-table template — unchanged.
+  Tenant schema version stays 6.
+- **Tables:** `draftinvoices`, `draftitems` (`unit_price` NULL = no rate yet),
+  `draftunits` (one row per reserved unit; `Reserved` / `Converted` /
+  `Released`, history kept; partial unique index
+  `draft_units_one_live_reservation`; `unit_id` cascades on a purchase-unit
+  delete), `draftreturns`; discriminators `salesinvoices.draft_invoice_id` and
+  `salesreturns.draft_return_id`. "Partially Converted" is derived, never
+  stored.
+- **The guard (no accounting function forked):** `trg_protect_reserved_units`
+  (BEFORE UPDATE OR DELETE on `purchaseunits`) refuses taking a reserved unit
+  out of stock or deleting it. That covers `create_sale`,
+  `update_sale_invoice`, `create_purchase_return`, sale-return undo,
+  `delete_purchase`, `update_purchase_invoice` and `delete_opening_stock`
+  without editing them. `trg_reserve_only_stocked_units` takes the same row lock
+  as `create_sale`, so reserving and selling one serial serialise. Conversion
+  flips its units to `Converted` first and then calls the unchanged 4-arg
+  `create_sale`.
+- **Returns:** a Confirmed Draft Return is an ordinary `salesreturns` row (so
+  every ledger and the trial balance see it) under a `draftreturns` header,
+  booked on the date picked (never in the future or before the sale). The
+  description lives on the `salesreturns` row. `create_sale_return` is now a
+  wrapper over `sale_return_core(...)`; ordinary paths refuse draft-sold
+  serials and draft paths refuse ordinary ones on create **and** update;
+  `delete_sale_return` refuses a row that still has a draft-return header.
+  Ordinary Sale Return navigation and history leave draft returns out.
+- **Existing functions changed:** `get_serial_number_details` (3 reservation
+  columns appended; guarded DROP + CREATE, which also replaces the bootstrap's
+  old multi-row version with the single-row one), `stock_summary()`
+  (`reserved_on_drafts`), the `stock_report` view (`reserved_for`,
+  `reserved_on_draft`), `get_serial_ledger` / `get_serial_ledger_sales` (draft
+  events, qty 0/0), `validate_purchase_update2` / `validate_purchase_delete`
+  (`reserved_serials`), `delete_opening_stock` (reserved pre-check),
+  `create/update/delete_sale_return`, and the ordinary sale-return listing
+  functions.
+- **Django:** app `draft` at `/draft/` (Draft Invoices, Confirm Draft,
+  Confirmed Draft Return, Pending Drafts, plus JSON endpoints). The 11
+  permissions (`view/create/update/delete_draft_invoice`,
+  `confirm_draft_invoice`, `view/create/update/delete_draft_return`,
+  `view_pending_drafts_report`, `view_dash_draft_reservations`) are seeded by a
+  `post_migrate` handler in `draft/apps.py`, **not** by a migration: the
+  Phase 4 migration audit recognises only the two squashed initial migrations
+  and would fail closed on a new row. `tests/phase4b_migration_transition.sh`
+  therefore compares permission counts excluding `%draft%` codenames. The
+  `view_only_users` group is refused every draft action.
+- **Switches:** `DRAFT_SALES_ENABLED` (env, deployment-wide: endpoints 404,
+  screens redirect, sidebar and card hidden), the per-company `draft_invoices`
+  feature flag (admin; the middleware blocks `/draft/` and
+  `/home/api/dash/drafts/`), and `DRAFT_AGE_WARNING_DAYS` (default 30).
+  **Switching drafts off hides the interface but does not free reserved
+  serials** — release or convert open drafts first.
+- **Elsewhere in the UI:** four sidebar entries after Sales; the dashboard card
+  "Stock Reserved on Drafts"; the Sale, Sale Return and Purchase Return lookups
+  name the reservation (Sale has no override); Purchase edit/delete messages
+  list reserved serials; Serial Wise Stock and Stock Report columns (the Stock
+  Reports table renderer now escapes cell text); the Proforma PDF through
+  `static/js/report_pdf.js` (`FinanceePdf`). The draft customer picker uses
+  `/parties/autocomplete-party?receivable=1` (Customer / Both, never cash), so
+  a draft user also needs `view_party` for suggestions, as on the Sale screen.
+- **Deploy continuity:** `production_foundation_audit` leaves empty tables out
+  of `table_counts`. The Phase 30 "before" snapshot is taken before the new
+  container's hardening run creates the draft tables, so without this the
+  first release would fail its continuity comparison and roll back. A table
+  that gains or loses rows still changes the map.
+- **Rollback:** the old image re-runs its own `production_hardening.sql`,
+  restoring the old `create/update/delete_sale_return` bodies (no draft
+  segregation — harmless). Draft tables, triggers and the other functions stay,
+  and **reserved serials stay blocked while the old UI has no Release
+  screen**: before rolling back, cancel or convert open drafts
+  (`SELECT cancel_draft(draft_invoice_id) FROM draftinvoices WHERE
+  status = 'Open'` per tenant). Running the registered
+  `fix_sale_return_lifecycle_guards.sql` by hand likewise reverts those three
+  functions until the next container start.
+- **Not ported / known limits:** Spotlight, Team Activity, `?party=` links.
+  The ordinary Sale Return and Purchase Return still stamp `CURRENT_DATE`;
+  the draft return is the model for fixing them. There is no period locking,
+  so a back-dated conversion or return posts into a closed month (pre-existing,
+  as for any document).
+
 ## Tenant Schema Drift (fully healed)
 
 The `tests/suite/` run surfaced idempotent `tenancy/sql/` patches applied to one tenant but not the other. Most were healed by `tenancy/sql/fix_tenant_drift.sql` (tenant schema version 4); the final deferred item — the cash-party feature — was ported by `tenancy/sql/fix_cash_party_port.sql` (tenant schema version 5, 2026-07-03). See `FIXED_ISSUES.md` and `tests/suite/RESULTS.md`.
@@ -573,6 +680,7 @@ Always roll out tenant SQL to **all** tenants via `apply_sql_all_tenants` to pre
 - `tenancy/sql/fix_cash_party_port.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; tenant schema version 5) ports the cash-party feature and its invoice-description prerequisite to every tenant: `parties.is_cash`, `get_cash_party_id`, the four cash-aware `rebuild_*` journal builders, cash-aware `detailed_ledger`/`detailed_ledger2`, the four invoice `description` columns, the description-aware `get_current_*` fetchers, and eager seeding of the "Cash Sale"/"Cash Purchase" parties. The journal-builder bodies are the ones proven live on `tenant_company_2` alongside the integrity guards (no integrity patch redefines them, so no regression risk). It also **backfills pre-flag journals**: cash-party documents posted before the party carried `is_cash` had AR/AP party lines instead of Cash lines (invisible to the cash-party ledger, residual party balance); the patch rebuilds any cash-party document journal that still carries a party-tagged line (balance-sheet neutral, no-op on reruns).
 - `tenancy/sql/add_document_attachments.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; tenant schema version 6) adds the generic `document_attachments` metadata table for sale, purchase, sale return, purchase return, payment, receipt, and contra files. Files are stored outside invoice JSON and served through authenticated Django endpoints so previous/next navigation remains lightweight.
 - `tenancy/sql/fix_dashboard_expense_receivables.sql` (standalone idempotent patch, folded into template/hardening/bootstrap; no version bump) stops Expense parties being reported as receivables on the dashboard. `add_party_from_json` gives an Expense party both `ar_account_id` (shared AR) and `ap_account_id` (its own Expense account), and `vw_dash_party_ar_balance` summed every party-tagged journal line regardless of account — so paying rent or salaries surfaced that expense head as a customer owing money, and raised "Stale Receivable" / "Risky Customer" alerts. The view is now constrained to `jl.account_id = p.ar_account_id`, an account test rather than a `party_type` test so it stays correct if a party type is ever added. Fixes `fn_dash_smart_alerts` and `fn_dash_receivables_aging` with no edit to either. `get_accounts_receivable_json_excluding` was never affected (it filters expense types over `vw_trial_balance`). Note: a `Both` party's receivable is no longer netted against their payable in this view. See `FIXED_ISSUES.md`.
+- `tenancy/sql/add_draft_invoices.sql` (standalone idempotent patch, appended byte-identically to the end of template and hardening; **not** folded into the bootstrap — see Draft Sale Invoices below; no version bump) adds draft sale invoices: the four draft tables, the reservation guard triggers and the draft/return/report functions.
 - Keep `tenancy/sql/tenant_template.sql`, `build_multitenant_db.sql`, and `production_hardening.sql` aligned when tenant SQL behavior changes.
 
 ## Known Documentation Caveats

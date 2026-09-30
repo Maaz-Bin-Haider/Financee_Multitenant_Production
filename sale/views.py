@@ -599,7 +599,8 @@ def get_item_by_serial_for_sale(serial):
         with connection.cursor() as cursor:
             # Single query pulls everything we need — no N+1, no extra round-trips.
             cursor.execute(
-                "SELECT in_stock, item_name, purchase_price "
+                "SELECT in_stock, item_name, purchase_price, "
+                "       is_reserved, reserved_for, reserved_draft_id "
                 "FROM get_serial_number_details(%s)",
                 [serial],
             )
@@ -611,11 +612,27 @@ def get_item_by_serial_for_sale(serial):
         return {"success": False, "message": f"Serial '{serial}' not found."}
 
     in_stock, item_name, purchase_price = row[0], row[1], row[2]
+    is_reserved, reserved_for, reserved_draft_id = row[3], row[4], row[5]
 
     if not in_stock:
         return {
             "success": False,
             "message": f"Serial '{serial}' is not in stock (already sold or never received).",
+        }
+
+    # Held for a customer on a draft invoice: no override. The draft must be
+    # converted, or the serial released from it, first.
+    if is_reserved:
+        return {
+            "success": False,
+            "reserved": True,
+            "reserved_for": reserved_for,
+            "reserved_draft_id": reserved_draft_id,
+            "message": (
+                f"Serial '{serial}' is reserved for \"{reserved_for}\" on draft invoice "
+                f"#{reserved_draft_id}. Release it from that draft first, or convert "
+                f"that draft instead."
+            ),
         }
 
     if not item_name:

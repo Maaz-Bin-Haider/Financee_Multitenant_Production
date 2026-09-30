@@ -43,7 +43,14 @@ def _tenant_snapshot(company):
         for table in tables:
             quoted = connection.ops.quote_name(table)
             cursor.execute(f"SELECT count(*) FROM {quoted}")
-            counts[table] = cursor.fetchone()[0]
+            count = cursor.fetchone()[0]
+            # An empty table carries no continuity evidence. Leaving it out lets
+            # a release add tables -- production_hardening.sql creates them at
+            # container start, after the "before" snapshot was taken -- without
+            # failing the comparison. A table that gains or loses rows still
+            # changes this map.
+            if count:
+                counts[table] = count
         cursor.execute("""
             SELECT count(*),COALESCE(sum(debit),0),COALESCE(sum(credit),0)
               FROM journallines

@@ -22,6 +22,7 @@ const API = {
   expenseCategories:   "/home/api/dash/expenses/categories/",
   expenseDescriptions: "/home/api/dash/expenses/descriptions/",
   smartAlerts:         "/home/api/dash/alerts/",
+  draftReservations:   "/home/api/dash/drafts/",
   cashBalance:         "/home/api/cash/",
   cashLedger:          "/accountsReports/cash-ledger/",
   partyBalances:       "/home/api/party-balances/",
@@ -122,6 +123,7 @@ async function initDashboard() {
     loadPayableSummary(),
     loadExpensePartySummary(),
     loadPartiesSummary(),
+    loadDraftCard(),
   ]);
 }
 
@@ -1018,4 +1020,44 @@ function exportModalPdf(title, tableId) {
   doc.setFontSize(8); doc.setTextColor(100); doc.text("Generated: "+new Date().toLocaleDateString("en-PK"),14,22);
   doc.autoTable({html:"#"+tableId,startY:26,styles:{fontSize:8},headStyles:{fillColor:[59,130,246]}});
   doc.save(`${title.replace(/\s+/g,"_").toLowerCase()}_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// STOCK RESERVED ON DRAFTS
+// The card is only rendered for users who may see it (and only when drafts
+// are switched on for the company), so return early — fetching nothing —
+// when it is absent.
+// ══════════════════════════════════════════════════════════════════════════
+async function loadDraftCard() {
+  const card = $("draft-reservations-card");
+  if (!card) return;
+
+  const data = await apiFetch(API.draftReservations, { limit: 5 });
+  if (!data) return;
+
+  setEl("draft-open-count", String(data.open_drafts || 0));
+  setEl("draft-reserved-units", String(data.reserved_units || 0));
+  setEl("draft-oldest-days", String(data.oldest_days || 0));
+
+  // The ageing chip appears only when something is actually ageing; a
+  // permanent "0" trains people to ignore it.
+  const aged = Number(data.aged_drafts || 0);
+  const agedChip = $("draft-aged-chip");
+  if (agedChip) {
+    agedChip.hidden = aged === 0;
+    setEl("draft-aged-count", String(aged));
+  }
+
+  const body = document.querySelector("#draft-reservations-table tbody");
+  if (!body) return;
+  const rows = data.recent || [];
+  body.innerHTML = rows.length
+    ? rows.map(r => `<tr>
+          <td><a href="/draft/?open=${encodeURIComponent(r.draft_invoice_id)}">#${esc(r.draft_invoice_id)}</a></td>
+          <td>${esc(r.customer)}</td>
+          <td>${esc(r.draft_date)}</td>
+          <td>${esc(String(r.reserved_units))}</td>
+          <td>${esc(String(r.days_outstanding))}</td>
+        </tr>`).join("")
+    : '<tr><td colspan="5" style="text-align:center;opacity:.6;">Nothing reserved</td></tr>';
 }

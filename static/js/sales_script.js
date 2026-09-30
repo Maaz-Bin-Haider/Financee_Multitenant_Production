@@ -1193,7 +1193,8 @@ function handleSerialCommit(input, row) {
     if (!data || !data.success) {
       // Swal.fire({ icon: "error", title: "Serial Not Found",
       //   text: (data && data.message) || `Serial '${raw}' could not be found in stock.` });
-      Alerts.error((data && data.message) || `Serial '${raw}' could not be found in stock.`, { title: "Serial Not Found" });
+      Alerts.error((data && data.message) || `Serial '${raw}' could not be found in stock.`,
+        { title: (data && data.reserved) ? "Reserved on a Draft" : "Serial Not Found" });
       invalidateSerialCache(raw);
       input.value = "";
       updateQty(row);

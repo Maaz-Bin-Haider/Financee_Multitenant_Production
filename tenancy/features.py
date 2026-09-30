@@ -80,6 +80,9 @@ FEATURE_GROUPS = {
     "opening_cash": {"label": "Opening Cash (Set Opening)", "subs": {}},
     "excel_export": {"label": "CSV / Excel export buttons", "subs": {}},
     "attachments": {"label": "Document attachments (image / PDF upload)", "subs": {}},
+    # Hides the draft screens, report and dashboard card only. Serials already
+    # reserved on a draft stay protected by the tenant trigger either way.
+    "draft_invoices": {"label": "Draft Invoices (Proforma)", "subs": {}},
 }
 
 
@@ -128,6 +131,8 @@ FEATURE_PATH_PREFIXES = (
     ("/opening-stock/", "opening_stock"),
     ("/set-opening/", "opening_cash"),
     ("/attachments/", "attachments"),
+    ("/draft/", "draft_invoices"),
+    ("/home/api/dash/drafts/", "draft_invoices"),
 )
 
 

@@ -98,8 +98,12 @@ sales_sidebar_condition = next(
 
 # Extracted from deployed Phase 1 commit 102e55e857bbffa8bd4318e6afaec42e048c8e67.
 # These are independent regression anchors, not hashes of the candidate itself.
+# Re-pinned 2026-09-30 for draft sale invoices: purchase/views.py only, where
+# _serial_purchasing now lists serials reserved on a draft invoice in its
+# edit/delete refusal (validate_purchase_update2/delete report them). Nothing
+# else in the four serial document views changed.
 SERIAL_FUNCTION_BASELINES = {
-    "purchase/views.py": "97eb75b61f469da18156a3c20fd3184b42f87a57c0951482ead214b38881cefb",
+    "purchase/views.py": "ef4e0f37877b97e96b21978677e4745360c8720f1ab2a676e79f6cf5e6c04079",
     "sale/views.py": "c385a60296ef81904dfc6d99d68f6b317a209fd45aa1d5b37fd764c24b6d91d4",
     "purchaseReturn/views.py": "8355ff92824990af9c6a19a571d916886227a8886e91112d2db9e0cdd01b5875",
     "saleReturn/views.py": "06e7cd03c2be1c88cb6bbb83cef1b795e914e3ebc1cad5a098a9b414ae1cb080",
@@ -151,9 +155,14 @@ bootstrap_tenant_section = bootstrap[
 checks = {
     "12 serial document implementations are source-identical to deployed Phase 1":
         all(function_hash(path) == expected for path, expected in SERIAL_FUNCTION_BASELINES.items()),
-    "212 serial UI source files are byte-identical to deployed Phase 1":
-        len(serial_ui_paths) == 212
-        and files_hash(serial_ui_paths) == "cae8e5e425906e5b8b26deb33a8a15b8dc73ef0a665473b55d307c0faf648bb6",
+    # Re-pinned 2026-09-30 for draft sale invoices (212 -> 223): the four
+    # draft templates, five draft scripts, report_pdf.js and draft_styling.css
+    # are new; home_template.html/home_script.js gained the dashboard card;
+    # sales/sale_return/purchase_return scripts title a reservation refusal;
+    # stock_reports.js now escapes report cell text.
+    "223 serial UI source files are byte-identical to the reviewed 2026-09-30 baseline":
+        len(serial_ui_paths) == 223
+        and files_hash(serial_ui_paths) == "227bf3596ea70cc097f2d24895fc4b2d6f187e3ac4b248d96b24475e9aeecec4",
     # Re-pinned 2026-09-16 for the dashboard receivables fix (tenant schema
     # version 7). These baselines exist to catch ACCIDENTAL drift in serial
     # behaviour; this change was deliberate and reviewed, so the pins move with
@@ -166,9 +175,20 @@ checks = {
     # Nothing in the serial document lifecycle (purchase/sale/return) changed —
     # the 12 serial document implementations above are still pinned to their
     # deployed Phase 1 hashes and still pass untouched. See FIXED_ISSUES.md.
-    "17 serial tenant SQL files are byte-identical to the reviewed 2026-09-16 baseline":
-        len(serial_sql_paths) == 17
-        and files_hash(serial_sql_paths) == "beef96a7f214d8c8f1bc164c1bb29d901cc813339f35dda33a5cba2b43b4fb63",
+    # Re-pinned 2026-09-30 for draft sale invoices (17 -> 18): new
+    # tenancy/sql/add_draft_invoices.sql, appended byte-identically to the end
+    # of tenant_template.sql and production_hardening.sql. It is deliberately
+    # NOT in build_multitenant_db.sql (the bootstrap pin below is unchanged);
+    # production_hardening.sql brings the bootstrap tenant up at first start.
+    "18 serial tenant SQL files are byte-identical to the reviewed 2026-09-30 baseline":
+        len(serial_sql_paths) == 18
+        and files_hash(serial_sql_paths) == "5286ac20f86c678f2e084096cae5ea8d14ada5258fdb1d4796c293be80e165db",
+    # The serial gate lets only stored functions differ between the bootstrap
+    # tenant (hardening) and a provisioned one (template), so the draft invoice
+    # patch must stay byte-identical in all three places.
+    "draft invoice SQL is folded byte-identically into the template and the hardening file":
+        read("tenancy/sql/add_draft_invoices.sql") in read("tenancy/sql/tenant_template.sql")
+        and read("tenancy/sql/add_draft_invoices.sql") in read("tenancy/sql/production_hardening.sql"),
     "bootstrap tenant business schema is byte-identical to the reviewed 2026-09-16 baseline":
         hashlib.sha256(bootstrap_tenant_section.encode()).hexdigest()
         == "b72da12191984c2c262b8e395403ffac8fe6a5930239589f4b35a289a4d7d2e3",

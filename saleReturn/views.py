@@ -937,16 +937,37 @@ def sale_return_lookup(request,serial:str):
     # checking in Current Stock
     try:
         with connection.cursor() as cursor:
-            cursor.execute("SELECT in_stock FROM get_serial_number_details(%s)",[serial])
+            cursor.execute(
+                "SELECT d.in_stock, d.is_reserved, d.reserved_for, d.reserved_draft_id, "
+                "       d.current_status, d.sales_invoice_id, si.draft_invoice_id "
+                "FROM get_serial_number_details(%s) d "
+                "LEFT JOIN SalesInvoices si ON si.sales_invoice_id = d.sales_invoice_id",
+                [serial])
             exists = cursor.fetchone()
-            if exists[0]:
+            in_stock, is_reserved, reserved_for, reserved_draft_id = exists[0], exists[1], exists[2], exists[3]
+            status, sales_invoice_id, from_draft_id = exists[4], exists[5], exists[6]
+            if in_stock and is_reserved:
+                return JsonResponse({
+                    "success": False, "reserved": True,
+                    "message": (f"Serial '{serial}' is reserved on draft invoice #{reserved_draft_id} "
+                                f"for \"{reserved_for}\", not sold, so there is nothing to return. "
+                                f"Use Release Serials on the Draft Invoices screen instead."),
+                })
+            if in_stock:
                 return JsonResponse({ "success": False, "message":f"The Serial '{serial}' already exists in stock!" })
-            
+            # Goods sold through a draft come back on their own document.
+            if status == "Sold" and from_draft_id is not None:
+                return JsonResponse({
+                    "success": False, "from_draft": True,
+                    "message": (f"Serial '{serial}' was sold on draft-based invoice #{sales_invoice_id}. "
+                                f"Use the Confirmed Draft Return screen to return it."),
+                })
+
             cursor.execute("SELECT item_name,sold_price FROM get_serial_number_details(%s)",[serial])
             item = cursor.fetchall()
     except Exception as e:
         return JsonResponse({ "success": False, "message":f"The Serial '{serial}' is Invalid!" })
-    
+
     return JsonResponse({ "success": True, "item_name": item[0][0], "item_price": item[0][1]})
 
 @login_required  

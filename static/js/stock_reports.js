@@ -205,6 +205,14 @@ function fetchItemDetail() {
 // ═══════════════════════════════════════════
 // TABLE RENDERER
 // ═══════════════════════════════════════════
+// Cell values are free text typed by users (item names, serial comments, the
+// customer a serial is reserved for), so they are escaped, never parsed as HTML.
+function escapeCell(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 function renderTable(data) {
   const $header = $("#reportHeader");
   const $body   = $("#reportBody");
@@ -217,9 +225,9 @@ function renderTable(data) {
   }
 
   const cols = Object.keys(data[0]);
-  $header.html(`<tr>${cols.map(c => `<th>${c.replace(/_/g, " ")}</th>`).join("")}</tr>`);
+  $header.html(`<tr>${cols.map(c => `<th>${escapeCell(c.replace(/_/g, " "))}</th>`).join("")}</tr>`);
   $body.html(data.map(row =>
-    `<tr>${cols.map(c => `<td>${row[c] ?? ""}</td>`).join("")}</tr>`
+    `<tr>${cols.map(c => `<td>${escapeCell(row[c])}</td>`).join("")}</tr>`
   ).join(""));
 
   injectToolbar(data.length);

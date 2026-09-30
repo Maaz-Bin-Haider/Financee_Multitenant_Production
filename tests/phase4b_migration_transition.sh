@@ -45,6 +45,10 @@ psql() { docker compose --project-name "$proj" --env-file "$env_file" -f docker-
 dc() { docker compose --project-name "$proj" --env-file "$env_file" -f docker-compose.yml "$@"; }
 teardown() { dc down -v >/dev/null 2>&1; rm -rf "$work"; }
 rows() { psql "SELECT count(*) FROM django_migrations WHERE app IN ('tenancy','authentication')"; }
+# The draft invoice permissions are seeded by a post_migrate handler (not a
+# migration), so any later release adds them on its first migrate. The
+# retention checks below compare every OTHER permission.
+perms() { psql "SELECT count(*) FROM auth_permission WHERE codename NOT LIKE '%draft%'"; }
 
 echo "== Part 1: fresh install on the 4B release =="
 mkproj fresh; trap teardown EXIT
@@ -82,7 +86,7 @@ WEB_IMAGE="$IMG_4A" dc up -d --wait --wait-timeout 240 web >/dev/null 2>&1 \
 check "4A recorded both replacements alongside the original chain" "$(rows)" 36
 before_companies=$(psql "SELECT count(*) FROM tenancy_company")
 before_digest=$(psql "SELECT md5(string_agg(t::text,'|' ORDER BY id)) FROM tenancy_company t")
-before_perms=$(psql "SELECT count(*) FROM auth_permission")
+before_perms=$(perms)
 
 # Part 2 — the 4B release must be a no-op on that database.
 check "the 4B release plans no migration operations" \
@@ -92,7 +96,9 @@ check "the 4B release applies no migration" \
 check "company rows are retained across the 4B upgrade" "$(psql "SELECT count(*) FROM tenancy_company")" "$before_companies"
 check "the registry is byte-identical across the 4B upgrade" \
   "$(psql "SELECT md5(string_agg(t::text,'|' ORDER BY id)) FROM tenancy_company t")" "$before_digest"
-check "permissions are retained across the 4B upgrade" "$(psql "SELECT count(*) FROM auth_permission")" "$before_perms"
+check "permissions are retained across the 4B upgrade" "$(perms)" "$before_perms"
+check "the upgrade seeds the draft invoice permissions without a migration" \
+  "$(psql "SELECT count(*) FROM auth_permission WHERE codename LIKE '%draft%'")" 11
 check "the stale replaced rows are still present before pruning" "$(rows)" 36
 
 # Part 3 — migrate --prune removes exactly the stale rows.
@@ -114,7 +120,7 @@ check "prune removes the replaced tenancy rows" \
 check "prune retains every company row" "$(psql "SELECT count(*) FROM tenancy_company")" "$before_companies"
 check "prune leaves the registry byte-identical" \
   "$(psql "SELECT md5(string_agg(t::text,'|' ORDER BY id)) FROM tenancy_company t")" "$before_digest"
-check "prune retains every permission" "$(psql "SELECT count(*) FROM auth_permission")" "$before_perms"
+check "prune retains every permission" "$(perms)" "$before_perms"
 check "the 4B release still plans nothing after pruning" \
   "$(WEB_IMAGE="$IMG_4B" dc run --rm --no-deps --entrypoint python web manage.py migrate --plan 2>/dev/null | grep -c 'No planned migration operations.')" 1
 

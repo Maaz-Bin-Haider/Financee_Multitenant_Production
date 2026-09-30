@@ -99,6 +99,28 @@
             <a href="{% url 'sale:sales' %}" class="{% if request.resolver_match.url_name == 'sales' %}active{% endif %}">
                 <i class="fa-solid fa-cart-arrow-down"></i> Sales
             </a>
+            {% if draft_sales_enabled and features.draft_invoices.enabled %}
+            {% if perms.auth.view_draft_invoice %}
+            <a href="{% url 'draft:draft_page' %}" class="{% if request.resolver_match.namespace == 'draft' and request.resolver_match.url_name == 'draft_page' %}active{% endif %}">
+                <i class="fa-solid fa-file-pen"></i> Draft Invoices
+            </a>
+            {% endif %}
+            {% if perms.auth.confirm_draft_invoice %}
+            <a href="{% url 'draft:convert_page' %}" class="{% if request.resolver_match.namespace == 'draft' and request.resolver_match.url_name == 'convert_page' %}active{% endif %}">
+                <i class="fa-solid fa-file-circle-check"></i> Confirm Draft
+            </a>
+            {% endif %}
+            {% if perms.auth.view_draft_return %}
+            <a href="{% url 'draft:draft_return_page' %}" class="{% if request.resolver_match.namespace == 'draft' and request.resolver_match.url_name == 'draft_return_page' %}active{% endif %}">
+                <i class="fa-solid fa-file-arrow-up"></i> Confirmed Draft Return
+            </a>
+            {% endif %}
+            {% if perms.auth.view_pending_drafts_report %}
+            <a href="{% url 'draft:pending_report_page' %}" class="{% if request.resolver_match.namespace == 'draft' and request.resolver_match.url_name == 'pending_report_page' %}active{% endif %}">
+                <i class="fa-solid fa-hourglass-half"></i> Pending Drafts
+            </a>
+            {% endif %}
+            {% endif %}
             <a href="{% url 'purchase:purchasing' %}" class="{% if request.resolver_match.url_name == 'purchasing' %}active{% endif %}">
                 <i class="fa-solid fa-bag-shopping"></i> Purchases
             </a>

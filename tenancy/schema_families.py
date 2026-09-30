@@ -50,6 +50,7 @@ def serial_schema_family() -> SchemaFamily:
             "fix_cash_party_port.sql",
             "add_document_attachments.sql",
             "fix_dashboard_expense_receivables.sql",
+            "add_draft_invoices.sql",
         ),
     )
 

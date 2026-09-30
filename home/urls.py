@@ -54,6 +54,7 @@ urlpatterns = [
 
     # ── 7. Smart Alerts ──────────────────────────────────────────────────
     path("api/dash/alerts/",        views.api_dash_smart_alerts,  name="dash_smart_alerts"),
+    path("api/dash/drafts/",        views.api_dash_draft_reservations, name="dash_draft_reservations"),
 
     # ── Legacy endpoints (retained for backward compat) ──────────────────
     path("api/cash/",              views.get_cash_balance,                      name="get_cash_balance"),

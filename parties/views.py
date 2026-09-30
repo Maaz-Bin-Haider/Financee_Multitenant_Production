@@ -607,9 +607,14 @@ def auto_complete_party(request):
     if 'term' in request.GET:
         term = (request.GET.get('term') or '').upper()
         include_cash = request.GET.get('include_cash') == '1'
+        receivable = request.GET.get('receivable') == '1'
 
         with connection.cursor() as cursor:
-            if include_cash:
+            if receivable:
+                # Draft customer picker: only parties a credit sale can bill
+                # (Customer / Both), never a cash sentinel account.
+                cursor.execute("SELECT party_name FROM Parties WHERE UPPER(party_name) LIKE %s AND party_type IN ('Customer', 'Both') AND COALESCE(is_cash, false) = false ORDER BY CASE WHEN UPPER(party_name) LIKE %s THEN 0 ELSE 1 END, party_name LIMIT 10",['%' + term + '%', term + '%'])
+            elif include_cash:
                 # Reports/ledger picker: cash sentinel accounts are selectable here
                 cursor.execute("SELECT party_name FROM Parties WHERE UPPER(party_name) LIKE %s ORDER BY CASE WHEN UPPER(party_name) LIKE %s THEN 0 ELSE 1 END, party_name LIMIT 10",['%' + term + '%', term + '%'])
             else:

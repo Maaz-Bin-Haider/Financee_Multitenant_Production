@@ -49,6 +49,22 @@ QUANTITY_FUNCTIONS = {
 }
 
 
+def _build_has_draft_invoices():
+    """Whether the RUNNING build's own tenant template creates the four draft
+    invoice tables. The Phase 3B rehearsal runs these tests inside an older
+    image, whose template (and so every schema it serves) predates them."""
+    template = ROOT / "tenancy/sql/tenant_template.sql"
+    try:
+        return "CREATE TABLE IF NOT EXISTS DraftInvoices" in template.read_text(encoding="utf-8")
+    except OSError:
+        return False
+
+
+# The Phase 1 table baseline, plus draftinvoices, draftitems, draftunits and
+# draftreturns on builds that carry the draft invoice feature.
+BASELINE_TABLES = 24 + (4 if _build_has_draft_invoices() else 0)
+
+
 def chk(name, ok, detail=""):
     RESULTS.append((name, bool(ok), "" if ok else str(detail)))
 
@@ -190,7 +206,7 @@ def main():
                 not QUANTITY_FUNCTIONS.intersection(schema_catalog["functions"]),
                 QUANTITY_FUNCTIONS.intersection(schema_catalog["functions"]))
             chk(f"{company.name} retains Phase 1 table/index baseline",
-                len(schema_catalog["tables"]) == 24
+                len(schema_catalog["tables"]) == BASELINE_TABLES
                 and len(schema_catalog["indexes"]) >= 86,
                 (len(schema_catalog["tables"]), len(schema_catalog["indexes"])))
             chk(f"{company.name} trial balance remains balanced",

@@ -63,12 +63,16 @@ def make_client():
 
 def check_registry_and_model():
     keys = all_feature_keys()
+    serial_groups = {
+        "accounts_reports", "stock_reports", "monthly_reports",
+        "sales_reports", "opening_stock", "opening_cash",
+        "excel_export", "attachments",
+    }
+    # draft_invoices is present on builds that carry the draft invoice feature;
+    # the Phase 3B rehearsal runs this file inside an older image without it.
     chk("registry has serial-only top-level groups",
-        set(FEATURE_GROUPS) == {
-            "accounts_reports", "stock_reports", "monthly_reports",
-            "sales_reports", "opening_stock", "opening_cash",
-            "excel_export", "attachments",
-        }, sorted(FEATURE_GROUPS))
+        set(FEATURE_GROUPS) in (serial_groups, serial_groups | {"draft_invoices"}),
+        sorted(FEATURE_GROUPS))
     chk("every enforced path maps to a registered key",
         all(key in keys for _, key in FEATURE_PATH_PREFIXES),
         [key for _, key in FEATURE_PATH_PREFIXES if key not in keys])

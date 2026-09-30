@@ -942,11 +942,21 @@ def purchase_return_lookup(request,serial:str):
     # checking in Current Stock
     try:
         with connection.cursor() as cursor:
-            cursor.execute("SELECT in_stock FROM get_serial_number_details(%s)",[serial])
+            cursor.execute(
+                "SELECT in_stock, is_reserved, reserved_for, reserved_draft_id "
+                "FROM get_serial_number_details(%s)", [serial])
             exists = cursor.fetchone()
             if not exists[0]:
                 return JsonResponse({ "success": False, "message":f"The Serial '{serial}' does not exists in stock!" })
-            
+            # A unit held for a customer on a draft cannot go back to the vendor.
+            if exists[1]:
+                return JsonResponse({
+                    "success": False, "reserved": True,
+                    "message": (f"Serial '{serial}' is reserved for \"{exists[2]}\" on draft invoice "
+                                f"#{exists[3]}. Release it from that draft first, or convert that "
+                                f"draft instead."),
+                })
+
             cursor.execute("SELECT item_name,purchase_price FROM get_serial_number_details(%s)",[serial])
             item = cursor.fetchall()
             

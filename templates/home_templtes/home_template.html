@@ -5,6 +5,10 @@
 
 {% block SeperateCssFile %}
 <link rel="stylesheet" href="{% static 'css/home_styling.css' %}">
+{% if draft_sales_enabled and features.draft_invoices.enabled and perms.auth.view_dash_draft_reservations %}
+{# The Stock Reserved on Drafts card's chips are styled in draft_styling.css. #}
+<link rel="stylesheet" href="{% static 'css/draft_styling.css' %}">
+{% endif %}
 {% endblock SeperateCssFile %}
 
 {% block body %}
@@ -485,6 +489,53 @@
       </div>
     </div>
   </div>
+
+  {% if draft_sales_enabled and features.draft_invoices.enabled and perms.auth.view_dash_draft_reservations %}
+  {% comment %}
+  Gated on the deployment switch, the company's draft_invoices flag and the
+  permission, so a user without the right gets no card at all rather than a
+  permanently empty one -- and loadDraftCard() returns early when the element is
+  absent, so nothing is fetched either.
+  {% endcomment %}
+  <!-- SECTION 7b: Stock Reserved on Drafts -->
+  <p class="dash-section-label"><i class="fa-solid fa-file-pen"></i> Draft Invoices</p>
+  <div style="margin-bottom:24px;">
+    <div class="panel-card" id="draft-reservations-card">
+      <div class="panel-card-head">
+        <h3><i class="fa-solid fa-file-pen"></i> Stock Reserved on Drafts</h3>
+      </div>
+      <div class="panel-card-body">
+        <div class="draft-summary-chips">
+          <span class="draft-chip">
+            <span class="draft-chip-label">Open Drafts</span>
+            <span class="draft-chip-value" id="draft-open-count">0</span>
+          </span>
+          <span class="draft-chip">
+            <span class="draft-chip-label">Units Reserved</span>
+            <span class="draft-chip-value" id="draft-reserved-units">0</span>
+          </span>
+          <span class="draft-chip" id="draft-aged-chip" hidden>
+            <span class="draft-chip-label">Ageing</span>
+            <span class="draft-chip-value" id="draft-aged-count">0</span>
+          </span>
+          <span class="draft-chip">
+            <span class="draft-chip-label">Oldest (days)</span>
+            <span class="draft-chip-value" id="draft-oldest-days">0</span>
+          </span>
+        </div>
+        <div class="dash-table-scroll" style="max-height:280px;">
+          <table class="dash-table" id="draft-reservations-table">
+            <thead><tr>
+              <th>Draft #</th><th>Customer</th><th>Date</th>
+              <th>Reserved</th><th>Days Open</th>
+            </tr></thead>
+            <tbody><tr><td colspan="5"><div class="skeleton"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- SECTION 8: Top Customers & Vendors -->
   <p class="dash-section-label"><i class="fa-solid fa-trophy"></i> Top Customers & Vendors</p>

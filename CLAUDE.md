@@ -26,7 +26,7 @@ Business schema changes require **coordinated edits**, or new tenants and existi
 
 1. Update `tenancy/sql/tenant_template.sql` (so new tenants get it).
 2. Add/update an **idempotent** patch under `tenancy/sql/` using `CREATE OR REPLACE FUNCTION`, `CREATE INDEX IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
-3. Register a new patch filename in `rollout_files` in `tenancy/schema_families.py` — `apply_sql_all_tenants` refuses any unregistered file (only 8 of the 17 files are registered today).
+3. Register a new patch filename in `rollout_files` in `tenancy/schema_families.py` — `apply_sql_all_tenants` refuses any unregistered file (only 9 of the 18 files are registered today).
 4. Apply to existing tenants: `python manage.py apply_sql_all_tenants tenancy/sql/<patch>.sql`
 5. Re-pin `tests/phase2_serial_runtime_removal_contracts.py` in the same commit — it pins the count and bytes of every tenant SQL file and the bootstrap's example-tenant section, so any SQL change fails CI until re-pinned.
 
@@ -38,7 +38,7 @@ Every tenant schema must have a `tenant_schema_version` row at **or above** `TEN
 
 ## Permissions & guards
 
-Route-level guards live in `financee/security.py` and are enforced in `TenantSchemaMiddleware.process_view`. `PROTECTED_PREFIX_PERMS` maps URL prefixes to required `auth.*` perms (mode `all`); `/sales-reports/` uses `SALES_REPORT_PERMS` with mode `any`. Permissions are seeded via migrations in `authentication/migrations/`. Views also re-check perms individually. JSON error responses are scrubbed of internal detail by the middleware. Rate limits (dashboard/reports/lookup/login) are cache-backed — set `REDIS_URL` in production so they apply across workers.
+Route-level guards live in `financee/security.py` and are enforced in `TenantSchemaMiddleware.process_view`. `PROTECTED_PREFIX_PERMS` maps URL prefixes to required `auth.*` perms (mode `all`); `/sales-reports/` uses `SALES_REPORT_PERMS` with mode `any`. Permissions are seeded via migrations in `authentication/migrations/` — except the 11 draft-invoice permissions, which a `post_migrate` handler in `draft/apps.py` seeds so that no new migration row trips the Phase 4 migration-history audit. Views also re-check perms individually. JSON error responses are scrubbed of internal detail by the middleware. Rate limits (dashboard/reports/lookup/login) are cache-backed — set `REDIS_URL` in production so they apply across workers.
 
 ## Common commands
 
@@ -85,8 +85,9 @@ The suite surfaced genuine **tenant schema drift** — idempotent `tenancy/sql/`
 - Retired **Profit Reports** routes (`/accountsReports/company-valuation/`, `/sale-wise-report/`) 404 by design; their DB objects and permissions were intentionally left in place for compatibility. Don't remove them without an audit.
 - The admin uses a **custom admin site** (`financee/admin_site.py`), not Django's default. Admin styling rules (muted palette, no inline styles, single-column responsive) are documented in `PROJECT_CONTEXT.md` → Admin UI Notes; put styles in `static/css/financee_admin.css`.
 - Deployment: Docker stack in `deploy/` (Postgres 16, Redis, Gunicorn, Nginx). Static is collected at image build with `ManifestStaticFilesStorage` and synced into the shared volume by the entrypoint. Production deploys run `deploy/phase30_foundation_deploy.sh` from the CI `deploy` job (see `PHASE30_PRODUCTION_FOUNDATION_RUNBOOK.md`); a rollback restores the web image only.
-- **CI byte-pins:** `tests/phase2_serial_runtime_removal_contracts.py` hashes 212 files under `static/` and `templates/` (all but `templates/base/base.html`), every tenant SQL file, the bootstrap's example-tenant section and 12 serial document views. A deliberate change there must re-pin the hash in the same commit.
+- **CI byte-pins:** `tests/phase2_serial_runtime_removal_contracts.py` hashes 223 files under `static/` and `templates/` (all but `templates/base/base.html`), every tenant SQL file, the bootstrap's example-tenant section and 12 serial document views. A deliberate change there must re-pin the hash in the same commit.
 - **Doc contracts:** `tests/phase4_repository_hygiene_contracts.py` requires exact sentences in `README.md`, `CLAUDE.md` and `PROJECT_CONTEXT.md` (e.g. "There is no inventory-mode concept left to configure" in the README). Keep each one verbatim and on a single line.
+- **Draft invoices (`draft` app, `tenancy/sql/add_draft_invoices.sql`):** a serial reserved on a draft is guarded by the trigger `trg_protect_reserved_units` on `purchaseunits`, so every path that would sell, return or delete it is refused — no accounting function was forked, and conversion goes through the unchanged `create_sale`. Switching drafts off (`DRAFT_SALES_ENABLED` or the company's `draft_invoices` flag) hides the UI but never frees reserved serials. The patch is appended to the template and hardening files but deliberately not to `build_multitenant_db.sql`. See `PROJECT_CONTEXT.md` → Draft Sale Invoices.
 - `TENANCY_CROSS_TENANT_ACTIVITY` defaults to **False** (`financee/settings.py`), so the admin user-activity pages are empty unless it is enabled; the comment in `tenancy/apps.py` saying "on by default" is outdated.
 
 ## When you change things

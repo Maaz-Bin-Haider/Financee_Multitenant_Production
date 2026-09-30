@@ -457,6 +457,8 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.http import require_GET
 from datetime import date, timedelta
 
+from draft.feature import draft_age_warning_days, draft_sales_enabled
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -713,6 +715,32 @@ def api_dash_smart_alerts(request):
         return _json_denied()
     data = _run_pg_function("SELECT fn_dash_smart_alerts();")
     return _json_ok(data or [])
+
+
+# ---------------------------------------------------------------------------
+# 8. Draft Reservations
+#    Permission: auth.view_dash_draft_reservations
+#    (the per-company draft_invoices flag is enforced by the middleware)
+# ---------------------------------------------------------------------------
+
+@login_required
+@require_GET
+def api_dash_draft_reservations(request):
+    """Open drafts and the stock they are holding. The limit is clamped rather
+    than trusted."""
+    if not draft_sales_enabled():
+        return _json_denied()
+    if not request.user.has_perm("auth.view_dash_draft_reservations"):
+        return _json_denied()
+    try:
+        limit = int(request.GET.get("limit", 5))
+    except (TypeError, ValueError):
+        limit = 5
+    limit = max(1, min(limit, 100))
+    data = _run_pg_function(
+        "SELECT fn_dash_draft_reservations(%s, %s);",
+        [limit, draft_age_warning_days()])
+    return _json_ok(data or {})
 
 
 # ---------------------------------------------------------------------------

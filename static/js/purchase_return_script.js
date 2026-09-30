@@ -730,7 +730,9 @@ function addSerial(autoFocus = true) {
           itemPrice.value  = "";
           serialInput.classList.remove("serial-valid");
           // Swal.fire({ icon: "error", title: "Not Found", text: data.message || "Serial not found in stock." });
-          Alerts.error(data.message || "Serial not found in stock.", { title: "Not Found" });
+          Alerts.error(data.message || "Serial not found in stock.", {
+            title: data.reserved ? "Reserved on a Draft" : "Not Found",
+          });
         }
         recalcAmount();
       })

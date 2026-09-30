@@ -82,6 +82,7 @@ For the **business owner** using Financee:
 - 🧾 **Correct books, automatically.** Every purchase, sale, return, payment, receipt, and contra entry posts a **balanced double-entry journal**, built inside the database by the same call that records the document. Balance holds by construction — every posting function writes matched debit/credit pairs — and the test suite asserts it on every tenant; there is no separate database constraint on journal totals.
 - 📦 **Inventory that matches the money.** Stock and cost of goods sold are updated in the *same* transaction as the sale, so inventory value on the balance sheet is always real.
 - 🔁 **Returns done right.** Sale/purchase returns restore the exact original cost basis; serials can't be double-returned; a sold serial can't be un-purchased.
+- 📝 **Draft invoices (proforma).** Reserve exact serials for a customer before the price is agreed — nothing leaves stock and no balance moves — then convert them, in tranches, into ordinary credit sale invoices once the rate is agreed. Reserved serials can't be sold to anyone else.
 - 📊 **Reports that mean something.** Ledgers, trial balance, receivables/payables, cash ledger, stock & serial reports, monthly reports, and sales analytics — all computed from the same authoritative ledger.
 - 📎 **Document trail.** Attach the scanned invoice (image + PDF) to any sale, purchase, return, payment, receipt, or contra.
 
@@ -429,7 +430,7 @@ Entity names are CamelCased for readability; the real tables are lowercase (`jou
 
 ### Key SQL entry points (functions, not views)
 
-`create_purchase` · `create_sale` · `create_sale_return` · `create_purchase_return` · `make_payment` · `make_receipt` · `make_contra` · `create_opening_stock` · `set_opening_cash_from_json` · `add_owner_equity_txn` · `preview_period_close` / `close_period_from_json` / `reverse_period_close` · `sales_summary_json` · `product_profitability_json` · `invoice_register_json` … (full list in `PROJECT_CONTEXT.md`).
+`create_purchase` · `create_sale` · `create_sale_return` · `create_purchase_return` · `create_draft` / `convert_draft_tranche` / `create_draft_return` · `make_payment` · `make_receipt` · `make_contra` · `create_opening_stock` · `set_opening_cash_from_json` · `add_owner_equity_txn` · `preview_period_close` / `close_period_from_json` / `reverse_period_close` · `sales_summary_json` · `product_profitability_json` · `invoice_register_json` … (full list in `PROJECT_CONTEXT.md`).
 
 ---
 
@@ -445,6 +446,7 @@ Entity names are CamelCased for readability; the real tables are lowercase (`jou
 | `parties` · `items` | Master data + autocomplete |
 | `purchase` · `sale` | Invoice create/update/delete, navigation, summaries, serial checks |
 | `purchaseReturn` · `saleReturn` | Returns with lifecycle guards |
+| `draft` | Draft sale invoices (proforma): reserve serials, convert tranches into credit sales, Confirmed Draft Return, Pending Drafts report |
 | `payments` · `receipts` · `contra` | Cash movement + party balances |
 | `opening_stock` · `set_opening` · `owner_equity` · `month_close` | Onboarding & period close |
 | `accountsReports` · `sales_reports` | Ledgers, trial balance, stock/serial, monthly reports, sales analytics |
@@ -464,7 +466,7 @@ flowchart LR
     style C fill:#4169E1,color:#fff
 ```
 
-- `apply_sql_all_tenants` **refuses any file not listed in `rollout_files`** — only 8 of the 17 files in `tenancy/sql/` are registered.
+- `apply_sql_all_tenants` **refuses any file not listed in `rollout_files`** — only 9 of the 18 files in `tenancy/sql/` are registered.
 - **Leave the tenant schema version at 6** unless code depends on the change: the Phase 3B restore guard requires exactly v6, so a bump blocks that reversal path (see `FIXED_ISSUES.md`).
 - CI pins **byte-identity hashes** of every tenant SQL file and of the bootstrap's example-tenant section (`tests/phase2_serial_runtime_removal_contracts.py`); a deliberate change must re-pin them in the same commit.
 
@@ -480,7 +482,7 @@ flowchart LR
 
 - **Subscription control** — `paid_until` + `grace_days` + `is_suspended` → `unrestricted / active / expiring / grace / blocked / suspended` state machine. Blocked users hit a branded pay-wall; superusers are never blocked. `SubscriptionPayment` is an immutable audit log that extends access and lifts suspension.
 - **Subscription emails** — automatic expiry/suspension notices to `contact_email`, per-cycle dedup, hourly WSGI-driven scan, Gmail SMTP configured entirely from the admin.
-- **Per-company feature flags** — `disabled_features` switches off any of 8 groups: the four report groups (with their 27 sub-reports), opening stock, opening cash, CSV export and attachments. Middleware enforces them by URL prefix and the UI hides them; the CSV switch (`excel_export`) only hides buttons, because export happens in the browser.
+- **Per-company feature flags** — `disabled_features` switches off any of 9 groups: the four report groups (with their 27 sub-reports), opening stock, opening cash, CSV export, attachments and draft invoices. Middleware enforces them by URL prefix and the UI hides them; the CSV switch (`excel_export`) only hides buttons, because export happens in the browser.
 
 ---
 
@@ -623,7 +625,7 @@ docker compose -f deploy/docker-compose.yml exec web python tests/test_transacti
 
 | Harness | Coverage |
 |---|---|
-| `tests/suite/run_all.py` | **Comprehensive** — 21 modules: every domain & every report on all active tenants, plus subscriptions, feature flags, attachments, company setup and the serial-only phase gates; double-entry balance, party balances, COGS, stock/serial coherence; `XFAIL` channel. This is what CI's `full-regression` gate runs |
+| `tests/suite/run_all.py` | **Comprehensive** — 22 modules: every domain & every report on all active tenants, plus subscriptions, feature flags, attachments, draft invoices, company setup and the serial-only phase gates; double-entry balance, party balances, COGS, stock/serial coherence; `XFAIL` channel. This is what CI's `full-regression` gate runs |
 | `test_system.py` | SQL business functions per tenant. It prints a `TOTAL FAILURES` summary but **always exits 0** — read the output |
 | `test_http.py` | Django test client over real views and templates, as a superuser attached to the first active company |
 | `test_transaction_lifecycle_deep.py` | Serial lifecycle stress (purchase→sale→return→resale, mixed invoices, return guards); **intentionally fails** on duplicate returns / invalid serial transitions. Run it by hand — it is not part of `run_tests.sh` or CI |
@@ -632,7 +634,7 @@ docker compose -f deploy/docker-compose.yml exec web python tests/test_transacti
 
 Latest recorded full run (2026-09-16, the dashboard-receivables release): **all 21 suite modules passed**, `test_system.py` reported 0 failures and the lifecycle harness fully passed — see `FIXED_ISSUES.md`. (`tests/suite/RESULTS.md` holds the older 2026-07-06 per-module matrix.)
 
-> **CI pins parts of the repo byte-for-byte.** `tests/phase2_serial_runtime_removal_contracts.py` hashes 212 files under `static/` and `templates/` (everything except `templates/base/base.html`), all 17 tenant SQL files, the bootstrap's example-tenant section and 12 serial document views; a deliberate change there must re-pin the hash in the same commit. `tests/phase4_repository_hygiene_contracts.py` also requires specific sentences to stay in `README.md`, `CLAUDE.md` and `PROJECT_CONTEXT.md`.
+> **CI pins parts of the repo byte-for-byte.** `tests/phase2_serial_runtime_removal_contracts.py` hashes 223 files under `static/` and `templates/` (everything except `templates/base/base.html`), all 18 tenant SQL files, the bootstrap's example-tenant section and 12 serial document views; a deliberate change there must re-pin the hash in the same commit. `tests/phase4_repository_hygiene_contracts.py` also requires specific sentences to stay in `README.md`, `CLAUDE.md` and `PROJECT_CONTEXT.md`.
 
 ---
 
@@ -706,7 +708,7 @@ Financee_Multitenant_Production/
 │   ├── utils.py            #   schema helpers (validated + quoted)
 │   ├── schema_families.py  #   serial schema definition + rollout-file registry
 │   ├── features.py         #   per-company feature flags
-│   ├── sql/                #   tenant_template.sql + idempotent patches (17 files)
+│   ├── sql/                #   tenant_template.sql + idempotent patches (18 files)
 │   └── management/commands/#   apply_sql_all_tenants, provision_tenant, release_preflight …
 ├── <feature apps>/         # parties, items, purchase, sale, returns, payments, receipts,
 │                           #   contra, opening_stock, owner_equity, month_close, reports …
