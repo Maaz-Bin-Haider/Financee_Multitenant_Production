@@ -155,14 +155,17 @@ bootstrap_tenant_section = bootstrap[
 checks = {
     "12 serial document implementations are source-identical to deployed Phase 1":
         all(function_hash(path) == expected for path, expected in SERIAL_FUNCTION_BASELINES.items()),
-    # Re-pinned 2026-09-30 for draft sale invoices (212 -> 223): the four
-    # draft templates, five draft scripts, report_pdf.js and draft_styling.css
-    # are new; home_template.html/home_script.js gained the dashboard card;
-    # sales/sale_return/purchase_return scripts title a reservation refusal;
-    # stock_reports.js now escapes report cell text.
-    "223 serial UI source files are byte-identical to the reviewed 2026-09-30 baseline":
-        len(serial_ui_paths) == 223
-        and files_hash(serial_ui_paths) == "227bf3596ea70cc097f2d24895fc4b2d6f187e3ac4b248d96b24475e9aeecec4",
+    # Re-pinned 2026-10-02 for per-module feature switches (223 -> 225):
+    # templates/home_templtes/quick_actions.html and
+    # static/js/admin_company_features.js are new; the dashboard template and
+    # script gate each widget; every PDF button (document templates, report
+    # templates and toolbars, draft screens, dashboard) follows pdf_export;
+    # draft cross-links follow their screen switches; financee_admin.css nests
+    # the admin sub-switches.
+    # Previously re-pinned 2026-09-30 for draft sale invoices (212 -> 223).
+    "225 serial UI source files are byte-identical to the reviewed 2026-10-02 baseline":
+        len(serial_ui_paths) == 225
+        and files_hash(serial_ui_paths) == "4752778c9e91eeb3a256857002f7f4616a58dfafaef222c0e6fd7985c00e7a19",
     # Re-pinned 2026-09-16 for the dashboard receivables fix (tenant schema
     # version 7). These baselines exist to catch ACCIDENTAL drift in serial
     # behaviour; this change was deliberate and reviewed, so the pins move with

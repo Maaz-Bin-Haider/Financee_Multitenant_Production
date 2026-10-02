@@ -4159,8 +4159,9 @@ function renderDetailedLedger2(rows, partyName, fromDate, toDate) {
     </div>
 
     <div class="ledger2-actions">
+      ${window.financeeFeatureEnabled && !financeeFeatureEnabled("pdf_export", "reports") ? "" : `
       <button class="l2-btn l2-btn-pdf"     onclick="downloadLedger2PDF(false)">📄 PDF — Summary</button>
-      <button class="l2-btn l2-btn-pdf-det" onclick="downloadLedger2PDF(true)">📋 PDF — With Details</button>
+      <button class="l2-btn l2-btn-pdf-det" onclick="downloadLedger2PDF(true)">📋 PDF — With Details</button>`}
       ${window.financeeFeatureEnabled && !financeeFeatureEnabled("excel_export") ? "" : `
       <button class="l2-btn l2-btn-csv"     onclick="downloadLedger2CSV()">📊 Download CSV</button>`}
       <button class="l2-btn l2-btn-expand"  onclick="expandAllDetails()">⊞ Expand All</button>
@@ -4233,6 +4234,7 @@ function fetchDetailedLedger2() {
    downloadLedger2PDF(true)   →  Detailed (portrait, per-row cards)
 ================================================================ */
 function downloadLedger2PDF(withDetails) {
+  if (window.financeeFeatureEnabled && !financeeFeatureEnabled("pdf_export", "reports")) return;
   const { jsPDF } = window.jspdf;
   const d = window._ledger2Data;
   // if (!d) { Swal.fire("No Data", "Generate the ledger first.", "warning"); return; }

@@ -2610,3 +2610,29 @@ body.dashboard .fin-quicklink:nth-child(3) {
   border-color: #dfd8f6;
   background: #fdfcff;
 }
+
+/* Company features: each sub-feature indented under its main switch
+   (rows are tagged by static/js/admin_company_features.js). While a main
+   switch is off its sub-features are dimmed; their ticks are kept. */
+.feature-switches .feature-master-row label {
+  color: var(--fin-ink);
+}
+
+.feature-switches .feature-sub-row {
+  padding-left: 44px;
+  background: var(--fin-panel-soft);
+}
+
+.feature-switches .feature-sub-row label {
+  font-weight: 560;
+}
+
+.feature-switches .feature-sub-muted {
+  opacity: 0.45;
+}
+
+@media (max-width: 767px) {
+  .feature-switches .feature-sub-row {
+    padding-left: 28px;
+  }
+}

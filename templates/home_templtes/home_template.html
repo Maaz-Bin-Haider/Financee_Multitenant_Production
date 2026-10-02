@@ -1,21 +1,30 @@
 {% extends 'base/base.html' %}
 {% load static %}
 
-{% block title %}Dashboard{% endblock title %}
+{% block title %}{% if features.dashboard.enabled %}Dashboard{% else %}Home{% endif %}{% endblock title %}
 
 {% block SeperateCssFile %}
 <link rel="stylesheet" href="{% static 'css/home_styling.css' %}">
-{% if draft_sales_enabled and features.draft_invoices.enabled and perms.auth.view_dash_draft_reservations %}
+{% if draft_sales_enabled and features.draft_invoices.subs.dashboard_card and perms.auth.view_dash_draft_reservations %}
 {# The Stock Reserved on Drafts card's chips are styled in draft_styling.css. #}
 <link rel="stylesheet" href="{% static 'css/draft_styling.css' %}">
 {% endif %}
 {% endblock SeperateCssFile %}
 
 {% block body %}
+{% if features.dashboard.enabled %}
+{% comment %}
+Every widget below sits behind its own dashboard switch (tenancy/features.py,
+admin → company → Features). home_script.js skips loading a switched-off
+widget, and its data endpoint refuses anyway. With the whole dashboard off the
+page is a plain welcome page (the else branch at the bottom): /home/ itself is
+never blocked, because every denial redirects here.
+{% endcomment %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
+{% if features.dashboard.subs.smart_alerts %}
 <!-- ══════════════════════════════════════════════ SMART ALERTS POPUP -->
 <div id="alerts-modal-overlay" class="modal-overlay" style="display:none;">
   <div class="modal-shell" style="max-width:520px;">
@@ -36,7 +45,9 @@
     </div>
   </div>
 </div>
+{% endif %}
 
+{% if features.dashboard.subs.cash_balance and features.accounts_reports.subs.cash_ledger %}
 <!-- ══════════════════════════════════════════════ CASH LEDGER POPUP -->
 <div id="cash-modal-overlay" class="modal-overlay" style="display:none;">
   <div class="modal-shell" style="max-width:960px;">
@@ -50,7 +61,9 @@
         <span style="color:rgba(255,255,255,.7);font-size:.8rem;">to</span>
         <input type="date" id="cash-to" class="filter-date-input">
         <button id="cash-load-btn" class="btn-primary-sm"><i class="fa-solid fa-rotate"></i> Load</button>
+        {% if features.pdf_export.subs.reports %}
         <button id="cash-pdf-btn" class="btn-icon" data-tooltip="Download PDF"><i class="fa-solid fa-file-pdf"></i></button>
+        {% endif %}
         <button id="cash-modal-close" class="modal-close-btn"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
@@ -69,9 +82,11 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 
 
+{% if features.dashboard.subs.balances %}
 <!-- ══════════════════════════════════════════════ PARTY BALANCES POPUP -->
 <div id="party-balance-modal-overlay" class="modal-overlay" style="display:none;">
   <div class="modal-shell" style="max-width:720px;">
@@ -93,7 +108,9 @@
           <option value="debit">Debit (Dr)</option>
           <option value="credit">Credit (Cr)</option>
         </select>
+        {% if features.pdf_export.subs.reports %}
         <button class="btn-icon" id="pb-pdf-btn" data-tooltip="Download PDF"><i class="fa-solid fa-file-pdf"></i></button>
+        {% endif %}
         <button class="modal-close-btn" id="party-balance-modal-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
@@ -118,7 +135,9 @@
       </div>
       <div class="modal-head-controls">
         <input class="filter-search" id="rec-search" placeholder="Search party…" style="width:160px;">
+        {% if features.pdf_export.subs.reports %}
         <button class="btn-icon" id="rec-pdf-btn" data-tooltip="Download PDF"><i class="fa-solid fa-file-pdf"></i></button>
+        {% endif %}
         <button class="modal-close-btn" id="receivable-modal-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
@@ -143,7 +162,9 @@
       </div>
       <div class="modal-head-controls">
         <input class="filter-search" id="pay-search" placeholder="Search party…" style="width:160px;">
+        {% if features.pdf_export.subs.reports %}
         <button class="btn-icon" id="pay-pdf-btn" data-tooltip="Download PDF"><i class="fa-solid fa-file-pdf"></i></button>
+        {% endif %}
         <button class="modal-close-btn" id="payable-modal-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
@@ -169,7 +190,9 @@
       <div class="modal-head-controls">
         <input class="filter-search" id="items-search" placeholder="Search item or category…" style="width:190px;">
         <select class="filter-select" id="items-cat-filter"><option value="">All Categories</option></select>
+        {% if features.pdf_export.subs.reports %}
         <button class="btn-icon" id="items-pdf-btn" data-tooltip="Download PDF"><i class="fa-solid fa-file-pdf"></i></button>
+        {% endif %}
         <button class="modal-close-btn" id="items-modal-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
@@ -200,7 +223,9 @@
           <option value="vendor">Vendor</option>
           <option value="both">Both</option>
         </select>
+        {% if features.pdf_export.subs.reports %}
         <button class="btn-icon" id="parties-pdf-btn" data-tooltip="Download PDF"><i class="fa-solid fa-file-pdf"></i></button>
+        {% endif %}
         <button class="modal-close-btn" id="parties-modal-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
@@ -225,7 +250,9 @@
       </div>
       <div class="modal-head-controls">
         <input class="filter-search" id="ep-search" placeholder="Search party…" style="width:160px;">
+        {% if features.pdf_export.subs.reports %}
         <button class="btn-icon" id="ep-pdf-btn" data-tooltip="Download PDF"><i class="fa-solid fa-file-pdf"></i></button>
+        {% endif %}
         <button class="modal-close-btn" id="exp-party-modal-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
@@ -239,6 +266,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <!-- ════════════════════════════════════════════════════════ DASHBOARD ROOT -->
 <div class="dash-root">
@@ -255,18 +283,22 @@
       </div>
     </div>
     <div class="dash-header-right">
+      {% if features.dashboard.subs.smart_alerts %}
       <button class="dash-alerts-bell" id="dash-alerts-bell" data-tooltip="View Alerts">
         <i class="fa-solid fa-bell"></i>
         <span class="bell-badge" id="bell-badge" style="display:none;">0</span>
       </button>
+      {% endif %}
       <span class="dash-date-badge"><i class="fa-solid fa-building-columns"></i> Finance & Inventory</span>
       <button class="dash-refresh-all" id="dash-refresh-all"><i class="fa-solid fa-rotate"></i> Refresh All</button>
     </div>
   </div>
 
   <!-- SECTION 1: Sales KPIs -->
+  {% if features.dashboard.subs.sales_overview or features.dashboard.subs.stock_overview or features.dashboard.subs.cash_balance %}
   <p class="dash-section-label"><i class="fa-solid fa-chart-line"></i> Sales & Profit</p>
   <div class="dash-grid-4" style="margin-bottom:18px;">
+    {% if features.dashboard.subs.sales_overview %}
     <div class="dash-card kpi-animated">
       <div class="kpi-accent accent-blue"></div>
       <div class="kpi-bg-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
@@ -281,6 +313,8 @@
       <div class="kpi-value" id="kpi-profit-today"><div class="skeleton" style="height:30px;width:70%"></div></div>
       <div class="kpi-sub">Gross margin (sold − cost)</div>
     </div>
+    {% endif %}
+    {% if features.dashboard.subs.stock_overview %}
     <div class="dash-card kpi-animated">
       <div class="kpi-accent accent-purple"></div>
       <div class="kpi-bg-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
@@ -288,27 +322,31 @@
       <div class="kpi-value" id="kpi-total-units"><div class="skeleton" style="height:30px;width:50%"></div></div>
       <div class="kpi-sub" id="kpi-total-items">—</div>
     </div>
-    <div class="dash-card kpi-animated kpi-clickable" id="cash-kpi-card" title="Click to view cash ledger">
+    {% endif %}
+    {% if features.dashboard.subs.cash_balance %}
+    {# The card opens the cash ledger only while the Cash Ledger report is on. #}
+    {% if features.accounts_reports.subs.cash_ledger %}
+    <div class="dash-card kpi-animated kpi-clickable" id="cash-kpi-card" data-ledger="1" title="Click to view cash ledger">
+    {% else %}
+    <div class="dash-card kpi-animated" id="cash-kpi-card">
+    {% endif %}
       <div class="kpi-accent accent-cyan"></div>
       <div class="kpi-bg-icon"><i class="fa-solid fa-coins"></i></div>
       <div class="dash-card-header"><h3>Cash Balance</h3><div class="dash-card-icon icon-cyan"><i class="fa-solid fa-coins"></i></div></div>
       <div class="kpi-value" id="kpi-cash-balance"><div class="skeleton" style="height:30px;width:60%"></div></div>
+      {% if features.accounts_reports.subs.cash_ledger %}
       <div class="kpi-sub">Click to view ledger <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:.65rem;"></i></div>
+      {% else %}
+      <div class="kpi-sub">Cash in hand</div>
+      {% endif %}
     </div>
+    {% endif %}
   </div>
+  {% endif %}
   <!-- SECTION 6: Quick Actions -->
-  <p class="dash-section-label"><i class="fa-solid fa-bolt"></i> Quick Actions</p>
-  <div class="quick-actions-bar" style="margin-bottom:24px;">
-    <a href="{% url 'sale:sales' %}" class="qa-btn"><i class="fa-solid fa-cart-arrow-down"></i><span>New Sale</span></a>
-    <a href="{% url 'purchase:purchasing' %}" class="qa-btn"><i class="fa-solid fa-bag-shopping"></i><span>New Purchase</span></a>
-    <a href="{% url 'parties:partiesDash' %}" class="qa-btn"><i class="fa-solid fa-user-plus"></i><span>Add Party</span></a>
-    <a href="{% url 'payments:payment' %}" class="qa-btn"><i class="fa-solid fa-credit-card"></i><span>New Payment</span></a>
-    <a href="{% url 'receipts:receipt' %}" class="qa-btn"><i class="fa-solid fa-receipt"></i><span>New Receipt</span></a>
-    <a href="{% url 'items:itemsDash' %}" class="qa-btn"><i class="fa-solid fa-box-open"></i><span>Add Item</span></a>
-    <button class="qa-btn" id="open-items-btn"><i class="fa-solid fa-boxes-stacked"></i><span>View Items</span></button>
-    <button class="qa-btn" id="open-parties-qa"><i class="fa-solid fa-users"></i><span>View Parties</span></button>
-  </div>
+  {% include "home_templtes/quick_actions.html" with show_lists=features.dashboard.subs.balances %}
 
+  {% if features.dashboard.subs.balances %}
   <!-- SECTION 2: Parties & Balances -->
   <p class="dash-section-label"><i class="fa-solid fa-users"></i> Parties & Balances</p>
   <div class="dash-grid-2" style="margin-bottom:18px;">
@@ -354,10 +392,13 @@
       <div class="scc-action"><i class="fa-solid fa-chevron-right"></i></div>
     </div>
   </div>
+  {% endif %}
 
   <!-- SECTION 4: Expenses -->
+  {% if features.dashboard.subs.balances or features.dashboard.subs.expenses %}
   <p class="dash-section-label"><i class="fa-solid fa-money-bill-wave"></i> Expenses</p>
   <div class="dash-grid-2" style="margin-bottom:18px;">
+    {% if features.dashboard.subs.balances %}
     <div class="summary-click-card accent-left-orange" id="open-exp-party">
       <div class="scc-icon icon-orange"><i class="fa-solid fa-file-invoice-dollar"></i></div>
       <div class="scc-body">
@@ -367,6 +408,8 @@
       </div>
       <div class="scc-action"><i class="fa-solid fa-chevron-right"></i></div>
     </div>
+    {% endif %}
+    {% if features.dashboard.subs.expenses %}
     <div class="panel-card">
       <div class="panel-card-head">
         <h3><i class="fa-solid fa-chart-pie"></i> Expense Tracking</h3>
@@ -376,7 +419,9 @@
             <button class="filter-btn" data-expense-range="ytd">YTD</button>
             <button class="filter-btn" data-expense-range="30d">30D</button>
           </div>
+          {% if features.pdf_export.subs.reports %}
           <button class="btn-icon" data-pdf="expenses" data-tooltip="Download PDF"><i class="fa-solid fa-file-pdf"></i></button>
+          {% endif %}
         </div>
       </div>
       <div class="panel-card-body">
@@ -388,8 +433,11 @@
         <div id="expense-cat-list"><div class="skeleton" style="height:22px;margin-bottom:8px"></div><div class="skeleton" style="height:22px;margin-bottom:8px"></div><div class="skeleton" style="height:22px"></div></div>
       </div>
     </div>
+    {% endif %}
   </div>
+  {% endif %}
 
+  {% if features.dashboard.subs.sales_overview %}
   <!-- SECTION 5: Revenue & Profit Trend — BIG -->
   <p class="dash-section-label"><i class="fa-solid fa-chart-column"></i> Revenue & Profit Trend</p>
   <div class="panel-card chart-big-card" style="margin-bottom:24px;">
@@ -406,7 +454,9 @@
         <span style="color:var(--clr-muted);font-size:.8rem;">to</span>
         <input type="date" class="filter-date-input" id="sales-to" title="To date">
         <button id="sales-custom-apply" class="btn-primary-sm"><i class="fa-solid fa-check"></i> Apply</button>
+        {% if features.pdf_export.subs.reports %}
         <button class="btn-icon" id="chart-pdf-btn" data-tooltip="Download Report PDF"><i class="fa-solid fa-file-pdf"></i></button>
+        {% endif %}
       </div>
     </div>
     <div class="panel-card-body">
@@ -419,9 +469,11 @@
       <div class="chart-wrapper" style="height:340px;margin-top:10px;"><canvas id="sales-chart"></canvas></div>
     </div>
   </div>
+  {% endif %}
 
   
 
+  {% if features.dashboard.subs.stock_overview %}
   <!-- SECTION 7: Stock Overview -->
   <p class="dash-section-label"><i class="fa-solid fa-warehouse"></i> Stock Overview</p>
   <div class="dash-grid-3" style="margin-bottom:24px;">
@@ -433,7 +485,9 @@
             <option value="5">Under 5</option><option value="10">Under 10</option>
             <option value="3">Under 3</option><option value="1">Out of Stock</option>
           </select>
+          {% if features.pdf_export.subs.reports %}
           <button class="btn-icon" data-pdf="low-stock" data-tooltip="PDF"><i class="fa-solid fa-file-pdf"></i></button>
+          {% endif %}
         </div>
       </div>
       <div class="panel-card-body">
@@ -455,7 +509,9 @@
             <button class="filter-btn" data-fast-days="7">7D</button>
             <button class="filter-btn" data-fast-days="90">90D</button>
           </div>
+          {% if features.pdf_export.subs.reports %}
           <button class="btn-icon" data-pdf="fast-moving" data-tooltip="PDF"><i class="fa-solid fa-file-pdf"></i></button>
+          {% endif %}
         </div>
       </div>
       <div class="panel-card-body">
@@ -476,7 +532,9 @@
             <button class="filter-btn" data-stale-days="60">60D</button>
             <button class="filter-btn" data-stale-days="90">90D</button>
           </div>
+          {% if features.pdf_export.subs.reports %}
           <button class="btn-icon" data-pdf="stale-stock" data-tooltip="PDF"><i class="fa-solid fa-file-pdf"></i></button>
+          {% endif %}
         </div>
       </div>
       <div class="panel-card-body">
@@ -489,10 +547,11 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
-  {% if draft_sales_enabled and features.draft_invoices.enabled and perms.auth.view_dash_draft_reservations %}
+  {% if draft_sales_enabled and features.draft_invoices.subs.dashboard_card and perms.auth.view_dash_draft_reservations %}
   {% comment %}
-  Gated on the deployment switch, the company's draft_invoices flag and the
+  Gated on the deployment switch, the company's dashboard-card draft switch and the
   permission, so a user without the right gets no card at all rather than a
   permanently empty one -- and loadDraftCard() returns early when the element is
   absent, so nothing is fetched either.
@@ -537,6 +596,7 @@
   </div>
   {% endif %}
 
+  {% if features.dashboard.subs.top_parties %}
   <!-- SECTION 8: Top Customers & Vendors -->
   <p class="dash-section-label"><i class="fa-solid fa-trophy"></i> Top Customers & Vendors</p>
   <div class="dash-grid-2" style="margin-bottom:24px;">
@@ -549,7 +609,9 @@
             <button class="filter-btn" data-party-range="mtd">MTD</button>
             <button class="filter-btn" data-party-range="ytd">YTD</button>
           </div>
+          {% if features.pdf_export.subs.reports %}
           <button class="btn-icon" data-pdf="top-customers" data-tooltip="PDF"><i class="fa-solid fa-file-pdf"></i></button>
+          {% endif %}
         </div>
       </div>
       <div class="panel-card-body">
@@ -565,7 +627,9 @@
       <div class="panel-card-head">
         <h3><i class="fa-solid fa-building"></i> Top Vendors</h3>
         <div class="panel-card-head-controls">
+          {% if features.pdf_export.subs.reports %}
           <button class="btn-icon" data-pdf="top-vendors" data-tooltip="PDF"><i class="fa-solid fa-file-pdf"></i></button>
+          {% endif %}
         </div>
       </div>
       <div class="panel-card-body">
@@ -578,14 +642,18 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
+  {% if features.dashboard.subs.receivables_aging %}
   <!-- SECTION 9: Receivables Aging -->
   <p class="dash-section-label"><i class="fa-solid fa-hourglass-half"></i> Receivables Aging</p>
   <div class="panel-card" style="margin-bottom:24px;">
     <div class="panel-card-head">
       <h3><i class="fa-solid fa-scale-balanced"></i> Receivables by Age</h3>
       <div class="panel-card-head-controls">
+        {% if features.pdf_export.subs.reports %}
         <button class="btn-icon" data-pdf="aging" data-tooltip="PDF"><i class="fa-solid fa-file-pdf"></i></button>
+        {% endif %}
       </div>
     </div>
     <div class="panel-card-body">
@@ -602,9 +670,12 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
   <!-- SECTION 10: Transactions + Expense Descriptions -->
+  {% if features.dashboard.subs.recent_transactions or features.dashboard.subs.expenses %}
   <div class="dash-grid-bottom" style="margin-bottom:24px;">
+    {% if features.dashboard.subs.recent_transactions %}
     <div class="panel-card">
       <div class="panel-card-head">
         <h3><i class="fa-solid fa-list-check"></i> Recent Transactions</h3>
@@ -616,7 +687,9 @@
             <button class="filter-btn" data-txn-type="Receipt">Receipt</button>
             <button class="filter-btn" data-txn-type="Payment">Payment</button>
           </div>
+          {% if features.pdf_export.subs.reports %}
           <button class="btn-icon" data-pdf="transactions" data-tooltip="PDF"><i class="fa-solid fa-file-pdf"></i></button>
+          {% endif %}
         </div>
       </div>
       <div class="panel-card-body">
@@ -624,6 +697,8 @@
         <div id="txn-feed" style="max-height:380px;overflow-y:auto;"></div>
       </div>
     </div>
+    {% endif %}
+    {% if features.dashboard.subs.expenses %}
     <div class="panel-card">
       <div class="panel-card-head">
         <h3><i class="fa-solid fa-tags"></i> Top Expense Descriptions</h3>
@@ -633,7 +708,9 @@
             <button class="filter-btn" data-expense-range2="ytd">YTD</button>
             <button class="filter-btn" data-expense-range2="30d">30D</button>
           </div>
+          {% if features.pdf_export.subs.reports %}
           <button class="btn-icon" data-pdf="expenses" data-tooltip="PDF"><i class="fa-solid fa-file-pdf"></i></button>
+          {% endif %}
         </div>
       </div>
       <div class="panel-card-body">
@@ -645,8 +722,27 @@
         </div>
       </div>
     </div>
+    {% endif %}
   </div>
+  {% endif %}
 
 </div><!-- /dash-root -->
 <script src="{% static 'js/home_script.js' %}"></script>
+{% else %}
+<!-- ══════════════════════════════════════════ HOME (dashboard switched off) -->
+<div class="dash-root">
+  <div class="dash-header">
+    <div class="dash-header-title">
+      <div class="dash-title-anim">
+        <div class="dash-title-icon"><i class="fa-solid fa-house"></i></div>
+        <div>
+          <h1 class="dash-title-text">Welcome</h1>
+          <p class="dash-subtitle">{{ request.tenant_company.name }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% include "home_templtes/quick_actions.html" with show_lists=False %}
+</div>
+{% endif %}
 {% endblock body %}

@@ -417,6 +417,9 @@ def run_http():
     user = User.objects.create_user(f"draft_http_{RUN_TAG.lower()}", password=None)
     Membership.objects.create(user=user, company=company)
     snapshot = list(company.disabled_features or [])
+    # The run needs drafts and the screens they touch (Sales, returns, the
+    # dashboard card) on, whatever plan the company has; restored in finally.
+    Company.objects.filter(pk=company.pk).update(disabled_features=[])
     conn = psycopg2.connect(**DSN)
     conn.autocommit = True
     t = Tester(conn, company.schema_name, user.id, f"{RUN_TAG}H")
@@ -554,14 +557,14 @@ def run_http():
                  'href="/draft/' not in (home := client.get("/home/").content.decode())
                  and "Stock Reserved on Drafts" not in home)
 
-        Company.objects.filter(pk=company.pk).update(disabled_features=snapshot + ["draft_invoices"])
+        Company.objects.filter(pk=company.pk).update(disabled_features=["draft_invoices"])
         r = post("/draft/save/", body)
         hchk("the company flag blocks draft endpoints", r.status_code == 403, r.status_code)
         hchk("the company flag turns the screen away", client.get("/draft/").status_code == 302)
         hchk("the company flag hides the sidebar entries and the card",
              'href="/draft/' not in (home := client.get("/home/").content.decode())
              and "Stock Reserved on Drafts" not in home)
-        Company.objects.filter(pk=company.pk).update(disabled_features=snapshot)
+        Company.objects.filter(pk=company.pk).update(disabled_features=[])
 
         viewers, _ = Group.objects.get_or_create(name="view_only_users")
         user.groups.add(viewers)

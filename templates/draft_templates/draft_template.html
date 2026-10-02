@@ -33,10 +33,12 @@ is not recognised and renders its prose onto the page.
       </button>
     </div>
     <div class="sale-topbar-right">
+      {% if features.pdf_export.subs.documents %}
       <button type="button" class="btn-pdf" onclick="downloadProforma()"
               title="Download this draft as a Proforma Invoice">
         <i class="fa-solid fa-file-pdf"></i> Proforma PDF
       </button>
+      {% endif %}
       <button type="button" class="custom-btn btn-topbar" onclick="newDraft()">
         <i class="fa-solid fa-file-circle-plus"></i> New Draft
       </button>

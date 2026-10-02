@@ -94,71 +94,87 @@
         <div class="sidebar-scroll">
             <nav class="nav-links">
             <a href="{% url 'home:home' %}" class="{% if request.resolver_match.url_name == 'home' or request.resolver_match.url_name == 'home_redirect' %}active{% endif %}">
-                <i class="fa-solid fa-house"></i> Dashboard
+                <i class="fa-solid fa-house"></i> {% if features.dashboard.enabled %}Dashboard{% else %}Home{% endif %}
             </a>
+            {% if features.sales.enabled %}
             <a href="{% url 'sale:sales' %}" class="{% if request.resolver_match.url_name == 'sales' %}active{% endif %}">
                 <i class="fa-solid fa-cart-arrow-down"></i> Sales
             </a>
+            {% endif %}
             {% if draft_sales_enabled and features.draft_invoices.enabled %}
-            {% if perms.auth.view_draft_invoice %}
+            {% if perms.auth.view_draft_invoice and features.draft_invoices.subs.drafts %}
             <a href="{% url 'draft:draft_page' %}" class="{% if request.resolver_match.namespace == 'draft' and request.resolver_match.url_name == 'draft_page' %}active{% endif %}">
                 <i class="fa-solid fa-file-pen"></i> Draft Invoices
             </a>
             {% endif %}
-            {% if perms.auth.confirm_draft_invoice %}
+            {% if perms.auth.confirm_draft_invoice and features.draft_invoices.subs.confirm %}
             <a href="{% url 'draft:convert_page' %}" class="{% if request.resolver_match.namespace == 'draft' and request.resolver_match.url_name == 'convert_page' %}active{% endif %}">
                 <i class="fa-solid fa-file-circle-check"></i> Confirm Draft
             </a>
             {% endif %}
-            {% if perms.auth.view_draft_return %}
+            {% if perms.auth.view_draft_return and features.draft_invoices.subs.returns %}
             <a href="{% url 'draft:draft_return_page' %}" class="{% if request.resolver_match.namespace == 'draft' and request.resolver_match.url_name == 'draft_return_page' %}active{% endif %}">
                 <i class="fa-solid fa-file-arrow-up"></i> Confirmed Draft Return
             </a>
             {% endif %}
-            {% if perms.auth.view_pending_drafts_report %}
+            {% if perms.auth.view_pending_drafts_report and features.draft_invoices.subs.pending_report %}
             <a href="{% url 'draft:pending_report_page' %}" class="{% if request.resolver_match.namespace == 'draft' and request.resolver_match.url_name == 'pending_report_page' %}active{% endif %}">
                 <i class="fa-solid fa-hourglass-half"></i> Pending Drafts
             </a>
             {% endif %}
             {% endif %}
+            {% if features.purchases.enabled %}
             <a href="{% url 'purchase:purchasing' %}" class="{% if request.resolver_match.url_name == 'purchasing' %}active{% endif %}">
                 <i class="fa-solid fa-bag-shopping"></i> Purchases
             </a>
+            {% endif %}
+            {% if features.payments.enabled %}
             <a href="{% url 'payments:payment' %}" class="{% if request.resolver_match.url_name == 'payment' %}active{% endif %}">
                 <i class="fa-solid fa-credit-card"></i> Payments
             </a>
+            {% endif %}
+            {% if features.receipts.enabled %}
             <a href="{% url 'receipts:receipt' %}" class="{% if request.resolver_match.url_name == 'receipt' %}active{% endif %}">
                 <i class="fa-solid fa-receipt"></i> Receipts
             </a>
-            {% if perms.auth.view_contra_entry %}
+            {% endif %}
+            {% if perms.auth.view_contra_entry and features.contra.enabled %}
             <a href="{% url 'contra:contra' %}" class="{% if request.resolver_match.url_name == 'contra' %}active{% endif %}">
                 <i class="fa-solid fa-right-left"></i> Contra Entry
             </a>
             {% endif %}
+            {% if features.sale_returns.enabled %}
             <a href="{% url 'saleReturn:create_sale_return' %}" class="{% if request.resolver_match.url_name == 'create_sale_return' %}active{% endif %}">
                 <i class="fa-solid fa-rotate-left"></i> Sale Return
             </a>
+            {% endif %}
+            {% if features.purchase_returns.enabled %}
             <a href="{% url 'purchaseReturn:create_purchase_return' %}" class="{% if request.resolver_match.url_name == 'create_purchase_return' %}active{% endif %}">
                 <i class="fa-solid fa-rotate-right"></i> Purchase Return
             </a>
+            {% endif %}
+            {% if features.items.enabled %}
             <a href="{% url 'items:itemsDash' %}" class="{% if request.resolver_match.namespace == 'items' %}active{% endif %}">
                 <i class="fa-solid fa-box"></i> Items
             </a>
+            {% endif %}
+            {% if features.parties.enabled %}
             <a href="{% url 'parties:partiesDash' %}" class="{% if request.resolver_match.namespace == 'parties' %}active{% endif %}">
                 <i class="fa-solid fa-users"></i> Parties
             </a>
+            {% endif %}
             {% if features.accounts_reports.enabled %}
-            <a href="{% url 'accountsReports:cash_ledger' %}" class="{% if request.resolver_match.url_name == 'cash_ledger' %}active{% endif %}">
+            <a href="{{ features.accounts_reports.landing }}" class="{% if request.resolver_match.url_name == 'cash_ledger' %}active{% endif %}">
                 <i class="fa-solid fa-book-open"></i> Accounts Reports
             </a>
             {% endif %}
             {% if features.stock_reports.enabled %}
-            <a href="{% url 'accountsReports:stock_summary' %}" class="{% if request.resolver_match.url_name == 'stock_summary' %}active{% endif %}">
+            <a href="{{ features.stock_reports.landing }}" class="{% if request.resolver_match.url_name == 'stock_summary' %}active{% endif %}">
                 <i class="fa-solid fa-warehouse"></i> Stock Reports
             </a>
             {% endif %}
             {% if features.monthly_reports.enabled %}
-            <a href="{% url 'accountsReports:monthly_position_report' %}" class="{% if request.resolver_match.url_name == 'monthly_position_report' or request.resolver_match.url_name == 'monthly_income_report' %}active{% endif %}">
+            <a href="{{ features.monthly_reports.landing }}" class="{% if request.resolver_match.url_name == 'monthly_position_report' or request.resolver_match.url_name == 'monthly_income_report' %}active{% endif %}">
                 <i class="fa-solid fa-chart-pie"></i> Monthly Reports
             </a>
             {% endif %}
@@ -167,12 +183,12 @@
                 <i class="fa-solid fa-sliders"></i> Set Opening
             </a>
             {% endif %}
-            {% if perms.auth.can_manage_owner_equity %}
+            {% if perms.auth.can_manage_owner_equity and features.owner_equity.enabled %}
             <a href="{% url 'owner_equity:owner_equity' %}" class="{% if request.resolver_match.url_name == 'owner_equity' %}active{% endif %}">
                 <i class="fa-solid fa-user-tie"></i> Owner Equity
             </a>
             {% endif %}
-            {% if perms.auth.can_close_period %}
+            {% if perms.auth.can_close_period and features.month_close.enabled %}
             <a href="{% url 'month_close:month_close' %}" class="{% if request.resolver_match.url_name == 'month_close' %}active{% endif %}">
                 <i class="fa-solid fa-calendar-check"></i> Month-End Close
             </a>

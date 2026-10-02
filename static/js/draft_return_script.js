@@ -462,8 +462,15 @@ function savePdf(options, filename) {
   }
 }
 
+/* Document PDFs (proforma, history export) follow the company's
+   pdf_export.documents switch. */
+function documentPdfAllowed() {
+  return !(typeof window.financeeFeatureEnabled === "function"
+           && !window.financeeFeatureEnabled("pdf_export", "documents"));
+}
+
 function returnHistoryPdf() {
-  if (!historyRows.length) { return; }
+  if (!documentPdfAllowed() || !historyRows.length) { return; }
   const ranged = historyRange.start_date && historyRange.end_date;
   const options = DraftReports.returnHistoryPdfOptions(historyRows, {
     from: historyRange.start_date,
@@ -501,7 +508,7 @@ async function showSummary(range) {
       <div class="sh-bar">
         <input type="text" class="sh-search" placeholder="🔍 Search by customer…"
                aria-label="Search by customer">
-        <button type="button" class="sh-pdf"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
+        ${documentPdfAllowed() ? `<button type="button" class="sh-pdf"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>` : ""}
       </div>
       <div class="sh-wrap">
         <table class="sh-table">
@@ -526,7 +533,7 @@ async function showSummary(range) {
         const needle = search.value.toLowerCase().trim();
         lines.forEach((line) => { line.hidden = !line.dataset.customer.includes(needle); });
       });
-      popup.querySelector(".sh-pdf").addEventListener("click", returnHistoryPdf);
+      popup.querySelector(".sh-pdf")?.addEventListener("click", returnHistoryPdf);
       popup.querySelector(".sh-table tbody").addEventListener("click", (event) => {
         const line = event.target.closest("tr.dr-row");
         if (line) { pickReturn(line.dataset.returnId); }

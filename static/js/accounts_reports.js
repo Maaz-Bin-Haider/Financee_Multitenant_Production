@@ -269,9 +269,10 @@ function injectToolbar(total) {
         <span class="table-row-count" id="rowCount">${total} row${total !== 1 ? "s" : ""}</span>
       </div>
       <div class="table-actions">
+        ${window.financeeFeatureEnabled && !financeeFeatureEnabled("pdf_export", "reports") ? "" : `
         <button id="download_pdf" class="btn-download">
           <i class="fa-solid fa-file-pdf"></i> PDF
-        </button>
+        </button>`}
         ${window.financeeFeatureEnabled && !financeeFeatureEnabled("excel_export") ? "" : `
         <button id="download_csv" class="btn-download btn-csv">
           <i class="fa-solid fa-file-csv"></i> CSV
@@ -299,6 +300,7 @@ function injectToolbar(total) {
 // PDF  —  branded header + footer
 // ═══════════════════════════════════════════
 $(document).on("click", "#download_pdf", function () {
+  if (window.financeeFeatureEnabled && !financeeFeatureEnabled("pdf_export", "reports")) return;
   const { jsPDF } = window.jspdf;
 
   // Find display-only col indices

@@ -481,6 +481,11 @@ def exercise_cleanup(client, schema, docs):
 
 def run_for_company(user, company, original_membership):
     Membership.objects.update_or_create(user=user, defaults={"company": company})
+    # A company may start without attachments or some document screens (the
+    # new-company default plan); switch everything on for the run and restore
+    # its own switches afterwards.
+    features_snapshot = list(Company.objects.get(pk=company.pk).disabled_features or [])
+    Company.objects.filter(pk=company.pk).update(disabled_features=[])
     connection.close()
 
     server = "localhost"
@@ -501,6 +506,7 @@ def run_for_company(user, company, original_membership):
         exercise_cleanup(client, company.schema_name, docs)
     finally:
         connection.close()
+        Company.objects.filter(pk=company.pk).update(disabled_features=features_snapshot)
         if original_membership is not None:
             Membership.objects.update_or_create(user=user, defaults={"company": original_membership.company})
         else:

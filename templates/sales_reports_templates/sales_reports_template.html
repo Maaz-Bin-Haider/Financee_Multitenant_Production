@@ -92,7 +92,9 @@
 
     <!-- Table actions -->
     <div class="table-actions" id="sr-actions" style="display:none;">
+      {% if features.pdf_export.subs.reports %}
       <button id="sr-pdf" class="btn-download"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+      {% endif %}
       {% if features.excel_export.enabled %}
       <button id="sr-csv" class="btn-download btn-csv"><i class="fa-solid fa-file-csv"></i> CSV</button>
       {% endif %}

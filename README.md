@@ -90,7 +90,7 @@ For the **operator** running the platform:
 
 - 🏬 **Onboard a client in seconds** — creating a company automatically provisions its isolated schema.
 - 💳 **Manual subscription billing** with a paid-until / grace / auto-suspend state machine, renewal-warning banners, and automated expiry emails — **no payment gateway required**.
-- 🎛️ **Per-company feature flags** — switch report groups, CSV export, or attachments on/off per client, straight from the admin.
+- 🎛️ **Per-company feature flags** — every module, report, dashboard widget, PDF, CSV export and attachment has its own switch, set per client from the admin. A new client starts with a default plan; add-ons are switched on as they pay for them.
 - 🔐 **Fine-grained permissions** per user, enforced both at the route and in the view.
 
 ---
@@ -482,7 +482,7 @@ flowchart LR
 
 - **Subscription control** — `paid_until` + `grace_days` + `is_suspended` → `unrestricted / active / expiring / grace / blocked / suspended` state machine. Blocked users hit a branded pay-wall; superusers are never blocked. `SubscriptionPayment` is an immutable audit log that extends access and lifts suspension.
 - **Subscription emails** — automatic expiry/suspension notices to `contact_email`, per-cycle dedup, hourly WSGI-driven scan, Gmail SMTP configured entirely from the admin.
-- **Per-company feature flags** — `disabled_features` switches off any of 9 groups: the four report groups (with their 27 sub-reports), opening stock, opening cash, CSV export, attachments and draft invoices. Middleware enforces them by URL prefix and the UI hides them; the CSV switch (`excel_export`) only hides buttons, because export happens in the browser.
+- **Per-company feature flags** — `disabled_features` lists what is switched off among 22 main features and their sub-features: the dashboard and its widgets, every core module (sales, purchases, both returns, payments, receipts, contra, items, parties), the four report groups and their sub-reports, draft invoices and its screens, opening stock, opening cash, owner equity, month-end close, PDF generation, CSV export and attachments. A new company starts with the default plan (`DEFAULT_DISABLED_FEATURES` in `tenancy/features.py`: core modules and the everyday reports on; Sales Reports, draft invoices, openings, owner equity, month close, the extra reports, CSV and attachments off); the admin can switch anything at creation or later, and two changelist actions apply the default plan or enable everything. Middleware enforces the switches by URL (the shared party/item pickers and the `/home/` page stay open) and the UI hides them; the PDF and CSV switches only hide buttons, because both are generated in the browser.
 
 ---
 
@@ -634,7 +634,7 @@ docker compose -f deploy/docker-compose.yml exec web python tests/test_transacti
 
 Latest recorded full run (2026-09-16, the dashboard-receivables release): **all 21 suite modules passed**, `test_system.py` reported 0 failures and the lifecycle harness fully passed — see `FIXED_ISSUES.md`. (`tests/suite/RESULTS.md` holds the older 2026-07-06 per-module matrix.)
 
-> **CI pins parts of the repo byte-for-byte.** `tests/phase2_serial_runtime_removal_contracts.py` hashes 223 files under `static/` and `templates/` (everything except `templates/base/base.html`), all 18 tenant SQL files, the bootstrap's example-tenant section and 12 serial document views; a deliberate change there must re-pin the hash in the same commit. `tests/phase4_repository_hygiene_contracts.py` also requires specific sentences to stay in `README.md`, `CLAUDE.md` and `PROJECT_CONTEXT.md`.
+> **CI pins parts of the repo byte-for-byte.** `tests/phase2_serial_runtime_removal_contracts.py` hashes 225 files under `static/` and `templates/` (everything except `templates/base/base.html`), all 18 tenant SQL files, the bootstrap's example-tenant section and 12 serial document views; a deliberate change there must re-pin the hash in the same commit. `tests/phase4_repository_hygiene_contracts.py` also requires specific sentences to stay in `README.md`, `CLAUDE.md` and `PROJECT_CONTEXT.md`.
 
 ---
 
@@ -657,6 +657,8 @@ python manage.py createsuperuser
 # 4. Provision a tenant and attach an EXISTING user (e.g. the superuser above)
 python manage.py provision_tenant "Demo Co" --owner alice
 #    defaults: --base-currency PKR --tax-environment non_tax
+#    the company starts with the default feature plan; add --all-features,
+#    or --enable KEY / --disable KEY (e.g. --enable sales_reports)
 
 # 5. Run
 python manage.py runserver

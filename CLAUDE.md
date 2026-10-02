@@ -47,7 +47,7 @@ Route-level guards live in `financee/security.py` and are enforced in `TenantSch
 pip install -r requirements-lock.txt
 python manage.py migrate                      # applies ONLY public/shared Django migrations
 python manage.py createsuperuser
-python manage.py provision_tenant "Demo Co" --owner alice
+python manage.py provision_tenant "Demo Co" --owner alice   # default feature plan; --all-features for everything
 python manage.py runserver
 
 # Tenant SQL rollout
@@ -85,9 +85,10 @@ The suite surfaced genuine **tenant schema drift** — idempotent `tenancy/sql/`
 - Retired **Profit Reports** routes (`/accountsReports/company-valuation/`, `/sale-wise-report/`) 404 by design; their DB objects and permissions were intentionally left in place for compatibility. Don't remove them without an audit.
 - The admin uses a **custom admin site** (`financee/admin_site.py`), not Django's default. Admin styling rules (muted palette, no inline styles, single-column responsive) are documented in `PROJECT_CONTEXT.md` → Admin UI Notes; put styles in `static/css/financee_admin.css`.
 - Deployment: Docker stack in `deploy/` (Postgres 16, Redis, Gunicorn, Nginx). Static is collected at image build with `ManifestStaticFilesStorage` and synced into the shared volume by the entrypoint. Production deploys run `deploy/phase30_foundation_deploy.sh` from the CI `deploy` job (see `PHASE30_PRODUCTION_FOUNDATION_RUNBOOK.md`); a rollback restores the web image only.
-- **CI byte-pins:** `tests/phase2_serial_runtime_removal_contracts.py` hashes 223 files under `static/` and `templates/` (all but `templates/base/base.html`), every tenant SQL file, the bootstrap's example-tenant section and 12 serial document views. A deliberate change there must re-pin the hash in the same commit.
+- **CI byte-pins:** `tests/phase2_serial_runtime_removal_contracts.py` hashes 225 files under `static/` and `templates/` (all but `templates/base/base.html`), every tenant SQL file, the bootstrap's example-tenant section and 12 serial document views. A deliberate change there must re-pin the hash in the same commit.
 - **Doc contracts:** `tests/phase4_repository_hygiene_contracts.py` requires exact sentences in `README.md`, `CLAUDE.md` and `PROJECT_CONTEXT.md` (e.g. "There is no inventory-mode concept left to configure" in the README). Keep each one verbatim and on a single line.
 - **Draft invoices (`draft` app, `tenancy/sql/add_draft_invoices.sql`):** a serial reserved on a draft is guarded by the trigger `trg_protect_reserved_units` on `purchaseunits`, so every path that would sell, return or delete it is refused — no accounting function was forked, and conversion goes through the unchanged `create_sale`. Switching drafts off (`DRAFT_SALES_ENABLED` or the company's `draft_invoices` flag) hides the UI but never frees reserved serials. The patch is appended to the template and hardening files but deliberately not to `build_multitenant_db.sql`. See `PROJECT_CONTEXT.md` → Draft Sale Invoices.
+- **Feature switches (`tenancy/features.py`):** every module, report, dashboard widget, PDF, CSV and attachment has a per-company switch, and a new company starts with `default_disabled_features()`. The admin add form and `provision_tenant` write that default plan; the model never does — its `default=list` is frozen in the migration, so companies created in code and the bootstrap "Company One" keep everything on, and existing companies are untouched. Keep `disabled_features` a list of strings (the Phase 3/3B/4 audits parse it), never map `/home/` to a switch (every denial redirects there), keep the shared pickers (`/parties/autocomplete-party`, `/items/autocomplete-item/`) unrestricted, and never write company rows from `post_migrate` (the checkpoint-4B gate needs them byte-identical). HTTP test harnesses must switch on the features they exercise. See `PROJECT_CONTEXT.md` → Per-Company Feature Flags.
 - `TENANCY_CROSS_TENANT_ACTIVITY` defaults to **False** (`financee/settings.py`), so the admin user-activity pages are empty unless it is enabled; the comment in `tenancy/apps.py` saying "on by default" is outdated.
 
 ## When you change things

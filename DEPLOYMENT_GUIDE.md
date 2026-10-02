@@ -185,9 +185,12 @@ In the admin panel:
 2. **Users → Add** — create each client user.
 3. **Memberships → Add** — attach each user to their company (one company per
    user), and assign permissions/groups.
-4. Optional: set each company's **Contact email**, subscription **Paid until**,
-   feature switches, and configure **Billing & email settings** (SMTP app
-   password + test-email button).
+4. Optional: set each company's **Contact email**, subscription **Paid until**
+   and **feature switches** (a new company starts with the default plan:
+   Sales Reports, Draft Invoices, Opening Stock/Cash, Owner Equity, Month-End
+   Close, CSV export and attachments are off until you tick them), and
+   configure **Billing & email settings** (SMTP app password + test-email
+   button).
 
 ---
 

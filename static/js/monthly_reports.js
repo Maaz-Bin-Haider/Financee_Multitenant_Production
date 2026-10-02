@@ -104,8 +104,9 @@ function mprRenderPosition(data) {
 
   document.getElementById('mpr-output').innerHTML = `
     <div class="mpr-toolbar">
+      ${window.financeeFeatureEnabled && !financeeFeatureEnabled("pdf_export", "reports") ? "" : `
       <button class="mpr-toolbar-btn mpr-btn-print" onclick="mprPrintPosition()"><i class="fa-solid fa-print"></i> Print</button>
-      <button class="mpr-toolbar-btn mpr-btn-pdf" onclick="mprPdfPosition()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+      <button class="mpr-toolbar-btn mpr-btn-pdf" onclick="mprPdfPosition()"><i class="fa-solid fa-file-pdf"></i> PDF</button>`}
     </div>
 
     <div class="mpr-report-card" id="mpr-position-card">
@@ -196,8 +197,9 @@ function mprRenderIncome(data) {
 
   document.getElementById('mpr-output').innerHTML = `
     <div class="mpr-toolbar">
+      ${window.financeeFeatureEnabled && !financeeFeatureEnabled("pdf_export", "reports") ? "" : `
       <button class="mpr-toolbar-btn mpr-btn-print" onclick="mprPrintIncome()"><i class="fa-solid fa-print"></i> Print</button>
-      <button class="mpr-toolbar-btn mpr-btn-pdf" onclick="mprPdfIncome()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+      <button class="mpr-toolbar-btn mpr-btn-pdf" onclick="mprPdfIncome()"><i class="fa-solid fa-file-pdf"></i> PDF</button>`}
     </div>
 
     <div class="mpr-report-card" id="mpr-income-card">
@@ -243,6 +245,7 @@ function mprRenderIncome(data) {
 
 /* ─────────────────────────── PDF export ─────────────────────────── */
 function mprPdfPosition() {
+  if (window.financeeFeatureEnabled && !financeeFeatureEnabled("pdf_export", "reports")) return;
   const d = _mprLastData; if (!d) return;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -270,6 +273,7 @@ function mprPdfPosition() {
 }
 
 function mprPdfIncome() {
+  if (window.financeeFeatureEnabled && !financeeFeatureEnabled("pdf_export", "reports")) return;
   const d = _mprLastData; if (!d) return;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -306,6 +310,7 @@ function mprPdfIncome() {
 
 /* ─────────────────────────── Print ─────────────────────────── */
 function mprPrintElement(elId, title) {
+  if (window.financeeFeatureEnabled && !financeeFeatureEnabled("pdf_export", "reports")) return;
   const el = document.getElementById(elId);
   if (!el) return;
   const w = window.open('', '', 'width=900,height=650');

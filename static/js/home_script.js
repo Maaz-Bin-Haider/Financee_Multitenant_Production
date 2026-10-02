@@ -40,6 +40,12 @@ const esc  = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").repla
 const $    = id => document.getElementById(id);
 const setEl = (id, v) => { const e=$(id); if(e) e.textContent=v; };
 
+// Per-company switches (tenancy/features.py, via base.html). A switched-off
+// widget is not rendered and its endpoint refuses, so it is not loaded either.
+const featureOn = (group, sub) => !window.financeeFeatureEnabled || window.financeeFeatureEnabled(group, sub);
+const dashOn    = sub => featureOn("dashboard", sub);
+const pdfOn     = () => featureOn("pdf_export", "reports");
+
 function skeletonRows(r=3, c=4) {
   return Array.from({length:r},()=>`<tr>${Array.from({length:c},()=>`<td><div class="skeleton"></div></td>`).join("")}</tr>`).join("");
 }
@@ -102,29 +108,26 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function initDashboard() {
-  await Promise.allSettled([
-    loadSmartAlerts(),
-    loadSalesToday(),
-    loadSalesChart("7d"),
-    loadStockKpi(),
-    loadLowStock(),
-    loadFastMoving(30),
-    loadStaleStock(30),
-    loadTopCustomers(),
-    loadTopVendors(),
-    loadReceivablesAging(),
-    loadRecentTransactions(),
-    loadExpenseKpi(),
-    loadExpenseCategories(),
-    loadExpenseDescriptions(),
-    loadCashBalance(),
-    loadPartyBalanceSummary(),
-    loadReceivableSummary(),
-    loadPayableSummary(),
-    loadExpensePartySummary(),
-    loadPartiesSummary(),
-    loadDraftCard(),
-  ]);
+  // Dashboard sub-feature -> its loaders.
+  const widgets = {
+    smart_alerts:        [() => loadSmartAlerts()],
+    sales_overview:      [() => loadSalesToday(), () => loadSalesChart("7d")],
+    stock_overview:      [() => loadStockKpi(), () => loadLowStock(), () => loadFastMoving(30), () => loadStaleStock(30)],
+    top_parties:         [() => loadTopCustomers(), () => loadTopVendors()],
+    receivables_aging:   [() => loadReceivablesAging()],
+    recent_transactions: [() => loadRecentTransactions()],
+    expenses:            [() => loadExpenseKpi(), () => loadExpenseCategories(), () => loadExpenseDescriptions()],
+    cash_balance:        [() => loadCashBalance()],
+    balances:            [() => loadPartyBalanceSummary(), () => loadReceivableSummary(), () => loadPayableSummary(),
+                          () => loadExpensePartySummary(), () => loadPartiesSummary()],
+  };
+  const jobs = [];
+  Object.entries(widgets).forEach(([sub, loaders]) => {
+    if (dashOn(sub)) loaders.forEach(load => jobs.push(load()));
+  });
+  // The draft card has its own switch and only renders when allowed.
+  jobs.push(loadDraftCard());
+  await Promise.allSettled(jobs);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -332,7 +335,9 @@ async function loadCashBalance() {
   }
 }
 
-$("cash-kpi-card")?.addEventListener("click", () => {
+$("cash-kpi-card")?.addEventListener("click", function () {
+  // Opens the ledger only while the Cash Ledger report is on (data-ledger).
+  if (this.dataset.ledger !== "1") return;
   // Pre-fill last 7 days
   const now = new Date();
   const from7 = new Date(now); from7.setDate(from7.getDate()-6);
@@ -989,6 +994,7 @@ function bindEvents() {
 // PDF EXPORT
 // ══════════════════════════════════════════════════════════════════════════
 function exportSectionPdf(section) {
+  if (!pdfOn()) return;
   const {jsPDF} = window.jspdf;
   const doc = new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
   const titles = {
@@ -1014,6 +1020,7 @@ function exportSectionPdf(section) {
 }
 
 function exportModalPdf(title, tableId) {
+  if (!pdfOn()) return;
   const {jsPDF} = window.jspdf;
   const doc = new jsPDF({unit:"mm",format:"a4"});
   doc.setFontSize(15); doc.text(title, 14, 16);
@@ -1053,7 +1060,9 @@ async function loadDraftCard() {
   const rows = data.recent || [];
   body.innerHTML = rows.length
     ? rows.map(r => `<tr>
-          <td><a href="/draft/?open=${encodeURIComponent(r.draft_invoice_id)}">#${esc(r.draft_invoice_id)}</a></td>
+          <td>${featureOn("draft_invoices", "drafts")
+                ? `<a href="/draft/?open=${encodeURIComponent(r.draft_invoice_id)}">#${esc(r.draft_invoice_id)}</a>`
+                : `#${esc(r.draft_invoice_id)}`}</td>
           <td>${esc(r.customer)}</td>
           <td>${esc(r.draft_date)}</td>
           <td>${esc(String(r.reserved_units))}</td>

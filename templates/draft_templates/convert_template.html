@@ -18,9 +18,11 @@
       </button>
     </div>
     <div class="sale-topbar-right">
+      {% if features.draft_invoices.subs.drafts %}
       <a class="custom-btn btn-topbar" href="{% url 'draft:draft_page' %}">
         <i class="fa-solid fa-file-pen"></i> Draft Invoices
       </a>
+      {% endif %}
     </div>
   </div>
 

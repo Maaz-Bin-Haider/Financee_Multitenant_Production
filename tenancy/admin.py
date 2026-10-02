@@ -34,7 +34,13 @@ from django.utils.html import format_html
 
 from financee.admin_site import financee_admin_site
 
-from .features import FEATURE_GROUPS, all_feature_keys
+from .features import (
+    FEATURE_CATEGORIES,
+    FEATURE_GROUPS,
+    all_feature_keys,
+    default_disabled_features,
+    feature_on_by_default,
+)
 from .models import (
     SUBSCRIPTION_ACTIVE,
     SUBSCRIPTION_BLOCKED,
@@ -102,38 +108,62 @@ def _feature_field_name(key):
     return "feat__" + key.replace(".", "__")
 
 
+def _feature_help_text(group, sub=None):
+    """Says how a switch starts for a new company."""
+    if sub is None:
+        state = "On" if feature_on_by_default(group) else "Off"
+        if FEATURE_GROUPS[group]["subs"]:
+            return (
+                f"Main switch — switching it off hides everything indented below. "
+                f"{state} by default for new companies."
+            )
+        return f"{state} by default for new companies."
+    key = f"{group}.{sub}"
+    if not feature_on_by_default(key):
+        return "Off by default."
+    if not feature_on_by_default(group):
+        return "Comes on with the main switch."
+    return "On by default."
+
+
 def _feature_form_fields():
     """One BooleanField per feature key, declared at class-creation time.
 
     The admin's ``modelform_factory`` validates fieldset entries against the
-    form's *declared* fields, so these cannot be added in ``__init__``.
+    form's *declared* fields, so these cannot be added in ``__init__``. The
+    initial values are the new-company defaults; the change view replaces
+    them with the company's stored switches. The data attributes let
+    ``static/js/admin_company_features.js`` indent each sub-feature under its
+    main switch.
     """
     fields = {}
     for group, spec in FEATURE_GROUPS.items():
+        marker = "data-feature-master" if spec["subs"] else "data-feature-single"
         fields[_feature_field_name(group)] = forms.BooleanField(
             required=False,
-            initial=True,
+            initial=feature_on_by_default(group),
             label=spec["label"],
-            help_text=(
-                "Master switch — unticking disables everything in this group below."
-                if spec["subs"]
-                else "Untick to hide this feature from the company."
-            ),
+            help_text=_feature_help_text(group),
+            widget=forms.CheckboxInput(attrs={marker: group}),
         )
         for sub, sub_label in spec["subs"].items():
-            fields[_feature_field_name(f"{group}.{sub}")] = forms.BooleanField(
+            key = f"{group}.{sub}"
+            fields[_feature_field_name(key)] = forms.BooleanField(
                 required=False,
-                initial=True,
+                initial=feature_on_by_default(key),
                 label=sub_label,
+                help_text=_feature_help_text(group, sub),
+                widget=forms.CheckboxInput(attrs={"data-feature-parent": group}),
             )
     return fields
 
 
 class _CompanyAdminFormBase(forms.ModelForm):
     """
-    Renders ``Company.disabled_features`` as grouped on/off switches — one
-    master switch per feature group plus one per sub-report — instead of raw
-    JSON. Everything ticked = feature enabled (the default for new companies).
+    Renders ``Company.disabled_features`` as on/off switches — one main switch
+    per feature plus one per sub-feature — instead of raw JSON. Ticked = the
+    company has it. A new company starts with the default plan
+    (``tenancy.features.default_disabled_features``).
     """
 
     class Meta:
@@ -174,20 +204,28 @@ CompanyAdminForm = type("CompanyAdminForm", (_CompanyAdminFormBase,), _feature_f
 
 
 def _feature_fieldsets():
-    """One collapsible admin fieldset per feature group."""
+    """One collapsible admin fieldset per feature category, main switches
+    followed by their sub-features."""
     sets = []
-    for group, spec in FEATURE_GROUPS.items():
-        fields = [_feature_field_name(group)]
-        fields += [_feature_field_name(f"{group}.{sub}") for sub in spec["subs"]]
+    for title, groups in FEATURE_CATEGORIES:
+        fields = []
+        for group in groups:
+            fields.append(_feature_field_name(group))
+            fields += [
+                _feature_field_name(f"{group}.{sub}")
+                for sub in FEATURE_GROUPS[group]["subs"]
+            ]
         sets.append(
             (
-                f"Features — {spec['label']}",
+                f"Features — {title}",
                 {
                     "fields": fields,
-                    "classes": ("collapse",),
+                    "classes": ("collapse", "feature-switches"),
                     "description": (
-                        "Unticked items disappear from this company's sidebar/screens "
-                        "and their pages and data endpoints are blocked."
+                        "Ticked = this company has it. Unticked items disappear from "
+                        "the company's sidebar and screens, and their pages and data "
+                        "endpoints are blocked. A new company starts with the default "
+                        "plan; switch extras on here now or at any time later."
                     ),
                 },
             )
@@ -217,7 +255,15 @@ class CompanyAdmin(admin.ModelAdmin):
     search_fields = ("name", "schema_name")
     readonly_fields = ("schema_name", "created_at", "subscription_badge")
     inlines = [SubscriptionPaymentInline, MembershipInline]
-    actions = ["suspend_companies", "unsuspend_companies"]
+    actions = [
+        "suspend_companies",
+        "unsuspend_companies",
+        "apply_default_features",
+        "enable_all_features",
+    ]
+
+    class Media:
+        js = ("js/admin_company_features.js",)
 
     fieldsets = (
         (
@@ -289,6 +335,20 @@ class CompanyAdmin(admin.ModelAdmin):
             f"Suspension lifted for {updated} company(ies). Companies past their "
             "paid-until grace window remain blocked until a payment is recorded.",
         )
+
+    @admin.action(description="Apply the default feature set to selected companies")
+    def apply_default_features(self, request, queryset):
+        updated = queryset.update(disabled_features=default_disabled_features())
+        self.message_user(
+            request,
+            f"Default feature set applied to {updated} company(ies). Everything "
+            "outside the default plan is now off until you switch it on.",
+        )
+
+    @admin.action(description="Enable every feature for selected companies")
+    def enable_all_features(self, request, queryset):
+        updated = queryset.update(disabled_features=[])
+        self.message_user(request, f"Every feature is now on for {updated} company(ies).")
 
     def save_model(self, request, obj, form, change):
         was_suspended = False

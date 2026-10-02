@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-09-30
+Last updated: 2026-10-02
 
 This file is the persistent engineering context for Financee. Update it on every meaningful project change, especially changes to architecture, routes, permissions, tenant SQL, deployment behavior, environment variables, tests, or data model assumptions.
 
@@ -18,19 +18,19 @@ This file is the persistent engineering context for Financee. Update it on every
     4A (`a4f915f`) shipped the squashed replacements beside the originals;
     checkpoint 4B (`5f42cd1`) deleted the replaced files and removed
     `replaces`, so each squash is now an ordinary initial migration.
-- **Last release:** `53a12e0` (pushed to `main` 2026-09-26) fixed two sidebar
-  bugs in `templates/base/base.html`: the Sales Reports link now honours all
-  eight `SALES_REPORT_PERMS`, and the empty inventory-mode badge is gone.
-  Template only; no SQL or schema change. The release before it was PR #2
-  (`3c50327`, 2026-09-16), which stopped the dashboard reporting expense
-  parties as receivables. See `FIXED_ISSUES.md`.
+- **Last release:** `cf12d6a` (pushed to `main` 2026-10-01) added Draft Sale
+  Invoices (Proforma) — see that section below. The release before it,
+  `53a12e0` (2026-09-26), fixed two sidebar bugs in
+  `templates/base/base.html`: the Sales Reports link now honours all eight
+  `SALES_REPORT_PERMS`, and the empty inventory-mode badge is gone. See
+  `FIXED_ISSUES.md`.
 - **Production today:** image
-  `53a12e0966f6519e8372f652b215c85b71fc31c3` (deployed 2026-09-26, workflow run
-  `36264512993`, Phase 30 controller PASS with matching before/after continuity
+  `cf12d6a54f828e41cbb0f72001eda59d2fe35d7e` (deployed 2026-10-01, workflow run
+  `36856609567`, Phase 30 controller PASS with matching before/after continuity
   fingerprints and no rollback), one serial company, tenant schema version 6,
   no `inventory_mode` column, no retired permissions or feature keys. The
   Phase 3B archive remains `applied` and is the reversal path — do not delete
-  it. The previous release was `3c50327197e55cb7a35f585c239e9d48265fdc4c`.
+  it. The previous release was `53a12e0966f6519e8372f652b215c85b71fc31c3`.
 - **Tenant schema version stays at 6** after the 2026-09-16 dashboard
   receivables fix. That fix replaces one reporting view and is compatible in
   both directions, so it needs no version gate — and bumping would have blocked
@@ -53,10 +53,14 @@ This file is the persistent engineering context for Financee. Update it on every
 - **Docs audited 2026-09-26.** `README.md`, `CLAUDE.md`, `DEPLOYMENT_GUIDE.md`
   and this file were corrected against the code (no code or SQL changed).
   Known remaining doc drift is listed under Known Documentation Caveats.
-- **Draft Sale Invoices (Proforma)** were added on 2026-09-30 (branch
-  `feature/draft-invoices`; not yet released when this was written). See the
-  section of that name below: new tenant SQL, a `draft` app, 11 permissions
-  seeded without a migration, and a Phase 30 audit change.
+- **Draft Sale Invoices (Proforma)** were added on 2026-09-30 and released in
+  `cf12d6a`. See the section of that name below: new tenant SQL, a `draft`
+  app, 11 permissions seeded without a migration, and a Phase 30 audit change.
+- **Per-module feature switches and the new-company default plan** were added
+  on 2026-10-02 (branch `feature/company-feature-defaults`; not yet released
+  when this was written). Every module now has a switch and a new company
+  starts with the default plan; existing companies keep what they have. See
+  Per-Company Feature Flags. No SQL, model or migration change.
 
 ### Three migration rules to know before touching this again
 
@@ -225,7 +229,7 @@ Idempotent SQL should use patterns such as `CREATE OR REPLACE FUNCTION`, `CREATE
   listed in the `needs` of `staging-release-approval` or `publish`, so today it
   does not block publication. The
   Phase 2 contracts additionally pin byte-identity baselines for the 12 serial
-  document view implementations, 223 serial UI files (everything under
+  document view implementations, 225 serial UI files (everything under
   `static/` and `templates/` except `templates/base/base.html`), the 18 serial
   tenant SQL files (re-pinned 2026-09-30 for draft invoices) and the bootstrap's 12,248-line
   tenant business-schema build, so any accidental change to serial behavior
@@ -400,30 +404,58 @@ Automatic emails to the **company's billing address** (`Company.contact_email`
 
 ## Per-Company Feature Flags (admin-controlled)
 
-The operator can switch features on/off **per company** from the company admin
-form. Everything lives in the public schema — no tenant SQL. Introduced by
-migration `0004_company_feature_flags` (now squashed into
-`tenancy/migrations/0001_serial_only.py`); registry and enforcement helpers in
-`tenancy/features.py`.
+The operator switches features on/off **per company** from the company admin
+form, to sell the system in plans. Everything lives in the public schema — no
+tenant SQL. Introduced by migration `0004_company_feature_flags` (now squashed
+into `tenancy/migrations/0001_serial_only.py`); registry, defaults and
+enforcement helpers in `tenancy/features.py`.
 
-Feature keys (stable, persisted): group switches `accounts_reports`,
-`stock_reports`, `monthly_reports`, `sales_reports`, `opening_stock`,
-`opening_cash`, `excel_export`, `attachments`, plus one `group.sub` switch per
-sub-report of the four report groups (e.g. `accounts_reports.cash_ledger`,
-`stock_reports.serial_ledger`, `monthly_reports.monthly_income`,
-`sales_reports.trend`). Sub key names follow the URLs; admin labels follow the
-UI button text (note `/detailed-ledger/` renders as "Party Ledger" and
-`/detailed-ledger2/` as "Detailed Ledger"; `/stock-summary/` as "Stock Report"
-and `/stock-report/` as "Stock Serial Wise").
+Every module has a switch (keys are stable — they are persisted). A main
+switch off hides all of its sub-features; while it is on, each sub-feature
+follows its own switch. The **new-company default plan** is
+`DEFAULT_DISABLED_FEATURES`:
+
+| Main feature (key) | Sub-features | New company |
+|---|---|---|
+| Dashboard (`dashboard`) | `sales_overview`, `cash_balance`, `stock_overview`, `balances` (party & item lists), `top_parties`, `receivables_aging`, `recent_transactions`, `expenses`, `smart_alerts` | on |
+| Sales, Sale Returns, Purchases, Purchase Returns, Payments, Receipts, Contra Entry, Items, Parties (`sales`, `sale_returns`, `purchases`, `purchase_returns`, `payments`, `receipts`, `contra`, `items`, `parties`) | — | on |
+| Accounts Reports (`accounts_reports`) | Party Ledger `detailed_ledger`, Cash Ledger, Trial Balance, Accounts Receivable, Accounts Payable on; Detailed Ledger `detailed_ledger2` **off** | on |
+| Stock Reports (`stock_reports`) | Stock Report `stock_summary`, Stock Serial Wise `stock_report`, Serial Ledger, Item History, Stock Worth on; Serial Ledger Sold Flag / Purchase / Sale, Item Detail, Item Last Purchase, Items Last Sale **off** | on |
+| Monthly Reports (`monthly_reports`) | Income Statement on; Company Position **off** | on |
+| PDF generation (`pdf_export`) | `documents` (sale, purchase, both returns, draft proforma and history), `reports` (every report, owner equity, month close, pending drafts, dashboard; includes the Monthly Reports Print button) | on |
+| Sales Reports (`sales_reports`) | the 8 tabs | **off** |
+| Draft Invoices (`draft_invoices`) | `drafts`, `confirm`, `returns`, `pending_report`, `dashboard_card` | **off** |
+| Opening Stock, Opening Cash, Owner Equity, Month-End Close (`opening_stock`, `opening_cash`, `owner_equity`, `month_close`) | — | **off** |
+| CSV / Excel export (`excel_export`), Document attachments (`attachments`) | — | **off** |
+
+Sub key names follow the URLs; admin labels follow the UI button text (note
+`/detailed-ledger/` renders as "Party Ledger" and `/detailed-ledger2/` as
+"Detailed Ledger"; `/stock-summary/` as "Stock Report" and `/stock-report/` as
+"Stock Serial Wise"). Keys must never start with `quantity` or
+`purchase_reports`: the Phase 3/3B/4 audits reserve those prefixes.
 
 Semantics and storage:
 
-- `Company.disabled_features` (JSONField, list of **disabled** keys; default
-  `[]` = everything on, so the migration changes nothing for existing
-  companies). `Company.feature_enabled(key)` — disabling a group disables all
-  of its subs; unknown keys fail open.
+- `Company.disabled_features` (JSONField, list of **disabled** keys).
+  `Company.feature_enabled(key)` — disabling a group disables all of its subs;
+  unknown keys fail open. The list is exactly what is off: a key not in it is
+  on.
+- **Defaults are written at creation, never read at request time.** The admin
+  add form pre-ticks the default plan and `provision_tenant` stores
+  `default_disabled_features()` (`--all-features`, `--enable KEY`,
+  `--disable KEY` adjust it; enabling a sub-feature also enables its main
+  switch). The model keeps `default=list` — changing it would need a
+  migration, which the migration-history gates refuse — so a company created
+  in code (tests) and the example "Company One" a fresh install registers keep
+  every feature. Existing companies are untouched by the deploy that
+  introduced the plan; the changelist actions **Apply the default feature
+  set** and **Enable every feature** move companies in one click.
 - `excel_export` removes only the **CSV/Excel** download buttons across all
-  report screens plus Month-End Close and Owner Equity; PDF and Print stay.
+  report screens plus Month-End Close and Owner Equity.
+- `pdf_export` hides PDF (and the Monthly Reports Print) buttons. PDFs are
+  built in the browser (jsPDF), so there is no URL to block; the jsPDF
+  `<script>` tags stay because several scripts read `window.jspdf` before
+  checking it.
 - `attachments` hides the whole document-attachment widget (upload **and**
   existing-file preview/download) and blocks `/attachments/`; files are never
   deleted, so re-enabling restores them. `attachments/utils.py`
@@ -432,30 +464,65 @@ Semantics and storage:
 
 Enforcement (`tenancy/middleware.py` after the subscription guard, applied to
 **every** user of the company, superusers included):
-`tenancy.features.feature_for_path` longest-prefix-maps the request path to a
-feature key; disabled paths get `feature_disabled_response`
+`tenancy.features.feature_for_path` maps the request path to a feature key —
+`FEATURE_EXACT_PATHS` first (the Draft Invoices screen is `/draft/`), then the
+**longest** matching prefix in `FEATURE_PATH_PREFIXES` (order no longer
+matters). A `None` key keeps a path open whatever is switched off: the shared
+pickers `/parties/autocomplete-party` (11 screens in 9 modules) and
+`/items/autocomplete-item/` (Purchases, Opening Stock, Stock Reports).
+**`/home/` is never mapped**: every denial redirects there, so blocking it
+would loop; the dashboard is switched off in its template (a plain welcome
+page with quick links) and its widget data endpoints (`/home/api/...`) are
+mapped to the dashboard sub-features. `/draft/get/` and `/draft/summary/` map
+to the Draft Invoices main switch because both the Draft and Confirm screens
+load drafts through them. Disabled paths get `feature_disabled_response`
 (`financee/security.py`): non-GET/AJAX/API → scrubbed 403 JSON ("This feature
-is not enabled for your company."); a plain GET on a disabled **sub-report
+is not enabled for your company."); a plain GET on a disabled **sub-feature
 page** redirects to the first enabled sibling of the group
-(`GROUP_LANDING_PATHS`) so sidebar entry points keep working, else to the
-dashboard.
+(`GROUP_LANDING_PATHS`: the three report groups and the draft screens) so
+entry points keep working, else to the dashboard.
 
 UI hiding: `tenancy.context_processors.company_features` (registered in
-settings) exposes `features` (nested map) to every template. `base.html`
-gates the sidebar links and embeds `window.FinanceeFeatures` +
+settings) exposes `features` — per group `enabled` (main switch on **and**, for
+groups with sub-features, at least one of them on), `subs`, and `landing` (the
+first enabled page of a report group) — to every template. `base.html` gates
+every sidebar link (report groups link to `landing`; each draft screen to its
+own sub-feature) and embeds `window.FinanceeFeatures` +
 `financeeFeatureEnabled()` by passing the **raw dict** through `json_script`
 (pre-serializing with `json.dumps` double-encodes it into a string and every
 JS feature check fails open — the suite asserts the page embeds a JSON
-object) for the JS-built toolbars (`accounts_reports.js`, `stock_reports.js`,
-`detailed_ledger2.js` gate their CSV buttons; report-page init handlers now
-start on the first *visible* report button). The report templates gate each
-sub-report button; the 7 document templates gate the attachment widget
-include.
+object; `enabled` must stay each group's first key). JS-built toolbars
+(`accounts_reports.js`, `stock_reports.js`, `detailed_ledger2.js`,
+`monthly_reports.js`, `pending_drafts_page.js`, the draft history popups)
+gate their CSV and PDF buttons and re-check in the handlers; report-page init
+handlers start on the first *visible* report button. The report templates
+gate each sub-report button; the 7 document templates gate the attachment
+widget include; `home_template.html` wraps each widget in its switch and
+`home_script.js` skips loading switched-off widgets. Quick actions
+(`templates/home_templtes/quick_actions.html`) follow the module switches.
 
 Admin (`tenancy/admin.py`): `CompanyAdminForm` renders the JSON column as
-grouped Boolean switches (one collapsible fieldset per group, master switch +
-sub switches; unticked = disabled); the changelist shows a "Features off"
-count. Tests: `tests/suite/test_feature_flags.py` (wired into `run_all.py`).
+Boolean switches in four collapsible sections (Core modules, Reports, Add-on
+modules, Export & documents — `FEATURE_CATEGORIES`); each main switch is
+followed by its sub-features, which `static/js/admin_company_features.js`
+indents and dims while the main switch is off (their ticks are kept). Help
+text says how each switch starts for a new company. `fieldsets` stays a static
+attribute (the Phase 30 deploy audit reads it). The changelist shows a
+"Features off" count. Tests: `tests/suite/test_feature_flags.py` (wired into
+`run_all.py`; checks that need the default plan skip on older images).
+
+Rollback: an older image ignores keys it does not know (they fail open, so
+e.g. Owner Equity reappears for a company that had it off), and saving a
+company in an older admin drops them from its list. Nothing else changes —
+there is no SQL, model or migration behind the switches.
+
+When adding a feature later: add its key to `FEATURE_GROUPS` and a category,
+decide its default (add it to `DEFAULT_DISABLED_FEATURES` if new companies
+should not get it), map its URLs, and gate its UI. Existing companies see a
+new key as **on** (it is not in their list); to keep it off for them, apply
+the change with the admin action or a one-off update after the deploy —
+never in a `post_migrate` handler, which would change the registry rows the
+checkpoint-4B transition gate requires to stay byte-identical.
 
 ## Security and Permission Notes
 
@@ -534,6 +601,7 @@ Conventions:
 - `tests/suite/test_subscription.py` covers the subscription-control layer: the paid-until/grace/suspension state machine, calendar-aware payment extension, and HTTP enforcement (suspension page, JSON denial, exemptions, warning banner).
 - `tests/suite/test_subscription_emails.py` covers the subscription email layer: BillingSettings singleton, expiry/suspension emails with per-cycle dedup and failure retry, contact-detail embedding, manual-suspension/test emails, and the admin email screens (locmem backend, nothing real sent).
 - `tests/suite/test_drafts.py` covers draft sale invoices on every tenant (the reservation guard against sale, purchase return, purchase delete and sale return; the lifecycle; a books snapshot proving no draft operation moves the journal, stock, invoices or balances; conversion; the Confirmed Draft Return incl. its date and segregation; reports; a two-connection proof that a reservation and a sale of one serial serialise on the row lock) plus the HTTP layer as a non-superuser (permission per endpoint, the deployment switch, the company flag, the read-only group, and the Sale / Sale Return / Purchase Return lookups). It prints SKIP and exits 0 on a build without the feature (the Phase 3B rehearsal runs it inside the 3A image).
+- `tests/suite/test_feature_flags.py` covers the per-company switches; on builds with the new-company default plan it also checks the plan itself, the admin add view and its two actions, `provision_tenant`, and the module, dashboard-widget, PDF and draft-screen switches (older images in the Phase 3B rehearsal skip those). Because companies created by `provision_tenant` or the admin now start on the default plan, HTTP harnesses switch on the features they exercise and restore the company's own switches afterwards (`test_attachments.py`, `test_http.py`, `test_drafts.py`); companies created directly in code keep everything on.
 - `tests/suite/test_attachments.py` adds dedicated document-attachment coverage for sale, purchase, sale return, purchase return, payment, receipt, and contra documents: upload/update/replacement, preservation of the unselected file kind, metadata/preview/download endpoints, invalid file validation, cleanup, failed-delete preservation, attachment-only bypass for sale/purchase/returns, and no bypass for payments/receipts/contra.
 - `tests/run_tests.sh` runs `test_system.py` and `test_http.py` in Docker and can reset tenant schemas with `--reset`. `test_system.py` always exits 0, so read its `TOTAL FAILURES` line.
 - **Serial-only enforcement tests.** `tests/phase1_serial_only_creation.py`
@@ -629,8 +697,10 @@ were not ported.
   `view_only_users` group is refused every draft action.
 - **Switches:** `DRAFT_SALES_ENABLED` (env, deployment-wide: endpoints 404,
   screens redirect, sidebar and card hidden), the per-company `draft_invoices`
-  feature flag (admin; the middleware blocks `/draft/` and
-  `/home/api/dash/drafts/`), and `DRAFT_AGE_WARNING_DAYS` (default 30).
+  feature flag (admin; **off for a new company**; the middleware blocks
+  `/draft/` and `/home/api/dash/drafts/`) with one sub-feature per screen —
+  `drafts`, `confirm`, `returns`, `pending_report`, `dashboard_card` (see
+  Per-Company Feature Flags) — and `DRAFT_AGE_WARNING_DAYS` (default 30).
   **Switching drafts off hides the interface but does not free reserved
   serials** — release or convert open drafts first.
 - **Elsewhere in the UI:** four sidebar entries after Sales; the dashboard card

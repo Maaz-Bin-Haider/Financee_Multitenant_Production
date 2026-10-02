@@ -718,8 +718,15 @@ function savePdf(options, filename) {
   }
 }
 
+/* Document PDFs (proforma, history export) follow the company's
+   pdf_export.documents switch. */
+function documentPdfAllowed() {
+  return !(typeof window.financeeFeatureEnabled === "function"
+           && !window.financeeFeatureEnabled("pdf_export", "documents"));
+}
+
 function draftHistoryPdf() {
-  if (!historyRows.length) { return; }
+  if (!documentPdfAllowed() || !historyRows.length) { return; }
   const ranged = historyRange.start_date && historyRange.end_date;
   const options = DraftReports.historyPdfOptions(historyRows, {
     from: historyRange.start_date,
@@ -759,7 +766,7 @@ async function showSummary(range) {
       <div class="sh-bar">
         <input type="text" class="sh-search" placeholder="🔍 Search by customer…"
                aria-label="Search by customer">
-        <button type="button" class="sh-pdf"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
+        ${documentPdfAllowed() ? `<button type="button" class="sh-pdf"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>` : ""}
       </div>
       <div class="sh-wrap">
         <table class="sh-table">
@@ -785,7 +792,7 @@ async function showSummary(range) {
         const needle = search.value.toLowerCase().trim();
         lines.forEach((line) => { line.hidden = !line.dataset.customer.includes(needle); });
       });
-      popup.querySelector(".sh-pdf").addEventListener("click", draftHistoryPdf);
+      popup.querySelector(".sh-pdf")?.addEventListener("click", draftHistoryPdf);
       popup.querySelector(".sh-table tbody").addEventListener("click", (event) => {
         const line = event.target.closest("tr.draft-row");
         if (line) { pickDraft(line.dataset.draftId); }
@@ -892,6 +899,7 @@ function initPartyAutocomplete() {
    being paid against, and the notice on it says in words that no payment is
    due. It prints what is on screen, so save first. */
 function downloadProforma() {
+  if (!documentPdfAllowed()) { return; }
   const id = currentDraftId();
   if (!id) {
     Alerts.notify("Save the draft first.", { title: "Nothing to print" });

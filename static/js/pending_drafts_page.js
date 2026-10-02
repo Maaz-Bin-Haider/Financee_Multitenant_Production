@@ -136,11 +136,16 @@ function render() {
   injectToolbar();
 }
 
-/* The CSV button follows the company's excel_export switch, as every other
-   report toolbar does; the PDF stays. */
+/* The CSV button follows the company's excel_export switch and the PDF
+   button its pdf_export.reports switch, as every other report toolbar does. */
 function csvAllowed() {
   return !(typeof window.financeeFeatureEnabled === "function"
            && !window.financeeFeatureEnabled("excel_export"));
+}
+
+function pdfAllowed() {
+  return !(typeof window.financeeFeatureEnabled === "function"
+           && !window.financeeFeatureEnabled("pdf_export", "reports"));
 }
 
 function injectToolbar() {
@@ -150,9 +155,10 @@ function injectToolbar() {
   bar.className = "report-toolbar";
   bar.innerHTML = `
     <div class="table-actions">
+      ${pdfAllowed() ? `
       <button type="button" class="btn-download" id="pendingPdfBtn">
         <i class="fa-solid fa-file-pdf"></i> PDF
-      </button>
+      </button>` : ""}
       ${csvAllowed() ? `
       <button type="button" class="btn-download btn-csv" id="pendingCsvBtn">
         <i class="fa-solid fa-file-csv"></i> CSV
@@ -160,7 +166,8 @@ function injectToolbar() {
     </div>`;
   const container = document.querySelector(".table-container");
   container.parentNode.insertBefore(bar, container);
-  bar.querySelector("#pendingPdfBtn").addEventListener("click", downloadPendingPdf);
+  const pdf = bar.querySelector("#pendingPdfBtn");
+  if (pdf) { pdf.addEventListener("click", downloadPendingPdf); }
   const csv = bar.querySelector("#pendingCsvBtn");
   if (csv) { csv.addEventListener("click", downloadPendingCsv); }
 }
@@ -178,6 +185,7 @@ function downloadPendingCsv() {
 }
 
 function downloadPendingPdf() {
+  if (!pdfAllowed()) { return; }
   if (!window.jspdf || !window.jspdf.jsPDF || typeof FinanceePdf === "undefined") {
     Alerts.error("The PDF library did not load. Check the connection and reload the page.",
                  { title: "PDF unavailable" });

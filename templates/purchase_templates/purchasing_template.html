@@ -94,9 +94,11 @@
       </button>
     </div>
     <div class="sale-topbar-right">
+      {% if features.pdf_export.subs.documents %}
       <button type="button" class="btn-pdf" onclick="downloadInvoicePDF()" title="Download PDF">
         <i class="fa-solid fa-file-pdf"></i> Download PDF
       </button>
+      {% endif %}
     </div>
   </div>
 

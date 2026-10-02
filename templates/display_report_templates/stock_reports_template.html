@@ -106,9 +106,11 @@
 
     <!-- Table actions -->
     <div class="table-actions">
+      {% if features.pdf_export.subs.reports %}
       <button id="download_pdf" class="btn-download">
         <i class="fa-solid fa-file-pdf"></i> PDF
       </button>
+      {% endif %}
       {% if features.excel_export.enabled %}
       <button id="download_csv" class="btn-download btn-csv">
         <i class="fa-solid fa-file-csv"></i> CSV

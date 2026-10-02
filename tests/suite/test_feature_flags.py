@@ -4,9 +4,17 @@ middleware URL enforcement (group + sub-report blocking, GET redirects vs JSON
 denials), UI hiding (sidebar links, report buttons, CSV buttons, attachment
 widget), and the attachment upload guard.
 
+On builds whose registry carries new-company defaults
+(``tenancy.features.DEFAULT_DISABLED_FEATURES``) it also covers the default
+plan, the module/dashboard/PDF/draft switches, the admin add view and actions,
+and ``provision_tenant``. The Phase 3B rehearsal runs this file inside an older
+image without them, so those checks are skipped there.
+
 Everything mutates only the public-schema ``Company.disabled_features`` column
 (plus a temporary superuser membership, mirroring suite/test_http.py) and
-restores it in ``finally`` — no tenant business data is touched.
+restores it in ``finally`` — no tenant business data is touched. The one
+company ``provision_tenant`` creates is left behind with every feature on, like
+the rest of the suite's uniquely named trail.
 
 Run inside the web container:
     docker compose -f deploy/docker-compose.yml exec -e PYTHONPATH=/app web \
@@ -15,6 +23,7 @@ Run inside the web container:
 from __future__ import annotations
 
 import os
+import re
 import sys
 import time
 
@@ -32,6 +41,7 @@ from django.db import connection  # noqa: E402
 from django.test import Client, RequestFactory  # noqa: E402
 
 from attachments.utils import validate_request_attachments  # noqa: E402
+from tenancy import features as feature_registry  # noqa: E402
 from tenancy.admin import CompanyAdminForm, _feature_field_name  # noqa: E402
 from tenancy.features import (  # noqa: E402
     FEATURE_GROUPS,
@@ -44,6 +54,37 @@ from tenancy.models import Company, Membership  # noqa: E402
 
 TAG = f"{time.strftime('%H%M%S')}_{os.getpid()}"
 RESULTS = []
+
+# Builds with per-module switches and a new-company default plan. Older images
+# (the Phase 3B rehearsal) have neither, and run only the baseline checks.
+HAS_DEFAULTS = hasattr(feature_registry, "DEFAULT_DISABLED_FEATURES")
+
+# The default plan as specified: everything else starts on.
+EXPECTED_DEFAULT_OFF = {
+    "accounts_reports.detailed_ledger2",
+    "stock_reports.serial_ledger_sold_flag",
+    "stock_reports.serial_ledger_purchase_only",
+    "stock_reports.serial_ledger_sale_only",
+    "stock_reports.item_detail",
+    "stock_reports.item_last_purchase",
+    "stock_reports.item_last_sale",
+    "monthly_reports.monthly_position",
+    "sales_reports",
+    "draft_invoices",
+    "opening_stock",
+    "opening_cash",
+    "owner_equity",
+    "month_close",
+    "excel_export",
+    "attachments",
+}
+EXPECTED_GROUPS = {
+    "dashboard", "sales", "sale_returns", "purchases", "purchase_returns",
+    "payments", "receipts", "contra", "items", "parties",
+    "accounts_reports", "stock_reports", "monthly_reports", "sales_reports",
+    "draft_invoices", "opening_stock", "opening_cash", "owner_equity", "month_close",
+    "pdf_export", "excel_export", "attachments",
+}
 
 
 def chk(name, ok, detail=""):
@@ -68,14 +109,16 @@ def check_registry_and_model():
         "sales_reports", "opening_stock", "opening_cash",
         "excel_export", "attachments",
     }
-    # draft_invoices is present on builds that carry the draft invoice feature;
-    # the Phase 3B rehearsal runs this file inside an older image without it.
+    # draft_invoices is present on builds that carry the draft invoice feature,
+    # the per-module switches on builds with the default plan; the Phase 3B
+    # rehearsal runs this file inside an older image without either.
     chk("registry has serial-only top-level groups",
-        set(FEATURE_GROUPS) in (serial_groups, serial_groups | {"draft_invoices"}),
+        set(FEATURE_GROUPS) in (serial_groups, serial_groups | {"draft_invoices"}, EXPECTED_GROUPS),
         sorted(FEATURE_GROUPS))
+    # None marks a deliberately unrestricted path (the shared pickers).
     chk("every enforced path maps to a registered key",
-        all(key in keys for _, key in FEATURE_PATH_PREFIXES),
-        [key for _, key in FEATURE_PATH_PREFIXES if key not in keys])
+        all(key is None or key in keys for _, key in FEATURE_PATH_PREFIXES),
+        [key for _, key in FEATURE_PATH_PREFIXES if key is not None and key not in keys])
     chk("longest prefixes win (ledger2 before ledger)",
         feature_for_path("/accountsReports/detailed-ledger2/") == "accounts_reports.detailed_ledger2"
         and feature_for_path("/accountsReports/detailed-ledger/") == "accounts_reports.detailed_ledger")
@@ -375,6 +418,279 @@ def check_upload_guard(company):
         chk("upload with attachments on passes the feature gate", False, exc)
 
 
+# ── Default plan + per-module switches (builds with defaults only) ──────────
+
+def sidebar_has(html, label):
+    """A sidebar link labelled exactly ``label`` (``</i> Label </a>``)."""
+    return re.search(r"</i>\s*" + re.escape(label) + r"\s*</a>", html) is not None
+
+
+def check_default_registry():
+    registry = feature_registry
+    keys = set(all_feature_keys())
+    chk("defaults: the default-off set is exactly the plan",
+        set(registry.DEFAULT_DISABLED_FEATURES) == EXPECTED_DEFAULT_OFF,
+        sorted(set(registry.DEFAULT_DISABLED_FEATURES) ^ EXPECTED_DEFAULT_OFF))
+    chk("defaults: default_disabled_features() lists it in registry order",
+        registry.default_disabled_features()
+        == [key for key in all_feature_keys() if key in EXPECTED_DEFAULT_OFF])
+    grouped = [group for _, groups in registry.FEATURE_CATEGORIES for group in groups]
+    chk("defaults: every main feature sits in exactly one admin category",
+        sorted(grouped) == sorted(FEATURE_GROUPS) and len(grouped) == len(set(grouped)),
+        grouped)
+    chk("defaults: no key uses a prefix the audits reserve",
+        not [key for key in keys if key.startswith(("quantity", "purchase_reports"))])
+
+    expected = {
+        "/sale/sales/": "sales",
+        "/saleReturn/create-sale-return/": "sale_returns",
+        "/purchase/purchasing/": "purchases",
+        "/purchaseReturn/create-purchase-return/": "purchase_returns",
+        "/payments/payment/": "payments",
+        "/receipts/receipt/": "receipts",
+        "/contra/contra/": "contra",
+        "/items/items-dash/": "items",
+        "/parties/parties-dash/": "parties",
+        "/owner-equity/": "owner_equity",
+        "/month-close/": "month_close",
+        "/parties/autocomplete-party": None,
+        "/items/autocomplete-item/": None,
+        "/home/": None,
+        "/home/api/dash/stock/kpi/": "dashboard.stock_overview",
+        "/home/api/cash/": "dashboard.cash_balance",
+        "/home/api/parties/": "dashboard.balances",
+        "/home/api/dash/alerts/": "dashboard.smart_alerts",
+        "/home/api/dash/drafts/": "draft_invoices.dashboard_card",
+        "/draft/": "draft_invoices.drafts",
+        "/draft/save/": "draft_invoices.drafts",
+        "/draft/get/": "draft_invoices",
+        "/draft/summary/": "draft_invoices",
+        "/draft/convert/screen/": "draft_invoices.confirm",
+        "/draft/return/serial/lookup/": "draft_invoices.returns",
+        "/draft/pending/": "draft_invoices.pending_report",
+        "/sales-reports/": "sales_reports",
+    }
+    wrong = {path: (feature_for_path(path), want)
+             for path, want in expected.items() if feature_for_path(path) != want}
+    chk("defaults: module, dashboard, draft and shared-picker paths resolve", not wrong, wrong)
+
+    co = Company(name=f"featdef_{TAG}", disabled_features=registry.default_disabled_features())
+    fmap = features_map(co)
+    core = ("dashboard", "sales", "sale_returns", "purchases", "purchase_returns",
+            "payments", "receipts", "contra", "items", "parties",
+            "accounts_reports", "stock_reports", "monthly_reports", "pdf_export")
+    addons = ("sales_reports", "draft_invoices", "opening_stock", "opening_cash",
+              "owner_equity", "month_close", "excel_export", "attachments")
+    chk("defaults: the plan keeps the core modules and reports on",
+        all(fmap[group]["enabled"] for group in core),
+        [group for group in core if not fmap[group]["enabled"]])
+    chk("defaults: the plan switches the add-ons off",
+        not any(fmap[group]["enabled"] for group in addons),
+        [group for group in addons if fmap[group]["enabled"]])
+    chk("defaults: a report group opens on its first enabled report",
+        fmap["monthly_reports"]["landing"] == "/accountsReports/monthly-income/"
+        and fmap["accounts_reports"]["landing"] == "/accountsReports/cash-ledger/",
+        (fmap["monthly_reports"]["landing"], fmap["accounts_reports"]["landing"]))
+    co.disabled_features = ["monthly_reports.monthly_position", "monthly_reports.monthly_income"]
+    chk("defaults: a group with every sub-feature off counts as off",
+        features_map(co)["monthly_reports"]["enabled"] is False)
+
+
+def check_admin_defaults(company):
+    registry = feature_registry
+    form = CompanyAdminForm()
+    wrong = [key for key in all_feature_keys()
+             if form.fields[_feature_field_name(key)].initial != registry.feature_on_by_default(key)]
+    chk("admin add form: switches start at the default plan", not wrong, wrong)
+
+    User = get_user_model()
+    client = make_client()
+    client.force_login(User.objects.filter(is_superuser=True).first())
+    resp = client.get("/admin/tenancy/company/add/")
+    if not chk("admin add view renders", resp.status_code == 200, resp.status_code):
+        return
+    html = resp.content.decode("utf-8", "ignore")
+
+    def ticked(key):
+        match = re.search(r'<input[^>]*name="%s"[^>]*>' % re.escape(_feature_field_name(key)), html)
+        return bool(match) and "checked" in match.group(0)
+
+    wrong = [key for key in all_feature_keys() if ticked(key) != registry.feature_on_by_default(key)]
+    chk("admin add view: ticks match the default plan", not wrong, wrong)
+    chk("admin add view: sub-features are tagged under their main switch",
+        'data-feature-master="stock_reports"' in html and 'data-feature-parent="stock_reports"' in html)
+    chk("admin add view: loads the nesting script", "admin_company_features" in html)
+    for title in ("Core modules", "Reports", "Add-on modules", "Export"):
+        chk(f"admin add view: shows the {title} section", f"Features — {title}" in html, title)
+
+    snapshot = list(company.disabled_features or [])
+    try:
+        for action, expected in (
+            ("apply_default_features", registry.default_disabled_features()),
+            ("enable_all_features", []),
+        ):
+            resp = client.post("/admin/tenancy/company/", {
+                "action": action,
+                "_selected_action": [str(company.pk)],
+                "index": "0",
+                "select_across": "0",
+            })
+            fresh = Company.objects.get(pk=company.pk)
+            chk(f"admin action {action} sets the company's switches",
+                resp.status_code == 302 and fresh.disabled_features == expected,
+                f"{resp.status_code} {fresh.disabled_features}")
+    finally:
+        set_features(company.pk, snapshot)
+
+
+def check_provision_defaults():
+    from io import StringIO
+
+    from django.core.management import call_command
+    from django.core.management.base import CommandError
+
+    from tenancy.management.commands.provision_tenant import Command
+
+    registry = feature_registry
+    name = f"FF Defaults {TAG}"
+    call_command("provision_tenant", name, stdout=StringIO())
+    company = Company.objects.get(name=name)
+    try:
+        chk("provision_tenant: a new company starts with the default plan",
+            company.disabled_features == registry.default_disabled_features(),
+            company.disabled_features)
+    finally:
+        # Later suite modules exercise every feature on every company.
+        set_features(company.pk, [])
+
+    def options(**overrides):
+        base = {"all_features": False, "enable": [], "disable": []}
+        base.update(overrides)
+        return base
+
+    got = Command._disabled_features(options(enable=["sales_reports.trend"], disable=["contra"]))
+    chk("provision_tenant: --enable of a sub-feature also enables its main switch",
+        "sales_reports" not in got and "sales_reports.trend" not in got and "contra" in got, got)
+    chk("provision_tenant: --all-features starts from everything on",
+        Command._disabled_features(options(all_features=True)) == [])
+    try:
+        Command._disabled_features(options(enable=["no_such_feature"]))
+        chk("provision_tenant: unknown feature keys are refused", False, "accepted")
+    except CommandError:
+        chk("provision_tenant: unknown feature keys are refused", True)
+
+
+def check_http_defaults(company):
+    registry = feature_registry
+    client = make_client()
+    User = get_user_model()
+    client.force_login(User.objects.filter(is_superuser=True).first())
+
+    def page(path):
+        resp = client.get(path)
+        return resp, resp.content.decode("utf-8", "ignore")
+
+    def redirects(resp, target):
+        return resp.status_code == 302 and resp["Location"].startswith(target)
+
+    def json_denied(resp):
+        return resp.status_code == 403 and resp["Content-Type"].startswith("application/json")
+
+    # The default plan.
+    set_features(company.pk, registry.default_disabled_features())
+    resp, html = page("/home/")
+    chk("plan: /home/ is 200", resp.status_code == 200, resp.status_code)
+    for label in ("Dashboard", "Sales", "Purchases", "Payments", "Receipts", "Contra Entry",
+                  "Sale Return", "Purchase Return", "Items", "Parties",
+                  "Accounts Reports", "Stock Reports", "Monthly Reports"):
+        chk(f"plan: sidebar shows {label}", sidebar_has(html, label), label)
+    for label in ("Sales Reports", "Opening Stock", "Set Opening", "Owner Equity",
+                  "Month-End Close", "Draft Invoices", "Confirm Draft",
+                  "Confirmed Draft Return", "Pending Drafts"):
+        chk(f"plan: sidebar hides {label}", not sidebar_has(html, label), label)
+    chk("plan: Monthly Reports opens on the Income Statement",
+        'href="/accountsReports/monthly-income/"' in html)
+    for path in ("/sales-reports/", "/owner-equity/", "/month-close/", "/opening-stock/",
+                 "/set-opening/", "/draft/"):
+        resp = client.get(path)
+        chk(f"plan: GET {path} redirects home", redirects(resp, "/home"),
+            f"{resp.status_code} {resp.get('Location')}")
+    resp = client.get("/accountsReports/monthly-position/")
+    chk("plan: Company Position redirects to the Income Statement",
+        redirects(resp, "/accountsReports/monthly-income/"),
+        f"{resp.status_code} {resp.get('Location')}")
+    resp, html = page("/accountsReports/stock-summary/")
+    chk("plan: stock reports keep the default reports",
+        'id="btn-history"' in html and 'id="btn-worth"' in html)
+    chk("plan: stock reports hide the extra reports",
+        'id="btn-item-detail"' not in html and 'id="btn-item-last-sale"' not in html)
+    chk("plan: report PDF on, CSV off",
+        'id="download_pdf"' in html and 'id="download_csv"' not in html)
+    resp, html = page("/sale/sales/")
+    chk("plan: sale page keeps its PDF and has no attachment widget",
+        "downloadInvoicePDF()" in html and 'id="attachments_panel"' not in html)
+
+    # A core module switched off: page, form POST and quick action are gone,
+    # while the shared party picker keeps serving the other screens.
+    set_features(company.pk, ["sales", "parties"])
+    resp, html = page("/home/")
+    chk("module-off: sidebar hides Sales", not sidebar_has(html, "Sales"))
+    chk("module-off: quick action New Sale hidden", "New Sale" not in html)
+    resp = client.get("/sale/sales/")
+    chk("module-off: GET /sale/sales/ redirects home", redirects(resp, "/home"),
+        f"{resp.status_code} {resp.get('Location')}")
+    resp = client.post("/sale/sales/", {})
+    chk("module-off: POST /sale/sales/ gets 403 JSON", json_denied(resp), resp.status_code)
+    resp = client.get("/parties/parties-dash/")
+    chk("module-off: parties screen redirects home", redirects(resp, "/home"),
+        f"{resp.status_code} {resp.get('Location')}")
+    resp = client.get("/parties/autocomplete-party?term=a", HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    chk("module-off: the shared party picker still answers", resp.status_code == 200,
+        resp.status_code)
+
+    # Dashboard widgets.
+    set_features(company.pk, ["dashboard.stock_overview"])
+    resp, html = page("/home/")
+    chk("widget-off: stock overview is not rendered",
+        'id="low-stock-table"' not in html and 'id="kpi-total-units"' not in html)
+    chk("widget-off: the other widgets stay", 'id="sales-chart"' in html)
+    resp = client.get("/home/api/dash/stock/kpi/")
+    chk("widget-off: its data endpoint gets 403 JSON", json_denied(resp), resp.status_code)
+    set_features(company.pk, ["dashboard"])
+    resp, html = page("/home/")
+    chk("dashboard-off: /home/ is a plain welcome page",
+        resp.status_code == 200 and "Welcome" in html and "home_script" not in html,
+        resp.status_code)
+    chk("dashboard-off: the sidebar calls it Home", sidebar_has(html, "Home"))
+
+    # PDF generation.
+    set_features(company.pk, ["pdf_export.documents"])
+    resp, html = page("/sale/sales/")
+    chk("pdf-docs-off: sale PDF button gone", "downloadInvoicePDF()" not in html)
+    resp, html = page("/accountsReports/stock-summary/")
+    chk("pdf-docs-off: report PDF stays", 'id="download_pdf"' in html)
+    set_features(company.pk, ["pdf_export"])
+    resp, html = page("/accountsReports/stock-summary/")
+    chk("pdf-off: report PDF button gone", 'id="download_pdf"' not in html)
+    chk("pdf-off: feature JSON says PDF is off", '"pdf_export": {"enabled": false' in html)
+    resp, html = page("/home/")
+    chk("pdf-off: dashboard PDF buttons gone", "data-pdf=" not in html and "fa-file-pdf" not in html)
+
+    # Draft sub-features: each screen has its own switch.
+    set_features(company.pk, ["draft_invoices.confirm"])
+    resp = client.get("/draft/convert/screen/")
+    chk("draft-confirm-off: Confirm Draft redirects to Draft Invoices",
+        resp.status_code == 302 and resp["Location"] == "/draft/",
+        f"{resp.status_code} {resp.get('Location')}")
+    resp = client.post("/draft/convert/", data="{}", content_type="application/json")
+    chk("draft-confirm-off: conversion gets 403 JSON", json_denied(resp), resp.status_code)
+    resp, html = page("/home/")
+    chk("draft-confirm-off: sidebar keeps Draft Invoices, hides Confirm Draft",
+        sidebar_has(html, "Draft Invoices") and not sidebar_has(html, "Confirm Draft"))
+
+    set_features(company.pk, [])
+
+
 # ── Driver ───────────────────────────────────────────────────────────────────
 
 def main():
@@ -402,11 +718,18 @@ def main():
     connection.close()
 
     try:
+        # Start from everything on, whatever an earlier module left behind.
+        set_features(company.pk, [])
         check_registry_and_model()
         check_admin_form(Company.objects.get(pk=company.pk))
         check_admin_views(Company.objects.get(pk=company.pk))
         check_http(company)
         check_upload_guard(company)
+        if HAS_DEFAULTS:
+            check_default_registry()
+            check_admin_defaults(Company.objects.get(pk=company.pk))
+            check_provision_defaults()
+            check_http_defaults(company)
     finally:
         connection.close()
         Company.objects.filter(pk=company.pk).update(disabled_features=snapshot)

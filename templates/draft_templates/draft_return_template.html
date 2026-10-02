@@ -81,7 +81,7 @@ cacheable and reviewable, and the rows use the shared tokens throughout.
       <i class="fa-solid fa-circle-exclamation"></i>
       <span>Still <strong>reserved</strong> and not yet confirmed? There is nothing
       to return &mdash; a draft raises no invoice and moves no stock. Open the draft
-      on <a href="{% url 'draft:draft_page' %}">Draft Invoices</a> and use
+      on {% if features.draft_invoices.subs.drafts %}<a href="{% url 'draft:draft_page' %}">Draft Invoices</a>{% else %}Draft Invoices{% endif %} and use
       <strong>Release Serials</strong> to put the unit back into free stock.</span>
     </p>
 

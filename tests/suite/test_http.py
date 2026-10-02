@@ -90,6 +90,13 @@ def main():
         Membership.objects.create(user=user, company=co)
         created_membership = True
 
+    # Every page below must be reachable, but the company may have been
+    # created with the new-company default plan (some features off). Switch
+    # everything on for the run and restore its own switches afterwards.
+    company_pk = Membership.objects.get(user=user).company_id
+    features_snapshot = list(Company.objects.get(pk=company_pk).disabled_features or [])
+    Company.objects.filter(pk=company_pk).update(disabled_features=[])
+
     allowed = [h for h in (settings.ALLOWED_HOSTS or []) if h not in ("*", "")]
     server = allowed[0].lstrip(".") if allowed else "localhost"
     c = Client(SERVER_NAME=server)
@@ -123,6 +130,7 @@ def main():
         r = c.get("/authentication/logout/")
         chk("logout responds", r.status_code in (200, 302), r.status_code)
     finally:
+        Company.objects.filter(pk=company_pk).update(disabled_features=features_snapshot)
         if created_membership:
             Membership.objects.filter(user=user).delete()
 
