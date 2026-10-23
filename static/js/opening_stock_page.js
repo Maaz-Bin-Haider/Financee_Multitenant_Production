@@ -239,7 +239,7 @@
     }
     Alerts.dialog({  /* was Swal.fire — centered input dialog, standardized animation */
       title: "📋 Bulk Paste — " + esc(itemName),
-      html: `<div style="text-align:left;font-size:13px;color:#6b7280;margin-bottom:10px;line-height:1.5;">
+      html: `<div style="text-align:left;font-size:13px;color:var(--text-primary);margin-bottom:10px;line-height:1.5;">
                Paste serial numbers (newline, tab, comma, or semicolon separated).<br>
                Each serial gets a default comment <b>"All Ok"</b>. Duplicates &amp; stock conflicts are highlighted automatically.
              </div>
@@ -268,8 +268,8 @@
         icon: accepted.length ? "success" : "warning", title: "Bulk Serial Result",
         html: `<div style="text-align:left;line-height:1.8;font-size:14px;">
                  <div>📥 Total pasted: <b>${tokens.length}</b></div>
-                 <div>✅ Added: <b style="color:#16a34a;">${accepted.length}</b></div>
-                 <div>⚠️ Duplicates skipped: <b style="color:#d97706;">${totalDups}</b></div>
+                 <div>✅ Added: <b style="color:var(--ink-green);">${accepted.length}</b></div>
+                 <div>⚠️ Duplicates skipped: <b style="color:var(--ink-amber);">${totalDups}</b></div>
                </div>`,
       });
     });

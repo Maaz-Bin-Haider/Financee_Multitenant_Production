@@ -19,14 +19,14 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  background: #eef2fd;
-  border: 1px solid #c8d4f8;
+  background: var(--tint-blue);
+  border: 1px solid var(--brand-primary-border);
   padding: 2px 7px;
   border-radius: 10px;
   font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 600;
-  color: #1e40af;
+  color: var(--ink-blue);
   margin: 1px;
   white-space: nowrap;
 }
@@ -34,18 +34,18 @@
 /* Stock worth / summary highlight cells */
 .cell-highlight {
   font-weight: 700;
-  color: var(--brand-primary);
+  color: var(--ink-blue);
   font-family: var(--font-mono);
 }
 
 .cell-positive {
-  color: var(--brand-success);
+  color: var(--ink-green);
   font-weight: 600;
   font-family: var(--font-mono);
 }
 
 .cell-negative {
-  color: var(--brand-danger);
+  color: var(--ink-red);
   font-weight: 600;
   font-family: var(--font-mono);
 }

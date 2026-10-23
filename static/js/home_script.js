@@ -450,7 +450,7 @@ async function loadLowStock(threshold=5) {
       <td class="td-name">${esc(r.item_name)}</td>
       <td class="td-muted">${esc(r.category)}</td>
       <td>
-        <strong style="color:${r.units_in_stock===0?"#b91c1c":r.units_in_stock<3?"#d97706":"#15803d"}">${r.units_in_stock}</strong>
+        <strong style="color:${r.units_in_stock===0?"var(--ink-red)":r.units_in_stock<3?"var(--ink-amber)":"var(--ink-green)"}">${r.units_in_stock}</strong>
         <div class="stock-bar-track"><div class="stock-bar-fill ${cls(r.units_in_stock)}" style="width:${pct(r.units_in_stock)}%"></div></div>
       </td>
       <td class="td-amount">${fmt(r.sale_price)}</td>
@@ -497,7 +497,7 @@ async function loadStaleStock(days=30) {
     <tr>
       <td class="td-name">${esc(r.item_name)}</td>
       <td class="td-muted">${esc(r.category)}</td>
-      <td>${r.last_sold_date||'<span style="color:#b91c1c;font-size:.72rem;font-weight:700;">Never sold</span>'}</td>
+      <td>${r.last_sold_date||'<span style="color:var(--ink-red);font-size:.72rem;font-weight:700;">Never sold</span>'}</td>
       <td><span class="days-badge ${(r.days_stale||999)>60?"days-overdue":(r.days_stale||999)>30?"days-medium":"days-fresh"}">${r.days_stale??'N/A'} d</span></td>
       <td>${fmtN(r.units_in_stock)} units</td>
     </tr>`).join("");

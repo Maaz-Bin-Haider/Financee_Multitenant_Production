@@ -112,14 +112,14 @@
 .mpr-gst-row .mpr-gst-remove {
   background: none;
   border: none;
-  color: var(--brand-danger, #dc2626);
+  color: var(--ink-red);
   cursor: pointer;
   font-size: 1rem;
   padding: 2px 4px;
   border-radius: var(--radius-sm);
   transition: background 0.15s;
 }
-.mpr-gst-row .mpr-gst-remove:hover { background: #fee2e2; }
+.mpr-gst-row .mpr-gst-remove:hover { background: var(--tint-red); }
 
 .mpr-gst-add-btn {
   margin-top: 6px;
@@ -136,7 +136,7 @@
   align-items: center;
   gap: 5px;
 }
-.mpr-gst-add-btn:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
+.mpr-gst-add-btn:hover { border-color: var(--brand-primary); color: var(--ink-blue); }
 
 /* ── Report output card ── */
 .mpr-report-card {
@@ -182,8 +182,8 @@
   border-bottom: 2px solid var(--border-color);
   margin-bottom: 6px;
 }
-.mpr-col-header.mpr-assets  { border-color: #059669; color: #059669; }
-.mpr-col-header.mpr-liab    { border-color: #dc2626; color: #dc2626; }
+.mpr-col-header.mpr-assets  { border-color: #059669; color: var(--ink-cyan); }
+.mpr-col-header.mpr-liab    { border-color: #dc2626; color: var(--ink-red); }
 
 /* ── Breakdown table ── */
 .mpr-breakdown-table {
@@ -217,21 +217,21 @@
   border-top: 2px solid var(--border-color);
   border-bottom: none;
 }
-.mpr-breakdown-table tr.mpr-subtotal td:last-child { color: #059669; }
+.mpr-breakdown-table tr.mpr-subtotal td:last-child { color: var(--ink-cyan); }
 
 /* ── Net position summary bar ── */
 .mpr-net-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  background: linear-gradient(135deg, var(--tint-green) 0%, var(--tint-green) 100%);
   border: 2px solid #6ee7b7;
   border-radius: var(--radius-lg);
   padding: 1rem 1.4rem;
   margin-top: 0.5rem;
 }
 .mpr-net-bar.mpr-negative {
-  background: linear-gradient(135deg, #fff1f2 0%, #fef2f2 100%);
+  background: linear-gradient(135deg, var(--tint-red) 0%, var(--tint-red) 100%);
   border-color: #fca5a5;
 }
 .mpr-net-label {
@@ -243,10 +243,10 @@
   font-size: 1.5rem;
   font-weight: 800;
   font-family: var(--font-mono);
-  color: #059669;
+  color: var(--ink-cyan);
   letter-spacing: -0.02em;
 }
-.mpr-net-bar.mpr-negative .mpr-net-value { color: #dc2626; }
+.mpr-net-bar.mpr-negative .mpr-net-value { color: var(--ink-red); }
 
 /* ── Income Statement layout ── */
 .mpr-income-block {
@@ -299,11 +299,11 @@
   justify-content: space-between;
   padding: 1rem 1.4rem;
   border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  background: linear-gradient(135deg, var(--tint-green), var(--tint-green));
   border: 2px solid #6ee7b7;
 }
 .mpr-income-banner.mpr-loss {
-  background: linear-gradient(135deg, #fff1f2, #fef2f2);
+  background: linear-gradient(135deg, var(--tint-red), var(--tint-red));
   border-color: #fca5a5;
 }
 .mpr-income-banner-label { font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); }
@@ -311,10 +311,10 @@
   font-size: 1.5rem;
   font-weight: 800;
   font-family: var(--font-mono);
-  color: #059669;
+  color: var(--ink-cyan);
   letter-spacing: -0.02em;
 }
-.mpr-income-banner.mpr-loss .mpr-income-banner-value { color: #dc2626; }
+.mpr-income-banner.mpr-loss .mpr-income-banner-value { color: var(--ink-red); }
 
 /* ── Toolbar: PDF / Print ── */
 .mpr-toolbar {
@@ -340,14 +340,14 @@
   transition: all 0.15s;
 }
 .mpr-toolbar-btn:hover {
-  background: var(--gray-100);
+  background: var(--bg-surface-alt);
   color: var(--text-primary);
 }
-.mpr-toolbar-btn.mpr-btn-pdf  { border-color: #ef4444; color: #ef4444; }
-.mpr-toolbar-btn.mpr-btn-pdf:hover  { background: #fee2e2; }
-.mpr-toolbar-btn.mpr-btn-print { border-color: var(--brand-primary); color: var(--brand-primary); }
+.mpr-toolbar-btn.mpr-btn-pdf  { border-color: #ef4444; color: var(--ink-red); }
+.mpr-toolbar-btn.mpr-btn-pdf:hover  { background: var(--tint-red); }
+.mpr-toolbar-btn.mpr-btn-print { border-color: var(--brand-primary); color: var(--ink-blue); }
 .mpr-toolbar-btn.mpr-btn-print:hover { background: var(--brand-primary-light); }
 
 /* ── Color helpers ── */
-.mpr-green { color: #059669 !important; }
-.mpr-red   { color: #dc2626 !important; }
+.mpr-green { color: var(--ink-cyan) !important; }
+.mpr-red   { color: var(--ink-red) !important; }

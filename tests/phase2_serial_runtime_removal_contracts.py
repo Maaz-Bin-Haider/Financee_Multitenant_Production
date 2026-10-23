@@ -155,7 +155,7 @@ bootstrap_tenant_section = bootstrap[
 checks = {
     "12 serial document implementations are source-identical to deployed Phase 1":
         all(function_hash(path) == expected for path, expected in SERIAL_FUNCTION_BASELINES.items()),
-    # Re-pinned 2026-10-23 for the deliberate Phase 1 dark-theme foundation.
+    # Re-pinned 2026-10-23 for the deliberate Phase 1 dark-theme port.
     # SQL and the serial document implementations remain unchanged.
     # Re-pinned 2026-10-02 for per-module feature switches (223 -> 225):
     # templates/home_templtes/quick_actions.html and
@@ -167,7 +167,7 @@ checks = {
     # Previously re-pinned 2026-09-30 for draft sale invoices (212 -> 223).
     "225 serial UI source files are byte-identical to the reviewed 2026-10-23 baseline":
         len(serial_ui_paths) == 225
-        and files_hash(serial_ui_paths) == "450c5c41df15d2152c4bf71d70866593f96ddffb16ff71847cd8172440d0165c",
+        and files_hash(serial_ui_paths) == "5afb0c95e2ca41690f960eade200dd6e4e39f0e78ba9a22ab4ee81e2e494035a",
     # Re-pinned 2026-09-16 for the dashboard receivables fix (tenant schema
     # version 7). These baselines exist to catch ACCIDENTAL drift in serial
     # behaviour; this change was deliberate and reviewed, so the pins move with

@@ -589,8 +589,11 @@ Colours come from semantic tokens in `base_styling.css`; soft `--tint-*`
 backgrounds pair with `--ink-*` text. Do not redefine base tokens in page CSS.
 The custom admin and PDF/print output retain their own fixed light treatment.
 The sidebar still identifies both company and user. Screen-specific colour
-parity is being completed in the subsequent Phase 1 commits; see the rollout
-plan for the local review gate.
+parity covers transactions, master data, cash flow, reports, dashboard, opening
+stock/cash, equity, month close, attachments and subscription surfaces. The
+dashboard chart and monthly report print window keep fixed light export
+colours. See the rollout plan for automated/browser verification and the
+owner-controlled local review gate.
 
 ## Frontend Alert Layer (SweetAlert2)
 
