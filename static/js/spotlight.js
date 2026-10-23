@@ -28,6 +28,9 @@
   if (!data) return;
   const config = JSON.parse(data.textContent);
   const key = 'financee.spotlight.recents:' + config.storage;
+  const sessionKey = 'financee.spotlight.active-session';
+  let sessionChanged = false;
+  try {root.localStorage.setItem(sessionKey,config.scope);} catch (_) {}
   const layer = document.getElementById('spotlight-layer'), input = document.getElementById('spotlight-query');
   const list = document.getElementById('spotlight-results'), live = document.getElementById('spotlight-live');
   const R = root.FinanceeRecordLink;
@@ -44,11 +47,13 @@
     if (focusBefore && focusBefore.isConnected) focusBefore.focus();
   }
   async function api(endpoint, params, signal) {
+    if(sessionChanged)throw new Error('Your session changed. Reload this page.');
     const response = await fetch('/spotlight/' + endpoint + '/?' + new URLSearchParams(params), {
       credentials:'same-origin', cache:'no-store', signal,
       headers:{'X-Requested-With':'XMLHttpRequest','X-Spotlight-Scope':config.scope}
     });
     const body = await response.json();
+    if(sessionChanged)throw new Error('Your session changed. Reload this page.');
     if ([401,403,409].includes(response.status)) {
       throw new Error(body.message || 'Search is unavailable. Reload this page.');
     }
@@ -120,12 +125,14 @@
         else if (existing) existing.next=null;
       } else groups=body.groups;
       render();
+      if(kind)input.focus();
     } catch(error) {
       if (error.name==='AbortError' || current!==epoch || layer.hidden) return;
       clearResults(); list.append(element('p','sp-empty',error.message)); live.textContent=error.message;
     } finally {list.setAttribute('aria-busy','false');}
   }
   function open() {
+    if(sessionChanged){root.Alerts.notify('Your session changed. Reload this page.');return;}
     if (!layer.hidden) {close();return;}
     focusBefore=document.activeElement;
     inertBefore=Array.from(document.body.children).filter(el=>el!==layer && !['SCRIPT','LINK','STYLE'].includes(el.tagName)).map(el=>[el,el.inert]);
@@ -175,6 +182,13 @@
   },true);
   document.addEventListener('visibilitychange',()=>{if(document.hidden && !layer.hidden)close();});
   root.addEventListener('pagehide',close);
+  root.addEventListener('storage',event=>{
+    if(event.key===sessionKey && event.newValue!==config.scope){sessionChanged=true;close();}
+  });
+  document.querySelectorAll('a[href="/authentication/logout/"]').forEach(link=>link.addEventListener('click',()=>{
+    try {root.localStorage.removeItem(sessionKey);}catch(_){}
+    sessionChanged=true;close();
+  }));
   // Consume links after the page's own form initialization, using its existing renderers.
   async function recordLink() {
     const path=root.location.pathname;

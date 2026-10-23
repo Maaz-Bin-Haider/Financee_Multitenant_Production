@@ -109,7 +109,7 @@ def decorate(request, kind, row):
     row['href'] = link(target, {kind if kind in policy.MASTERS else 'open': row['id']})
     if kind in policy.DOCUMENTS:
         row['name'] = f'{target.label} #{row["id"]}'
-        row['meta'] = ' · '.join(str(row[key] or '') for key in ('date', 'party', 'reference', 'description'))[:240]
+        row['meta'] = ' · '.join(str(row[key] or '') for key in ('date', 'party', 'reference', 'description') if row.get(key))[:240]
     return row
 
 
