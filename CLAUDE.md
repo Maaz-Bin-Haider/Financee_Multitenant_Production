@@ -113,3 +113,13 @@ outcome. See `REPORT_EMAIL_RUNBOOK.md` for setup, scheduling, worker lifecycle,
 rollback, restore and the isolated Mailpit review environment.
 
 Update `PROJECT_CONTEXT.md` when architecture, routes, permissions, tenant SQL, deployment, env vars, or tests change. Log diagnosed production/setup fixes in `FIXED_ISSUES.md`.
+
+
+Spotlight uses the request's company only. `spotlight/policy.py` must mirror
+source-screen permissions and company switches, including report sub-features.
+Keep serial cost/sale/reservation projections separate. Recents persist IDs
+only, scoped by company/user, and are revalidated server-side. Use the existing
+read endpoints/renderers and report functions; quick actions only prefill.
+Run `node tests/test_spotlight.js` and the disposable `test_spotlight.py` suite
+for search/link changes. The Phase 3 local authorization and review checkpoint
+are recorded in `tests/PHASE3_SPOTLIGHT_REVIEW.md`; no push is authorized.

@@ -247,3 +247,13 @@ branch and running review stack, hand off to a fresh chat, and await further
 instructions. The documentation handoff does not change the approved build.
 
 Phase 3 local exception (2026-10-23): the owner explicitly instructed "keep phase 2 on local and start phase 3". Spotlight may proceed locally on `codex/spotlight` from `82f3d7e` without releasing Phase 2 first. All commits remain local. Preserve the Phase 1/2 review stacks and use a separate Phase 3 review project. The owner review/no-push stop applies after Spotlight; Team Activity remains gated.
+
+Phase 3 checkpoint (2026-10-23): Spotlight is implemented locally on
+`codex/spotlight` above the unpushed Phase 2 handoff. Application `f7e21b0`
+passed all 24 regression modules, 13 targeted PostgreSQL/HTTP scenarios,
+source/release/recovery contracts, compatibility and browser verification.
+See `tests/PHASE3_SPOTLIGHT_REVIEW.md` for exact evidence, commits, limitations
+and the owner checklist. Leave its separate review application at
+`http://financee-review-spotlight.localhost:8183/` running. Keep Phase 1/2
+stacks/data intact. Owner Spotlight review is pending. No push, merge,
+deployment or Team Activity work is authorized. STOP for the owner.

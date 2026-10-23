@@ -6,6 +6,17 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
+- **Phase 3 Spotlight ready for owner review (2026-10-23):** implemented locally
+  on `codex/spotlight` above Phase 2 handoff `82f3d7e`, by explicit owner
+  instruction to keep Phase 2 local and start Phase 3. Application `f7e21b0`
+  passed all 24 regression modules, 13 targeted integration scenarios, source/
+  release/recovery contracts, compatibility and browser checks. See
+  `tests/PHASE3_SPOTLIGHT_REVIEW.md`. The separate review app is
+  `http://financee-review-spotlight.localhost:8183/`; its private temporary
+  handoff records the exact final image/credentials. Preserve all three review
+  stacks/data. No Phase 2/3 push, merge or deployment is authorized; Spotlight
+  owner review is pending and Team Activity remains unstarted. STOP here.
+
 - **Phase 3 locally authorized (2026-10-23):** the owner instructed "keep phase 2 on local and start phase 3", explicitly allowing local Spotlight work before Phase 2 release. Work on `codex/spotlight`, based on the clean Phase 2 handoff `82f3d7e`. Phase 2 remains unpushed and reviewed at `c2a63b3`. No push, merge or deployment is authorized. Preserve both existing review stacks/data; build Phase 3 separately on its own ports. Stop for owner review after Spotlight; do not start Team Activity.
 
 - **Phase 2 owner manual review passed; do not push (2026-10-23):** the owner
