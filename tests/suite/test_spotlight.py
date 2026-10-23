@@ -163,6 +163,8 @@ class Spotlight(unittest.TestCase):
         self.users[0].groups.add(group)
         rows = self.rows(q='draft')
         self.assertFalse(any(row['id'] in ('draft','confirm','pending') for row in rows))
+        party = next(row for row in self.rows(q='SP SAME CUSTOMER') if row['kind']=='party')
+        self.assertEqual(self.get('resolve', kind='action', action='sale', id=party['id']).status_code, 403)
         def request(user):
             try:
                 client = Client(SERVER_NAME='localhost'); client.force_login(user)
@@ -175,6 +177,46 @@ class Spotlight(unittest.TestCase):
     def test_09_all_search_groups(self):
         for kind in (*policy.DOCUMENTS, *policy.MASTERS, 'serial'):
             self.assertEqual(self.get(q='SP', kind=kind).status_code, 200, kind)
+
+    def test_10_voucher_aliases_metadata_and_numeric_queries(self):
+        for text in ('1', '#1', 'sale #1', 'invoice1', 'sales 1'):
+            self.assertTrue(any(row['kind']=='sale' and row['id']=='1' for row in self.rows(q=text)), text)
+        for text in ('SP PHONE', 'PHONE SAME'):
+            self.assertTrue(any(row['kind']=='item' for row in self.rows(q=text)), text)
+        # References and kind prefixes follow the same document numbering as the screens.
+        t = self.testers[0]
+        t.exec('SELECT make_payment(%s::jsonb)', [json.dumps({'party_name':'SP SAME VENDOR',
+            'amount':10, 'method':'Cash', 'payment_date':'2025-07-04', 'reference_no':'SP-VOUCHER',
+            'created_by_id':self.users[0].pk})])
+        self.assertTrue(any(row['kind']=='payment' for row in self.rows(q='PMT-1')))
+        self.assertTrue(any(row['kind']=='payment' for row in self.rows(q='SP-VOUCHER')))
+
+    def test_11_paging_and_representative_query_cost(self):
+        t = self.testers[0]
+        t.exec("INSERT INTO items(item_id,item_name,brand,category) SELECT 100000+n, 'SP PERF PHONE ' || n, 'SPBRAND', 'PHONES' FROM generate_series(1,10000) n")
+        try:
+            started = time.perf_counter()
+            response = self.get(q='SPBRAND')
+            elapsed = time.perf_counter()-started
+            self.assertEqual(response.status_code, 200)
+            group = next(g for g in response.json()['groups'] if g['key']=='item')
+            self.assertEqual(len(group['results']), queries.LIMIT); self.assertEqual(group['next'], queries.LIMIT)
+            second = self.get(q='SPBRAND', kind='item', offset=queries.LIMIT).json()['groups'][0]
+            self.assertFalse(set(row['id'] for row in group['results']) & set(row['id'] for row in second['results']))
+            self.assertLess(elapsed, 2.5)
+            print(f'Spotlight 10000-item all-group search: {elapsed*1000:.1f} ms; bounded pages {queries.LIMIT}.')
+        finally:
+            t.exec('DELETE FROM items WHERE item_id BETWEEN 100001 AND 110000')
+
+    def test_12_revoked_recents_and_no_membership(self):
+        self.users[0].user_permissions.clear()
+        groups = self.get(recent='sale:1,party:1,serial:1').json()['groups']
+        self.assertFalse(any(g['key']=='recent' for g in groups))
+        user = get_user_model().objects.create_user(username=self.tag+'_orphan')
+        try:
+            self.client.force_login(user)
+            self.assertEqual(self.get().status_code, 403)
+        finally: user.delete()
 
 
 if __name__ == '__main__': unittest.main(verbosity=2)

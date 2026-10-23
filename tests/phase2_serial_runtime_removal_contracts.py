@@ -167,7 +167,7 @@ checks = {
     # Previously re-pinned 2026-09-30 for draft sale invoices (212 -> 223).
     "231 serial UI source files match the local Spotlight baseline":
         len(serial_ui_paths) == 231
-        and files_hash(serial_ui_paths) == "0b7c8edb62ba22db649ec276804c1a1d991d8c1d8563388f07da5a16f55fcf46",
+        and files_hash(serial_ui_paths) == "3b947a8b66c7d5809d3ceb3d500dc6ded12a49942cde5536d9b225d8a69d0b4e",
     # Re-pinned 2026-09-16 for the dashboard receivables fix (tenant schema
     # version 7). These baselines exist to catch ACCIDENTAL drift in serial
     # behaviour; this change was deliberate and reviewed, so the pins move with

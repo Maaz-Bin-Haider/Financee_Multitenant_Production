@@ -44,10 +44,14 @@ def search(kind, text, offset=0):
     number = int(text) if re.fullmatch(r'[1-9][0-9]{0,15}', text) and int(text) <= MAX_ID else -1
     if kind in ('party', 'item'):
         table, pk, name, meta = ('parties', 'party_id', 'party_name', 'party_type') if kind == 'party' else ('items', 'item_id', 'item_name', "concat_ws(' · ',brand,category,item_code)")
+        fields = name if kind == 'party' else "concat_ws(' ',item_name,item_code,brand,category)"
+        tokens = text.lower().split()[:8]
+        predicate = ' AND '.join(f"lower({fields}) LIKE %s ESCAPE '\\'" for _ in tokens)
         return fetch(f"SELECT {pk}::text AS id, {name} AS name, {meta} AS meta FROM {table} "
-                     f"WHERE lower({name}) LIKE %s ESCAPE '\\' OR {pk}=%s "
-                     f"ORDER BY ({pk}=%s) DESC, (lower({name}) LIKE %s ESCAPE '\\') DESC, lower({name}), {pk} "
-                     'LIMIT %s OFFSET %s', [like, number, number, prefix, LIMIT + 1, offset])
+                     f"WHERE ({predicate}) OR {pk}=%s "
+                     f"ORDER BY ({pk}=%s) DESC, (lower({name})=%s) DESC, (lower({name}) LIKE %s ESCAPE '\\') DESC, lower({name}), {pk} "
+                     'LIMIT %s OFFSET %s', ['%' + escaped(token) + '%' for token in tokens] +
+                     [number, number, text.lower(), prefix, LIMIT + 1, offset])
     if kind == 'serial':
         return fetch("SELECT unit_id::text AS id, serial_number AS name, '' AS meta FROM purchaseunits "
                      "WHERE lower(serial_number) LIKE %s ESCAPE '\\' ORDER BY (lower(serial_number)=%s) DESC, serial_number, unit_id LIMIT %s OFFSET %s",
@@ -60,12 +64,21 @@ def search(kind, text, offset=0):
     date_sql = 'sr.return_date' if kind == 'draft_return' else 'd.' + day
     desc_sql = 'sr.description' if kind == 'draft_return' else 'd.description'
     amount = 'sr.total_amount' if kind == 'draft_return' else 'd.' + amount if amount != 'NULL::numeric' else amount
-    return fetch(f"SELECT d.{pk}::text AS id, p.party_name AS party, {date_sql} AS date, {amount}::text AS amount, "
-                 f"coalesce({desc_sql},'') AS description FROM {table} d {joins} JOIN parties p ON p.party_id={party} "
-                 f"WHERE ({where}) AND (d.{pk}=%s OR lower(p.party_name) LIKE %s ESCAPE '\\' "
-                 f"OR lower(coalesce({desc_sql},'')) LIKE %s ESCAPE '\\') "
-                 f"ORDER BY (d.{pk}=%s) DESC, {date_sql} DESC, d.{pk} DESC LIMIT %s OFFSET %s",
-                 [number, like, like, number, LIMIT + 1, offset])
+    reference = 'd.reference_no' if kind in ('payment', 'receipt', 'contra') else "''::text"
+    to_join = ' JOIN parties pto ON pto.party_id=d.to_party_id' if kind == 'contra' else ''
+    party_sql = "concat_ws(' → ',p.party_name,pto.party_name)" if kind == 'contra' else 'p.party_name'
+    columns = (f"SELECT d.{pk}::text AS id, {party_sql} AS party, {date_sql} AS date, {amount}::text AS amount, "
+               f"coalesce({desc_sql},'') AS description, {reference} AS reference FROM {table} d {joins} {to_join} JOIN parties p ON p.party_id={party} ")
+    if number > 0:
+        # Numeric document lookups use the existing tenant primary-key index.
+        return fetch(columns + f"WHERE ({where}) AND d.{pk}=%s", [number])
+    fields = f"concat_ws(' ',{party_sql},{desc_sql},{reference},{date_sql}::text)"
+    tokens = text.lower().split()[:8]
+    predicate = ' AND '.join(f"lower({fields}) LIKE %s ESCAPE '\\'" for _ in tokens)
+    return fetch(columns + f"WHERE ({where}) AND ({predicate}) "
+                 f"ORDER BY {date_sql} DESC, d.{pk} DESC LIMIT %s OFFSET %s",
+                 ['%' + escaped(token) + '%' for token in tokens] + [LIMIT + 1, offset])
+
 
 
 def master(kind, ident):

@@ -940,3 +940,34 @@ regression workers are delivery-disabled while tests invoke controlled ticks.
 Report Email operation, setup, provider policy, schedule semantics, SMTP
 ambiguity and worker rollback/recovery commands are in `REPORT_EMAIL_RUNBOOK.md`.
 Review handoffs use project-specific `.localhost` hosts to isolate browser cookies.
+
+### Spotlight Search (Phase 3 local implementation)
+
+The `spotlight` app exposes read-only `/spotlight/search/` and `/spotlight/resolve/`.
+Only the authenticated membership activates the tenant; request company/schema
+parameters never select it. Its per-company `spotlight` switch defaults off in
+new-company plans. There is no new permission, model, public migration, tenant
+SQL patch, version bump or posting-function change. Existing tenant primary keys
+handle numeric document lookups; bounded substring searches use parameterized,
+escaped text, six-row pages and a 1.5-second per-statement timeout. A 10,000-item
+all-group query is measured in the integration suite, rather than adding an
+unnecessary index/extension or changing tenant recovery contracts.
+
+`spotlight/policy.py` is the target-screen capability list, including both
+report permissions and company feature flags. Draft pages also follow the
+runtime switch and read-only-group guard. Report Email follows its runtime
+switch and both Phase 2 permissions. Serial summaries project purchase, sale
+and reservation details only to eligible callers. No broad search permission
+can bypass source-screen access. Every recent or clicked result is resolved
+again; browser storage contains only record identifiers, namespaced by company
+and user. API responses are private/no-store and a session-bound scope token
+refuses a stale tab after account changes. Canceled/out-of-order responses are
+discarded; hidden tabs close and clear the palette.
+
+Cmd/Ctrl+K, `/` outside an editable field and desktop/mobile buttons open the
+palette. `record_link.js` consumes parameters once and selects permitted report
+tabs. `?open=` uses existing document read endpoints/renderers; master links
+use strict IDs instead of name matching. Quick actions prefill existing forms
+only, validate customer/vendor/cash scope, and refuse ambiguous or wildcard
+names because those forms still save by name. Existing entry pickers and
+business posting logic remain unchanged. Missing targets leave the form stable.

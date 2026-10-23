@@ -73,7 +73,7 @@
     clearResults();
     for (const group of groups) {
       if (!group.results.length) continue;
-      const section=element('div','sp-group'); section.append(element('div','sp-group-title',group.title));
+      const section=element('div','sp-group'); section.setAttribute('role','group'); section.setAttribute('aria-label',group.title); section.append(element('div','sp-group-title',group.title));
       for (const record of group.results) {
         const row=element('div','sp-row'); row.id='sp-result-'+rows.length;
         row.setAttribute('role','option'); row.setAttribute('aria-selected','false');
@@ -94,7 +94,10 @@
         row.addEventListener('click',()=>activate(record)); section.append(row);
       }
       if (group.next != null) {
-        const more=element('button','sp-more-button','Show more '+group.title.toLowerCase()); more.type='button';
+        const more=element('div','sp-row sp-more','Show more '+group.title.toLowerCase());
+        more.id='sp-result-'+rows.length; more.setAttribute('role','option'); more.setAttribute('aria-selected','false');
+        const index=rows.length; rows.push({record:{kind:'more',group:group.key,offset:group.next},element:more});
+        more.addEventListener('pointermove',()=>select(index));
         more.addEventListener('click',()=>search(group.key,group.next)); section.append(more);
       }
       list.append(section);
@@ -131,6 +134,7 @@
     input.setAttribute('aria-expanded','true'); input.focus(); search();
   }
   async function activate(record) {
+    if(record.kind==='more'){search(record.group,record.offset);return;}
     if (busy) return;
     busy=true; const current=epoch;
     try {

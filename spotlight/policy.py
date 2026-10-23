@@ -18,6 +18,8 @@ class Target:
         feature = self.feature or feature_for_path(self.path)
         if not company or (feature and not company.feature_enabled(feature)):
             return False
+        if any(perm.startswith('create_') for perm in self.perms) and request.user.groups.filter(name='view_only_users').exists():
+            return False
         if self.path.startswith('/draft/'):
             if not settings.DRAFT_SALES_ENABLED or request.user.groups.filter(name='view_only_users').exists():
                 return False

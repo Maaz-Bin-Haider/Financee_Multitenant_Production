@@ -91,6 +91,10 @@ if "reportmailer" in settings.INSTALLED_APPS:
     EXPECTED_DEFAULT_OFF.add("report_email")
     EXPECTED_GROUPS.add("report_email")
 
+if "spotlight" in settings.INSTALLED_APPS:
+    EXPECTED_DEFAULT_OFF.add("spotlight")
+    EXPECTED_GROUPS.add("spotlight")
+
 def chk(name, ok, detail=""):
     RESULTS.append((name, bool(ok), "" if ok else str(detail)))
     return bool(ok)

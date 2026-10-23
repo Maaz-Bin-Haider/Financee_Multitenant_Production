@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'attachments',
     'draft',
     'reportmailer',
+    'spotlight',
 ]
 
 MIDDLEWARE = [

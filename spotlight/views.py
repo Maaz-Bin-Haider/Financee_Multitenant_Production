@@ -1,5 +1,5 @@
 """Request-scoped, read-only Spotlight API. Membership alone selects the schema."""
-import json
+import re
 from functools import wraps
 from urllib.parse import urlencode
 from django.db import DatabaseError, connection, transaction
@@ -82,7 +82,11 @@ def serial_row(request, row):
     row['state'] = 'In stock' if detail['in_stock'] else 'Out of stock'
     if access['bought']:
         row['bought'] = {key: detail[key] for key in ('vendor_name', 'purchase_price', 'purchase_date', 'purchase_invoice_id')}
-    if access['sold']:
+    if not detail['in_stock'] and detail['current_status'] == 'Sold':
+        row['state'] = 'Sold'
+    elif not detail['in_stock'] and queries.fetch('SELECT EXISTS(SELECT 1 FROM purchasereturnitems WHERE serial_number=%s) AS returned', [row['name']])[0]['returned']:
+        row['state'] = 'Returned to vendor'
+    if access['sold'] and not detail['in_stock'] and detail['current_status'] == 'Sold':
         row['sold'] = {key: detail[key] for key in ('customer_name', 'sold_price', 'sale_date', 'sales_invoice_id')}
     if access['reserved'] and detail['is_reserved']:
         row['state'] = 'Reserved'
@@ -105,7 +109,7 @@ def decorate(request, kind, row):
     row['href'] = link(target, {kind if kind in policy.MASTERS else 'open': row['id']})
     if kind in policy.DOCUMENTS:
         row['name'] = f'{target.label} #{row["id"]}'
-        row['meta'] = ' · '.join(str(row[key] or '') for key in ('date', 'party', 'description'))[:240]
+        row['meta'] = ' · '.join(str(row[key] or '') for key in ('date', 'party', 'reference', 'description'))[:240]
     return row
 
 
@@ -158,23 +162,25 @@ def search(request):
              and all(token in (target.label + ' ' + target.words).lower() for token in text.lower().split())]
     if not selected:
         groups.append(dict(key='pages', title='Pages & reports', results=pages[:12], next=None))
-    if len(text) >= 2:
+    if len(text) >= 2 or re.fullmatch(r'[1-9]', text):
         # A typed kind + number ("sale 12", "purchase return 3") disambiguates.
         aliases = {'sale': 'sale', 'sales': 'sale', 'purchase': 'purchase', 'payment': 'payment',
                    'receipt': 'receipt', 'contra': 'contra', 'draft': 'draft', 'sale return': 'sale_return',
                    'purchase return': 'purchase_return', 'draft return': 'draft_return'}
-        words = text.lower().rsplit(' ', 1)
-        named = aliases.get(words[0]) if len(words) == 2 and words[1].isdigit() else None
+        aliases.update({'sales':'sale','purchases':'purchase','payments':'payment','receipts':'receipt','invoice':'sale','pur':'purchase','sr':'sale_return','pr':'purchase_return','pmt':'payment','rct':'receipt','con':'contra'})
+        exact = re.fullmatch(r'([a-z ]+?)\s*[#-]?\s*([1-9][0-9]{0,15})', text.lower())
+        named = aliases.get(exact[1].strip()) if exact else None
+        numeric = text.removeprefix('#') if text.removeprefix('#').isdigit() else text
         kinds = [selected] if selected else [*policy.MASTERS, 'serial', *policy.DOCUMENTS]
         for kind in kinds:
-            if not allowed_kind(request, kind) or (named and kind != named):
+            if not allowed_kind(request, kind) or (named and kind != named) or (kind == 'serial' and len(text) < 2):
                 continue
-            rows = queries.search(kind, words[1] if named else text, offset)
+            rows = queries.search(kind, exact[2] if named else numeric if kind in policy.DOCUMENTS else text, offset)
             shown = [result for row in rows[:queries.LIMIT] if (result := decorate(request, kind, row))]
             if shown:
                 groups.append(dict(key=kind, title=policy.MASTERS[kind].label if kind in policy.MASTERS else
                                    'Serials' if kind == 'serial' else policy.DOCUMENTS[kind].label + 's',
-                                   results=shown, next=offset + queries.LIMIT if len(rows) > queries.LIMIT else None))
+                                   results=shown, next=offset + queries.LIMIT if len(rows) > queries.LIMIT and offset + queries.LIMIT <= 600 else None))
         if not selected:
             actions = []
             for group in groups:
