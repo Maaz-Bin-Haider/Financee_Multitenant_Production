@@ -61,8 +61,10 @@ def _build_has_draft_invoices():
 
 
 # The Phase 1 table baseline, plus draftinvoices, draftitems, draftunits and
-# draftreturns on builds that carry the draft invoice feature.
-BASELINE_TABLES = 24 + (4 if _build_has_draft_invoices() else 0)
+# draftreturns on builds that carry the draft invoice feature, plus the three
+# additive report-mail configuration/recipient/log tables where installed.
+HAS_REPORT_EMAIL = (ROOT / "reportmailer").is_dir() and "CREATE TABLE IF NOT EXISTS report_email_settings" in (ROOT / "tenancy/sql/tenant_template.sql").read_text()
+BASELINE_TABLES = 24 + (4 if _build_has_draft_invoices() else 0) + (3 if HAS_REPORT_EMAIL else 0)
 
 
 def chk(name, ok, detail=""):
@@ -207,7 +209,9 @@ def main():
                 QUANTITY_FUNCTIONS.intersection(schema_catalog["functions"]))
             chk(f"{company.name} retains Phase 1 table/index baseline",
                 len(schema_catalog["tables"]) == BASELINE_TABLES
-                and len(schema_catalog["indexes"]) >= 86,
+                and len(schema_catalog["indexes"]) >= 86
+                and {"report_email_settings", "report_email_recipients", "report_email_log"}.intersection(schema_catalog["tables"])
+                    == ({"report_email_settings", "report_email_recipients", "report_email_log"} if HAS_REPORT_EMAIL else set()),
                 (len(schema_catalog["tables"]), len(schema_catalog["indexes"])))
             chk(f"{company.name} trial balance remains balanced",
                 q(company.schema_name, """
