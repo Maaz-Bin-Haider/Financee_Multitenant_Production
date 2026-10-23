@@ -183,7 +183,9 @@ restore_output=$(
     KEEP_RESTORE_STACK=1 \
     bash restore_rehearsal.sh
 )
-restore_rto=$(printf '%s\n' "$restore_output" | sed -n 's/^RESTORE_RTO_SECONDS=//p')
+printf '%s\n' "$restore_output" >"$artifact_dir/restore-output.txt"
+restore_rto=$(printf '%s\n' "$restore_output" | tr -d '\r' | sed -n 's/.*RESTORE_RTO_SECONDS=\([0-9][0-9]*\).*/\1/p' | tail -1)
+[[ "$restore_rto" =~ ^[0-9]+$ ]]
 [[ "$restore_output" = *"RESTORE_RESULT=PASS"* ]]
 
 echo "==> Applying forward migrations and proving serial-only creation"
