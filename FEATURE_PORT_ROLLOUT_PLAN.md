@@ -1,6 +1,6 @@
 # Financee feature rollout plan
 
-Created: 2026-10-23. Status: planning only; feature implementation has not started.
+Created: 2026-10-23. Status: Phase 1 authorized and in progress; later phases remain gated.
 
 ## 1. Scope and working agreement
 
@@ -15,7 +15,7 @@ Financee is the only repository to modify. `/Users/swisstech/Development/Account
 
 The owner requires small, meaningful commits throughout implementation, an isolated local running system after each completed feature, manual owner verification, and an explicit instruction before any push. Do not implement all four features in one uninterrupted batch. Do not start the next feature while the current feature is waiting for review or release approval.
 
-The present task creates and commits this plan only. The next implementation task is Phase 1 when the owner asks to start it.
+The owner instructed "start" on 2026-10-23, authorizing Phase 1 implementation. Later feature phases still require the preceding manual review/push/release gates.
 
 ### Baseline and branch
 
@@ -215,4 +215,4 @@ GitHub will receive these commits only after the owner's authorized push. No con
 - [ ] Phase 3: Spotlight, automated checks, owner review, authorized push/release.
 - [ ] Phase 4: Team Activity, automated checks, owner review, authorized push/release; separately authorized production backfill where needed.
 
-Next action: await the owner's instruction to begin Phase 1. Nothing has been pushed.
+Current action: implement and verify Phase 1, then leave its isolated review build running for the owner. Nothing has been pushed.

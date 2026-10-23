@@ -9,8 +9,9 @@ This file is the persistent engineering context for Financee. Update it on every
 - **New requested work (2026-10-23):** the owner wants Accounting Plus
   Inventory's dark mode, report emails, Spotlight and Team Activity adapted to
   this multitenant product. See `FEATURE_PORT_ROLLOUT_PLAN.md` for the ordered
-  feature phases and implementation details. This is planning only; do not
-  begin implementation until asked. Accounting Plus Inventory is a read-only
+  feature phases and implementation details. The owner authorized Phase 1 on
+  2026-10-23: isolated local review environment and Accounting-style dark mode
+  with dark as the default. Phases 2-4 remain gated. Accounting Plus Inventory is a read-only
   reference and must not be modified. Commit each meaningful increment locally.
   After each completed feature, run Financee in an isolated local environment,
   hand it to the owner for manual review, and stop. Never push without the
@@ -22,6 +23,17 @@ This file is the persistent engineering context for Financee. Update it on every
   `feature/dark-mode` commit is `6e4fe68`; it is not in that deployed release.
   The older release notes below are historical. The plan is on local branch
   `codex/financee-feature-rollout`, based on `main`; nothing has been pushed.
+- **Local review helper (Phase 1):** standalone
+  `deploy/docker-compose.review.yml`, managed by `python3 deploy/review_stack.py`
+  (`start/status/stop/remove/test --project financee_review_darkmode`). Only
+  named review projects on a local Docker Unix socket are allowed; suite runs
+  require a separate `financee_review_regression*` project and removal requires
+  exact confirmation. Generated env/credentials live in the user's temporary
+  directory, outside the checkout. The internal network has no outbound SMTP,
+  DB/Redis have no host ports, and Nginx publishes only on loopback (8180 by
+  default). `tests/review_seed.py` requires the review project/database markers,
+  creates synthetic Alpha/Beta companies and a suspended user, disables billing
+  email, and preserves reviewer edits on repeated startup. No real data is used.
 - **System state:** serial-only, and the consolidation is **complete**. The
   quantity company family is retired in runtime, database and repository.
   Serial business behaviour is unchanged throughout.
