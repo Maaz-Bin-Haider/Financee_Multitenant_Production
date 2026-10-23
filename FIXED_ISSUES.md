@@ -902,3 +902,14 @@ hostname and matching allowed hosts/CSRF origins. Those names resolve to
 loopback in the browser without changing the host's DNS configuration.
 The capture inbox uses a separate `.localhost` name. Port publication remains
 loopback-only; production cookie behavior and Accounting are unchanged.
+
+## 2026-10-23: Inherited Database Variables Overrode Isolated Restore Credentials
+
+A database-only restore rehearsal failed because the caller's `DB_USER` and
+`DB_NAME` took precedence over Compose's explicit `--env-file`. Both restore
+helpers now unset inherited database connection variables before resolving
+their isolated environment file. The matching web and report worker use that
+same file, with report delivery disabled throughout the rehearsal.
+A real encrypted database restore passed with deliberately conflicting caller
+credentials: five tenant schemas verified, worker healthy, recovery time 50
+seconds. No production database was used.

@@ -27,6 +27,9 @@ esac
     exit 2
 }
 
+# --env-file does not override inherited interpolation variables. A caller's
+# production/backup DB_* values must never select the isolated DB credentials.
+unset DB_NAME DB_USER DB_PASSWORD DB_HOST DB_PORT
 export WEB_ENV_FILE="$RESTORE_ENV_FILE"
 
 compose=(

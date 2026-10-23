@@ -32,6 +32,9 @@ esac
 # itself replace a service-level `env_file:`. The compose file reads this
 # override so the isolated web container connects with the isolated database
 # name/user/password rather than deploy/.env production credentials.
+# --env-file does not override inherited interpolation variables. A caller's
+# production/backup DB_* values must never select the isolated DB credentials.
+unset DB_NAME DB_USER DB_PASSWORD DB_HOST DB_PORT
 export WEB_ENV_FILE="$RESTORE_ENV_FILE"
 
 backup_basename=$(basename "$BACKUP_FILE")

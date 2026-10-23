@@ -21,6 +21,8 @@ def main():
         "isolated web receives restore credentials":
             'export WEB_ENV_FILE="$RESTORE_ENV_FILE"' in restore and
             "env_file: ${WEB_ENV_FILE:-.env}" in compose,
+        "inherited database credentials cannot override the isolated restore":
+            "unset DB_NAME DB_USER DB_PASSWORD DB_HOST DB_PORT" in restore,
         "ciphertext sidecar verified": "sha256sum -c" in restore,
         "bundle decrypted": "openssl enc -d" in restore,
         "internal checksums verified": "sha256sum -c SHA256SUMS" in restore,
