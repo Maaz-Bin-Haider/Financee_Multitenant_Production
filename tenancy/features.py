@@ -129,6 +129,7 @@ FEATURE_GROUPS = {
     "opening_cash": {"label": "Opening Cash (Set Opening)", "subs": {}},
     "owner_equity": {"label": "Owner Equity", "subs": {}},
     "month_close": {"label": "Month-End Close", "subs": {}},
+    "report_email": {"label": "Report Email", "subs": {}},
     # Export & documents
     "pdf_export": {
         "label": "PDF generation",
@@ -149,7 +150,7 @@ FEATURE_CATEGORIES = (
     )),
     ("Reports", ("accounts_reports", "stock_reports", "monthly_reports", "sales_reports")),
     ("Add-on modules", (
-        "draft_invoices", "opening_stock", "opening_cash", "owner_equity", "month_close",
+        "draft_invoices", "opening_stock", "opening_cash", "owner_equity", "month_close", "report_email",
     )),
     ("Export & documents", ("pdf_export", "excel_export", "attachments")),
 )
@@ -174,6 +175,7 @@ DEFAULT_DISABLED_FEATURES = frozenset({
     "month_close",
     "excel_export",
     "attachments",
+    "report_email",
 })
 
 
@@ -275,6 +277,7 @@ FEATURE_PATH_PREFIXES = (
     ("/sales-reports/api/invoice-register/", "sales_reports.invoice_register"),
     ("/sales-reports/", "sales_reports"),
     # Add-on modules
+    ("/report-email/", "report_email"),
     ("/opening-stock/", "opening_stock"),
     ("/set-opening/", "opening_cash"),
     ("/owner-equity/", "owner_equity"),

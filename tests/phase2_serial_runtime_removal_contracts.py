@@ -185,9 +185,9 @@ checks = {
     # of tenant_template.sql and production_hardening.sql. It is deliberately
     # NOT in build_multitenant_db.sql (the bootstrap pin below is unchanged);
     # production_hardening.sql brings the bootstrap tenant up at first start.
-    "18 serial tenant SQL files are byte-identical to the reviewed 2026-09-30 baseline":
-        len(serial_sql_paths) == 18
-        and files_hash(serial_sql_paths) == "5286ac20f86c678f2e084096cae5ea8d14ada5258fdb1d4796c293be80e165db",
+    "19 serial tenant SQL files match the reviewed report-email baseline":
+        len(serial_sql_paths) == 19
+        and files_hash(serial_sql_paths) == "54f4f530a7975215c5ccf45bae0015c846d78999aba310fe747778c4aa5834c7",
     # The serial gate lets only stored functions differ between the bootstrap
     # tenant (hardening) and a provisioned one (template), so the draft invoice
     # patch must stay byte-identical in all three places.

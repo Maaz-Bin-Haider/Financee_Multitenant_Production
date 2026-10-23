@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'tenancy',
     'attachments',
     'draft',
+    'reportmailer',
 ]
 
 MIDDLEWARE = [
@@ -256,3 +257,8 @@ TENANT_SCHEMA_VERSION = env.int("TENANT_SCHEMA_VERSION", default=6)
 DRAFT_SALES_ENABLED = env.bool("DRAFT_SALES_ENABLED", default=True)
 # After how many days an open draft is flagged as ageing.
 DRAFT_AGE_WARNING_DAYS = env.int("DRAFT_AGE_WARNING_DAYS", default=30)
+
+# Company report mail uses its own tenant configuration, never billing SMTP or
+# a process-wide password. Operators may allow additional public SMTP providers.
+REPORT_EMAIL_ENABLED = env.bool("REPORT_EMAIL_ENABLED", default=True)
+REPORT_EMAIL_SMTP_HOSTS = env.list("REPORT_EMAIL_SMTP_HOSTS", default=["smtp.gmail.com", "smtp.office365.com"])

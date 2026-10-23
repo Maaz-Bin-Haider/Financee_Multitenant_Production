@@ -51,6 +51,7 @@ def serial_schema_family() -> SchemaFamily:
             "add_document_attachments.sql",
             "fix_dashboard_expense_receivables.sql",
             "add_draft_invoices.sql",
+            "add_report_email.sql",
         ),
     )
 

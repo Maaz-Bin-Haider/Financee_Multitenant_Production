@@ -876,3 +876,16 @@ When changing the project, update this file if any answer changes:
 - Did Docker, environment variables, or static handling change?
 - Did test setup, commands, or expected coverage change?
 - Did the alert conventions change, or was `Swal.fire` used directly instead of the `Alerts` helper?
+
+### Company Report Email (Phase 2 implementation)
+
+`reportmailer` seeds `auth.send_reports` idempotently through `post_migrate`,
+without changing public migration history or granting anyone access. The
+company `report_email` switch defaults off for new plans; existing companies
+have no configured mailbox or schedule until an authorized member saves one.
+`tenancy/sql/add_report_email.sql` is registered and folded verbatim into the
+tenant template and hardening file. It adds only settings, recipients and
+attempt history. Tenant version remains 6; financial SQL is unchanged.
+The settings read function returns only a password-present boolean; stored
+SMTP app passwords are in tenant backups, just as billing passwords are.
+Protect those backups. There is no global report-email password override.
