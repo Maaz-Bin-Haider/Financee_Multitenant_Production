@@ -324,6 +324,13 @@ test("unknown and in-progress outcomes do not claim delivery or exhausted retrie
   assert.strictEqual(R.heroState(settings,recipients,{}).label,"Authorization required");
 });
 
+test("an overdue report waits for the worker rather than counting down to tomorrow", () => {
+  const state = R.heroState({configured:true,has_password:true,is_enabled:true}, [{is_active:true}],
+      {due:true,time_reached:true,report_date:"2026-10-22"});
+  assert.strictEqual(state.label,"Delivery due");
+  assert.strictEqual(state.showNext,false);
+});
+
 if (process.exitCode) {
   console.error(`\n${passed} passed, some failed.`);
 } else {

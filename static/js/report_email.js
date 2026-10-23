@@ -181,6 +181,9 @@ function heroState(settings, recipients, schedule) {
     };
   }
 
+  if (schedule && schedule.due && schedule.time_reached) {
+    return { state: "armed", label: "Delivery due", line: `${formatDay(schedule.report_date)} is due for ${to}. The worker sends it on its next check.`, showNext: false };
+  }
   return {
     state: "armed", label: "Armed",
     line: `${schedule && schedule.report_date
