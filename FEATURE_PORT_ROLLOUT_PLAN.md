@@ -1,6 +1,6 @@
 # Financee feature rollout plan
 
-Created: 2026-10-23. Status: Phase 1 manual review passed and branch push authorized; CI/release gates and later phases remain pending.
+Created: 2026-10-23. Status: Phase 1 manual review and branch CI passed; main merge authorized, release gates and later phases remain pending.
 
 ## 1. Scope and working agreement
 
@@ -219,7 +219,9 @@ Current checkpoint: Phase 1 is implemented, committed and verified locally;
 the owner reported manual review passed on 2026-10-23 and explicitly instructed
 the branch push and CI monitoring.
 See `tests/PHASE1_DARK_MODE_REVIEW.md` for results and the manual checklist.
-Leave its isolated review stack running. Push `codex/financee-feature-rollout`
-to `origin` and watch that commit's CI to completion; report its run URL and
-result. No merge or protected deployment approval is authorized. Do not start
-Phase 2 while the preceding release gates are pending.
+Branch push `41c8151` completed and CI run `39970474964` passed all 13 test
+gates. The owner subsequently authorized merging to `main` before Phase 2.
+Preserve the implementation commits with a fast-forward merge, push `main`,
+and watch its workflow. Leave the isolated review stack running and protected
+staging/production approvals to the owner. Do not start Phase 2 while the
+preceding release gates are pending.

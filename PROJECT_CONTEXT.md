@@ -6,7 +6,7 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
-- **Phase 1 owner review passed; push authorized (2026-10-23):** dark mode matches the
+- **Phase 1 review/branch CI passed; main merge authorized (2026-10-23):** dark mode matches the
   Accounting theme with dark as the default, while explicit light preferences
   persist. All 22 regression modules, 75 HTTP checks, four-company isolation,
   20 compatibility checks and the applicable source/release contracts passed
@@ -15,10 +15,13 @@ This file is the persistent engineering context for Financee. Update it on every
   `http://127.0.0.1:8180/`; its private temporary handoff file has credentials
   and exact image/commit. The owner reported manual review passed and said
   "push it and watch the Ci to complete" for reviewed application `9ec223e`.
-  Push `codex/financee-feature-rollout` to `origin`, monitor that exact commit's
-  CI and report the run URL/result. Approval documentation changes no code.
-  No merge or protected deployment approval is authorized; do not start report
-  emails without the preceding release gates.
+  Branch `codex/financee-feature-rollout` was pushed at `41c8151`; CI run
+  `39970474964` passed all 13 test gates (main-only approval/publish/deploy
+  jobs skipped). The owner then instructed "merge to main before starting
+  phase 2", authorizing the main merge and push. Fast-forward to preserve the
+  small commits and watch main CI. Approval documentation changes no code.
+  Protected staging/production approvals remain with the owner; do not start
+  report emails without the preceding release gates.
 - **New requested work (2026-10-23):** the owner wants Accounting Plus
   Inventory's dark mode, report emails, Spotlight and Team Activity adapted to
   this multitenant product. See `FEATURE_PORT_ROLLOUT_PLAN.md` for the ordered
@@ -35,9 +38,10 @@ This file is the persistent engineering context for Financee. Update it on every
   (run `37010222942`, deployed 2026-10-02). The later preserved local
   `feature/dark-mode` commit is `6e4fe68`; it is not in that deployed release.
   The older release notes below are historical. The plan is on local branch
-  `codex/financee-feature-rollout`, based on `main`; its Phase 1 push is now
-  authorized. Consult the exact branch CI run for the subsequent push result;
-  branch CI does not deploy production.
+  `codex/financee-feature-rollout`, based on that `main`; its Phase 1 branch
+  push and CI have passed and the owner authorized merging to main. Consult
+  the subsequent main workflow for release state; branch CI did not deploy
+  production.
 - **Local review helper (Phase 1):** standalone
   `deploy/docker-compose.review.yml`, managed by `python3 deploy/review_stack.py`
   (`start/status/stop/remove/test --project financee_review_darkmode`). Only

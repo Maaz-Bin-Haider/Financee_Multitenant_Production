@@ -144,5 +144,15 @@ record that follows changes documentation only. Push
 `codex/financee-feature-rollout` to `origin` and monitor the resulting exact
 commit's GitHub Actions run to completion. Record the run URL and result in
 the owner handoff. This authorizes the branch push, not a merge or protected
-deployment approval. Keep Phase 2 gated until the preceding release gates
-are released.
+deployment approval.
+
+Branch commit `41c81518ce71c19d31191fa054b0275279eb3363` was pushed and
+[CI run 39970474964](https://github.com/Maaz-Bin-Haider/Financee_Multitenant_Production/actions/runs/39970474964)
+completed successfully: all 13 test gates passed. The three main-only
+approval/publish/deploy jobs were skipped as expected.
+
+The owner then instructed "merge to main before starting phase 2". This
+authorizes merging and pushing the approved Phase 1 history to `main`.
+Preserve the small commits with a fast-forward merge, watch the resulting
+main workflow, and leave protected staging/production approvals to the owner.
+Keep Phase 2 gated until the preceding release gates are released.
