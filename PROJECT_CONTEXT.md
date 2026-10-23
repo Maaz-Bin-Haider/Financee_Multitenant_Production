@@ -889,3 +889,18 @@ attempt history. Tenant version remains 6; financial SQL is unchanged.
 The settings read function returns only a password-present boolean; stored
 SMTP app passwords are in tenant backups, just as billing passwords are.
 Protect those backups. There is no global report-email password override.
+
+The Report Email screen and every JSON endpoint require both `send_reports`
+and `can_view_sale_wise_profit`, the report/email company switches, active
+membership and a usable subscription. The member who last saved the mailbox
+is its schedule authorizer; delivery rechecks their current active membership
+and both permissions (including group grants). Server-side SMTP providers are
+allowlisted with `REPORT_EMAIL_SMTP_HOSTS`; port 587 requires STARTTLS and 465
+uses implicit TLS. Local review always overrides transport to Mailpit, never
+billing SMTP or the entered external host. A tenant session advisory lock spans
+report preparation, a committed pre-SMTP reservation, delivery and result
+recording. Crash recovery distinguishes preparation failure from an unknown
+SMTP result; unknown/partial delivery blocks automatic retry. Only yesterday
+is automatically scheduled; older days use explicit manual sends. Retryable
+failures wait 30 minutes and stop after 12 attempts. Re-arming preserves prior
+attempts, records its actor and still obeys the current schedule/timezone.

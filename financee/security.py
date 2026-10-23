@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 PROTECTED_PREFIX_PERMS = (
+    ("/report-email/", ("auth.send_reports", "auth.can_view_sale_wise_profit")),
     ("/sale/", ("auth.view_sale",)),
     ("/purchase/", ("auth.view_purchase",)),
     ("/payments/", ("auth.view_payment",)),
@@ -49,6 +50,7 @@ def is_ajax_or_api(request):
     return (
         request.headers.get("x-requested-with") == "XMLHttpRequest"
         or request.path.startswith(("/home/api/", "/sales-reports/api/"))
+        or (request.path.startswith("/report-email/") and request.path != "/report-email/")
         or "/api/" in request.path
         or request.path.endswith((".json",))
     )

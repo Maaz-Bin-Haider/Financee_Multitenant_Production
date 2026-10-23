@@ -87,6 +87,10 @@ EXPECTED_GROUPS = {
 }
 
 
+if "reportmailer" in settings.INSTALLED_APPS:
+    EXPECTED_DEFAULT_OFF.add("report_email")
+    EXPECTED_GROUPS.add("report_email")
+
 def chk(name, ok, detail=""):
     RESULTS.append((name, bool(ok), "" if ok else str(detail)))
     return bool(ok)

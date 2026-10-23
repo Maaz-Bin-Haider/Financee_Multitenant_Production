@@ -97,6 +97,7 @@ TEMPLATES = [
                 'tenancy.context_processors.subscription_notice',
                 'tenancy.context_processors.company_features',
                 'draft.context_processors.draft_feature',
+                'reportmailer.context_processors.report_email_feature',
             ],
         },
     },
