@@ -93,4 +93,11 @@ The suite surfaced genuine **tenant schema drift** — idempotent `tenancy/sql/`
 
 ## When you change things
 
+For the dark mode, report email, Spotlight and Team Activity rollout, follow
+`FEATURE_PORT_ROLLOUT_PLAN.md`. The owner requires small local commits, an
+isolated running Financee build for manual review after each completed feature,
+and an explicit push instruction before any push. Stop at each feature gate;
+do not begin the next feature while owner review/release approval is pending.
+Accounting Plus Inventory is a read-only reference and must not be modified.
+
 Update `PROJECT_CONTEXT.md` when architecture, routes, permissions, tenant SQL, deployment, env vars, or tests change. Log diagnosed production/setup fixes in `FIXED_ISSUES.md`.

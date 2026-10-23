@@ -1,11 +1,27 @@
 # Project Context
 
-Last updated: 2026-10-02
+Last updated: 2026-10-23
 
 This file is the persistent engineering context for Financee. Update it on every meaningful project change, especially changes to architecture, routes, permissions, tenant SQL, deployment behavior, environment variables, tests, or data model assumptions.
 
 ## Session Resume Checkpoint
 
+- **New requested work (2026-10-23):** the owner wants Accounting Plus
+  Inventory's dark mode, report emails, Spotlight and Team Activity adapted to
+  this multitenant product. See `FEATURE_PORT_ROLLOUT_PLAN.md` for the ordered
+  feature phases and implementation details. This is planning only; do not
+  begin implementation until asked. Accounting Plus Inventory is a read-only
+  reference and must not be modified. Commit each meaningful increment locally.
+  After each completed feature, run Financee in an isolated local environment,
+  hand it to the owner for manual review, and stop. Never push without the
+  owner's explicit instruction; do not start the next feature while review or
+  its owner-controlled release approval is pending.
+- **Release state verified read-only on 2026-10-23:** remote `main` and the
+  latest successful production workflow are `7a0e6af5335047b6e1596edfd23eb3a3f7f5f178`
+  (run `37010222942`, deployed 2026-10-02). The later preserved local
+  `feature/dark-mode` commit is `6e4fe68`; it is not in that deployed release.
+  The older release notes below are historical. The plan is on local branch
+  `codex/financee-feature-rollout`, based on `main`; nothing has been pushed.
 - **System state:** serial-only, and the consolidation is **complete**. The
   quantity company family is retired in runtime, database and repository.
   Serial business behaviour is unchanged throughout.
