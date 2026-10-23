@@ -26,9 +26,12 @@ BACKUP_ROOT = Path("/var/lib/financee-backup")
 PASSPHRASE = Path("/etc/financee-backup/passphrase")
 LOCK_FILE = Path("/var/lock/financee-phase3-recovery.lock")
 # Refuse changed host helpers without a new source review. No git pull on EC2.
+# Re-reviewed 2026-10-23 against Phase 2 handoff 82f3d7e: matching report
+# worker in Compose and muted, credential-isolated DB restore rehearsal.
+# The guarded helper bytes are unchanged during the Spotlight implementation.
 HOST_HASHES = {
-    "deploy/docker-compose.yml": "ff147c3786bb5ebf009e75d23916268f07519967499b23de961be05034c0d07a",
-    "deploy/restore_database_backup_rehearsal.sh": "47d92415a4ef280ae48fbfa191f75016bb7672698b9fd77de802d9395caf226d",
+    "deploy/docker-compose.yml": "cb6544520954fddceb8765d7b04a38c4225ccddd1e14415f53c4280c03d54f06",
+    "deploy/restore_database_backup_rehearsal.sh": "d7f1185a20cf86cf93ecaebafae731e54571a8e619fa69eeb461314cba1a524b",
     "deploy/database_backup_status.sh": "f5f8180addae3ec0f4340dabaa91ab33e850105a77f6e2214d9369367935c0bc",
     # Re-reviewed 2026-09-16 for the dashboard receivables fix: the example
     # tenant section gained the corrected vw_dash_party_ar_balance. No schema

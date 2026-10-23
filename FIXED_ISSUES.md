@@ -913,3 +913,18 @@ same file, with report delivery disabled throughout the rehearsal.
 A real encrypted database restore passed with deliberately conflicting caller
 credentials: five tenant schemas verified, worker healthy, recovery time 50
 seconds. No production database was used.
+
+## 2026-10-23 — Recovery helper pins missed the report worker changes
+
+The broader Phase 3 local verification found that
+`tests.test_phase3_recovery_remote.RecoveryTests.test_host_helper_hashes_match_reviewed_source`
+failed. `HOST_HASHES` still named the pre-report-worker Compose and DB-only
+restore-rehearsal bytes. Both changed helpers were already present unchanged in
+the approved Phase 2 handoff `82f3d7e`: the matching-image worker and the muted,
+credential-isolated restore drill. Their behavior and real encrypted restore
+evidence are recorded in the Phase 2 review document.
+
+Re-reviewed those exact diffs from main and updated only the two expected
+hashes in `deploy/phase3_recovery_remote.py`. Backup status/bootstrap pins and
+the fail-closed source verification remain intact; no helper implementation,
+production state or review data changed. All 51 remote-helper unit tests pass.
