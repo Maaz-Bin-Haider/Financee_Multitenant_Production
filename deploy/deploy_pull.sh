@@ -43,6 +43,22 @@ if [ -n "$PREV_CID" ]; then
 fi
 echo "==> Deploying $WEB_IMAGE (previous image: ${PREV_IMAGE:-none})"
 
+replaced=0
+rollback_failed_deploy() {
+    local status=$?
+    if [[ "$status" != 0 && "$replaced" == 1 && -n "$PREV_IMAGE" ]]; then
+        echo "==> Rolling web back to previous image $PREV_IMAGE"
+        set +e
+        bash report_worker_control.sh stop
+        WEB_IMAGE="$PREV_IMAGE" $COMPOSE up -d --no-deps web
+        WEB_IMAGE="$PREV_IMAGE" bash report_worker_control.sh restore
+        set -e
+    fi
+    exit "$status"
+}
+trap rollback_failed_deploy EXIT
+
+
 # Fail closed before changing containers when the currently running release
 # supports the family-aware gate. The conditional is needed only for the first
 # rollout that introduces this command.
@@ -80,6 +96,7 @@ echo "==> Ensuring db + redis are up"
 $COMPOSE up -d db redis
 
 bash report_worker_control.sh stop
+replaced=1
 
 echo "==> Recreating web + nginx"
 $COMPOSE up -d --no-deps web nginx
@@ -99,12 +116,6 @@ done
 if [ -z "$healthy" ]; then
     echo "!! Health check FAILED after 120s"
     $COMPOSE logs --tail=100 web || true
-    if [ -n "$PREV_IMAGE" ]; then
-        echo "==> Rolling web back to previous image $PREV_IMAGE"
-        bash report_worker_control.sh stop
-        WEB_IMAGE="$PREV_IMAGE" $COMPOSE up -d --no-deps web
-        WEB_IMAGE="$PREV_IMAGE" bash report_worker_control.sh restore
-    fi
     exit 1
 fi
 
@@ -125,5 +136,6 @@ else
     docker builder prune -af
 fi
 
+trap - EXIT
 echo "==> Deploy complete."
 $COMPOSE ps
