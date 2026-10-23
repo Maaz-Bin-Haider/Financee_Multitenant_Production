@@ -66,7 +66,7 @@
 .alerts-toast--notify  { border-left-color: #2563eb; }
 
 /* Give the manual-close (error) toast a slightly clearer close affordance. */
-.alerts-toast--error .swal2-close { color: #b91c1c; }
+.alerts-toast--error .swal2-close { color: var(--ink-red, #b91c1c); }
 
 /* ---- centered modal polish ----------------------------------------------- */
 .alerts-modal { box-shadow: 0 18px 48px rgba(15, 23, 42, .22); }

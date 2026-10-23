@@ -23,14 +23,14 @@
 </form>
 
 {% if not_found %}
-    <p style="color: red;">Item not found in database.</p>
+    <p style="color: var(--ink-red);">Item not found in database.</p>
 {% endif %}
 
 <h2>{% if item %}Edit Item{% else %}Select Item First{% endif %}</h2>
 
 {% if item and item.created_by_username %}
-<p style="font-size:0.82rem;color:#6b7280;margin:0 0 14px;display:flex;align-items:center;gap:6px;">
-  <i class="fa-solid fa-user-pen" style="color:#9ca3af;"></i>
+<p style="font-size:0.82rem;color:var(--text-tertiary);margin:0 0 14px;display:flex;align-items:center;gap:6px;">
+  <i class="fa-solid fa-user-pen" style="color:var(--text-tertiary);"></i>
   Added by: <strong>{{ item.created_by_username }}</strong>
 </p>
 {% endif %}

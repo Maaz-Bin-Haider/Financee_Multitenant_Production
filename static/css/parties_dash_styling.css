@@ -431,10 +431,10 @@
 .rpc-bal-val {
   font-size: 15px;
   font-weight: 600;
-  color: var(--success);
+  color: var(--ink-green);
 }
 
-.rpc-bal-val.credit { color: var(--danger); }
+.rpc-bal-val.credit { color: var(--ink-red); }
 
 .rpc-bal-type {
   font-size: 10px;
@@ -633,8 +633,8 @@
 .td-badge.expense { color: #f87171; background: rgba(239,68,68,0.10); }
 
 .td-balance { font-weight: 600; }
-.td-balance.debit  { color: var(--success); }
-.td-balance.credit { color: var(--danger); }
+.td-balance.debit  { color: var(--ink-green); }
+.td-balance.credit { color: var(--ink-red); }
 
 .td-actions {
   display: flex;

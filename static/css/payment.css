@@ -44,7 +44,7 @@
   align-items: center;
   justify-content: center;
   font-size: 1rem;
-  color: var(--brand-primary);
+  color: var(--ink-blue);
   flex-shrink: 0;
 }
 
@@ -60,7 +60,7 @@
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-tertiary);
-  background: var(--gray-100);
+  background: var(--bg-surface-alt);
   border: 1px solid var(--border-color);
   border-radius: 20px;
   padding: 3px 10px;
@@ -72,7 +72,7 @@
   border-color: var(--border-color);
 }
 
-#entryByBadge i { font-size: 0.7rem; color: var(--gray-400); }
+#entryByBadge i { font-size: 0.7rem; color: var(--text-tertiary); }
 
 /* ===== QUICK ACTION BUTTONS ===== */
 .action-bar {
@@ -101,7 +101,7 @@
 
 .action-btn:hover {
   border-color: var(--brand-primary);
-  color: var(--brand-primary);
+  color: var(--ink-blue);
   background: var(--brand-primary-light);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
@@ -193,8 +193,8 @@ form textarea:focus {
 
 /* Method field (readonly) */
 #method {
-  background: var(--gray-100) !important;
-  color: var(--gray-500) !important;
+  background: var(--bg-surface-alt) !important;
+  color: var(--text-secondary) !important;
   font-family: var(--font-mono) !important;
   font-size: 0.85rem !important;
   letter-spacing: 0.04em;
@@ -260,7 +260,7 @@ button.save-and-update-btn:active {
 
 button.delete-btn {
   background: var(--bg-surface);
-  color: var(--brand-danger);
+  color: var(--ink-red);
   border: 1.5px solid var(--brand-danger);
   padding: 0.65rem 1.1rem;
   border-radius: var(--radius-md);
@@ -293,7 +293,7 @@ button.delete-btn:active {
 /* ===== NEW ENTRY BUTTON ===== */
 .btn-new-entry {
   background: var(--brand-success-light);
-  color: var(--brand-success);
+  color: var(--ink-green);
   border: 1.5px solid rgba(5,150,105,0.25);
   padding: 0.45rem 0.85rem;
   border-radius: var(--radius-md);
@@ -347,7 +347,7 @@ button.delete-btn:active {
 
 .nav-btn:hover {
   border-color: var(--brand-primary);
-  color: var(--brand-primary);
+  color: var(--ink-blue);
   background: var(--brand-primary-light);
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
@@ -364,7 +364,7 @@ button.delete-btn:active {
   font-family: var(--font-mono);
   font-size: 0.75rem;
   color: var(--text-tertiary);
-  background: var(--gray-100);
+  background: var(--bg-surface-alt);
   border: 1px solid var(--border-color);
   padding: 3px 10px;
   border-radius: 20px;
@@ -414,12 +414,12 @@ button.delete-btn:active {
 #suggestions div:hover,
 #suggestions .suggestion-item:hover {
   background: var(--brand-primary-light);
-  color: var(--brand-primary);
+  color: var(--ink-blue);
 }
 
 .suggestion-item.highlight {
   background: var(--brand-primary-light);
-  color: var(--brand-primary);
+  color: var(--ink-blue);
 }
 
 :root.dark-mode #suggestions {
@@ -436,7 +436,7 @@ button.delete-btn:active {
 /* ===== HISTORY LIST (inside SweetAlert popup) ===== */
 .payment-date-header,
 .receipt-date-header {
-  background: var(--gray-50);
+  background: var(--bg-surface-alt);
   font-weight: 600;
   font-size: 0.72rem;
   padding: 6px 12px;
@@ -458,7 +458,7 @@ button.delete-btn:active {
   font-size: 0.875rem;
   cursor: pointer;
   position: relative;
-  background: #fff;
+  background: var(--card-bg);
   transition: all var(--transition);
   margin: 2px 6px;
   border-radius: var(--radius-md);
@@ -482,7 +482,7 @@ button.delete-btn:active {
 .receipt-ref {
   font-size: 0.72rem;
   font-weight: 500;
-  color: var(--gray-400);
+  color: var(--text-tertiary);
   font-family: var(--font-mono);
 }
 
@@ -497,7 +497,7 @@ button.delete-btn:active {
 .payment-amount,
 .receipt-amount {
   font-weight: 700;
-  color: var(--brand-success);
+  color: var(--ink-green);
   font-size: 0.9rem;
   font-family: var(--font-mono);
 }
@@ -555,8 +555,8 @@ button.delete-btn:active {
   letter-spacing: 0.01em;
 }
 
-.status-mode.mode-new { color: var(--brand-success); }
-.status-mode.mode-edit { color: var(--brand-warning); }
+.status-mode.mode-new { color: var(--ink-green); }
+.status-mode.mode-edit { color: var(--ink-amber); }
 
 .status-dot {
   width: 7px;
@@ -585,7 +585,7 @@ button.delete-btn:active {
 kbd {
   display: inline-block;
   padding: 1px 5px;
-  background: var(--gray-100);
+  background: var(--bg-surface-alt);
   border: 1px solid var(--gray-300);
   border-radius: 4px;
   font-family: var(--font-mono);
@@ -660,19 +660,19 @@ kbd {
 }
 
 #partyBalanceDisplay.party-balance-receivable {
-  background-color: #dcfce7;
-  color: #15803d;
+  background-color: var(--tint-green);
+  color: var(--ink-green);
   border: 1px solid #86efac;
 }
 
 #partyBalanceDisplay.party-balance-payable {
-  background-color: #fee2e2;
-  color: #b91c1c;
+  background-color: var(--tint-red);
+  color: var(--ink-red);
   border: 1px solid #fca5a5;
 }
 
 #partyBalanceDisplay.party-balance-settled {
-  background-color: #f1f5f9;
-  color: #64748b;
+  background-color: var(--bg-surface-alt);
+  color: var(--text-secondary);
   border: 1px solid #cbd5e1;
 }

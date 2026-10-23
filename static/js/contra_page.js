@@ -305,11 +305,11 @@ $("#btnContrasDateWise").on("click", function () {
     html: `
       <div style="text-align:left;padding:0 8px;">
         <div style="margin-bottom:14px;">
-          <label style="display:block;font-size:0.82rem;font-weight:500;color:#64748b;margin-bottom:5px;">From Date</label>
+          <label style="display:block;font-size:0.82rem;font-weight:500;color:var(--text-primary);margin-bottom:5px;">From Date</label>
           <input type="date" id="fromDate" class="swal2-input" style="width:100%;margin:0;" max="${today}">
         </div>
         <div>
-          <label style="display:block;font-size:0.82rem;font-weight:500;color:#64748b;margin-bottom:5px;">To Date</label>
+          <label style="display:block;font-size:0.82rem;font-weight:500;color:var(--text-primary);margin-bottom:5px;">To Date</label>
           <input type="date" id="toDate" class="swal2-input" style="width:100%;margin:0;" value="${today}" max="${today}">
         </div>
       </div>`,
