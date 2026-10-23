@@ -6,6 +6,8 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
+- **Phase 3 locally authorized (2026-10-23):** the owner instructed "keep phase 2 on local and start phase 3", explicitly allowing local Spotlight work before Phase 2 release. Work on `codex/spotlight`, based on the clean Phase 2 handoff `82f3d7e`. Phase 2 remains unpushed and reviewed at `c2a63b3`. No push, merge or deployment is authorized. Preserve both existing review stacks/data; build Phase 3 separately on its own ports. Stop for owner review after Spotlight; do not start Team Activity.
+
 - **Phase 2 owner manual review passed; do not push (2026-10-23):** the owner
   confirmed "its working dont push but start new session". Record the passed
   review and carry this context into a fresh chat; do not push, merge, deploy

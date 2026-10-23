@@ -245,3 +245,5 @@ The owner confirmed Phase 2 works and instructed "dont push but start new
 session". Manual review of application `c2a63b3` has passed. Preserve the local
 branch and running review stack, hand off to a fresh chat, and await further
 instructions. The documentation handoff does not change the approved build.
+
+Phase 3 local exception (2026-10-23): the owner explicitly instructed "keep phase 2 on local and start phase 3". Spotlight may proceed locally on `codex/spotlight` from `82f3d7e` without releasing Phase 2 first. All commits remain local. Preserve the Phase 1/2 review stacks and use a separate Phase 3 review project. The owner review/no-push stop applies after Spotlight; Team Activity remains gated.
