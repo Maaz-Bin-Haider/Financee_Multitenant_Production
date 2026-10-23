@@ -1,7 +1,8 @@
 # Phase 1: dark mode and isolated local review
 
-Date: 2026-10-23. Status: implementation and automated checks complete;
-awaiting the owner's manual review and explicit push instruction.
+Date: 2026-10-23. Status: implementation, automated checks and owner manual
+review passed. The owner explicitly authorized the Phase 1 branch push and
+requested that its CI be watched to completion.
 
 ## What changed
 
@@ -135,5 +136,13 @@ exact project confirmation and should wait until the owner finishes review.
 6. Report any corrections. Once satisfied, give an explicit push instruction
    with the intended branch/destination; manual approval alone does not push.
 
-Nothing has been pushed, merged or deployed. Do not begin Phase 2 until the
-owner's Phase 1 review and authorized push/release gates are released.
+## Owner approval and push handoff
+
+On 2026-10-23 the owner reported: "manual review. passed push it and watch the
+Ci to complete". The reviewed application is commit `9ec223e`; the approval
+record that follows changes documentation only. Push
+`codex/financee-feature-rollout` to `origin` and monitor the resulting exact
+commit's GitHub Actions run to completion. Record the run URL and result in
+the owner handoff. This authorizes the branch push, not a merge or protected
+deployment approval. Keep Phase 2 gated until the preceding release gates
+are released.
