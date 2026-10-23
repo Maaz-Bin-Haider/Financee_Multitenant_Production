@@ -18,6 +18,7 @@ import secrets
 import socket
 import subprocess
 import tempfile
+import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ROOT / "deploy/docker-compose.review.yml"
@@ -151,6 +152,10 @@ def main(argv=None):
         save(config)
         run(config, "build", "web")
         run(config, "up", "-d", "--wait", "--wait-timeout", "240")
+        url = f"http://127.0.0.1:{config['env']['REVIEW_PORT']}"
+        with urllib.request.urlopen(url + "/authentication/login/", timeout=15) as response:
+            if response.status != 200:
+                raise ValueError("The host's localhost review URL is not ready.")
         run(config, "exec", "-T", "web", "python", "tests/review_seed.py")
         write_private(state_directory(args.project) / "handoff.txt",
                       f"Commit: {sha}\nURL: http://127.0.0.1:{config['env']['REVIEW_PORT']}\n"

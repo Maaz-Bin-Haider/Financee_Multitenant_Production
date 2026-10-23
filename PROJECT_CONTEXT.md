@@ -29,9 +29,11 @@ This file is the persistent engineering context for Financee. Update it on every
   named review projects on a local Docker Unix socket are allowed; suite runs
   require a separate `financee_review_regression*` project and removal requires
   exact confirmation. Generated env/credentials live in the user's temporary
-  directory, outside the checkout. The internal network has no outbound SMTP,
+  directory, outside the checkout. The application/data network has no outbound SMTP,
   DB/Redis have no host ports, and Nginx publishes only on loopback (8180 by
-  default). `tests/review_seed.py` requires the review project/database markers,
+  default). Only Nginx also joins a separate edge network: Docker Desktop does
+  not publish host ports on an internal-only network. Startup verifies HTTP
+  from the host before handing over credentials. `tests/review_seed.py` requires the review project/database markers,
   creates synthetic Alpha/Beta companies and a suspended user, disables billing
   email, and preserves reviewer edits on repeated startup. No real data is used.
 - **System state:** serial-only, and the consolidation is **complete**. The

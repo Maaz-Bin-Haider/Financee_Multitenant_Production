@@ -51,6 +51,9 @@ services:
       start_period: 15s
   nginx:
     image: nginx:1.27
+    # Docker Desktop does not publish ports on an internal-only network.
+    # Only nginx joins this edge; the application/data services stay internal.
+    networks: [default, review_edge]
     ports:
       - "127.0.0.1:${REVIEW_PORT:?Use review_stack.py}:80"
     volumes:
@@ -69,3 +72,4 @@ networks:
   default:
     # No outbound SMTP or access to another application's Docker network.
     internal: true
+  review_edge:
