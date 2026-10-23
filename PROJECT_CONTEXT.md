@@ -957,11 +957,15 @@ unnecessary index/extension or changing tenant recovery contracts.
 report permissions and company feature flags. Draft pages also follow the
 runtime switch and read-only-group guard. Report Email follows its runtime
 switch and both Phase 2 permissions. Serial summaries project purchase, sale
-and reservation details only to eligible callers. No broad search permission
+and reservation details only to eligible callers. Party balances and item stock
+reuse `get_party_balance_by_name` and `stock_summary()` only after checking the
+source screen permissions/features; duplicate names suppress balance-by-name
+facts. Reservation counts need eligible draft/sale access. No broad search permission
 can bypass source-screen access. Every recent or clicked result is resolved
 again; browser storage contains only record identifiers, namespaced by company
 and user. API responses are private/no-store and a session-bound scope token
-refuses a stale tab after account changes. Canceled/out-of-order responses are
+refuses a stale tab after account changes. A cross-tab storage signal
+invalidates old palettes immediately on logout or a new session. Canceled/out-of-order responses are
 discarded; hidden tabs close and clear the palette.
 
 Cmd/Ctrl+K, `/` outside an editable field and desktop/mobile buttons open the

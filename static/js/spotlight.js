@@ -93,7 +93,10 @@
         if (record.reserved) details.push('Reserved for '+record.reserved.reserved_for+' · Draft #'+record.reserved.reserved_draft_id);
         if (details.length) text.append(element('span','sp-detail',details.join(' | ')));
         row.append(text);
-        if (record.state || record.amount != null) row.append(element('span','sp-fact',record.state || money(record.amount)));
+        let fact=record.state || (record.amount != null ? money(record.amount) : '');
+        if(record.balance != null)fact=money(Math.abs(Number(record.balance)))+(Number(record.balance)>0?' receivable':Number(record.balance)<0?' payable':' settled');
+        if(record.in_stock != null)fact=record.in_stock+' in stock'+(record.reserved_units!=null?' · '+record.reserved_units+' reserved':'');
+        if(fact)row.append(element('span','sp-fact',fact));
         const index=rows.length; rows.push({record,element:row});
         row.addEventListener('pointermove',()=>select(index));
         row.addEventListener('click',()=>activate(record)); section.append(row);

@@ -218,5 +218,22 @@ class Spotlight(unittest.TestCase):
             self.assertEqual(self.get().status_code, 403)
         finally: user.delete()
 
+    def test_13_balance_and_stock_fact_permissions(self):
+        user = self.users[0]
+        def permissions(*codenames):
+            user.user_permissions.set(Permission.objects.filter(codename__in=codenames))
+        permissions('view_party', 'view_item')
+        rows = self.rows(q='SP SAME')
+        self.assertFalse(any('balance' in row or 'in_stock' in row for row in rows))
+        permissions('view_party', 'view_item', 'view_payment', 'view_stock_reports_page', 'view_stock_summary')
+        rows = self.rows(q='SP SAME')
+        self.assertTrue(any(row['kind']=='party' and 'balance' in row for row in rows))
+        item = next(row for row in rows if row['kind']=='item')
+        self.assertEqual(item['in_stock'], 1)
+        self.assertNotIn('reserved_units', item)
+        Company.objects.filter(pk=self.companies[0].pk).update(disabled_features=['payments','stock_reports'])
+        rows = self.rows(q='SP SAME')
+        self.assertFalse(any('balance' in row or 'in_stock' in row for row in rows))
+
 
 if __name__ == '__main__': unittest.main(verbosity=2)

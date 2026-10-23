@@ -1,4 +1,5 @@
 """Request-scoped, read-only Spotlight API. Membership alone selects the schema."""
+import json
 import re
 from functools import wraps
 from urllib.parse import urlencode
@@ -113,6 +114,36 @@ def decorate(request, kind, row):
     return row
 
 
+
+def add_facts(request, kind, rows):
+    """Use the same report functions as the target screens, after authorization."""
+    if kind == 'party' and (any(policy.DOCUMENTS[key].allowed(request) for key in ('payment', 'receipt', 'contra'))
+                            or any(policy.PAGES[key].allowed(request) for key in ('ledger', 'ledger2'))):
+        for row in rows:
+            # Legacy balance-by-name has ILIKE semantics; escape literal names,
+            # and never collapse same-name rows into a misleading single balance.
+            matches = queries.fetch('SELECT count(*) AS n FROM parties WHERE lower(party_name)=lower(%s)', [row['name']])[0]['n']
+            if matches != 1:
+                continue
+            data = queries.fetch('SELECT get_party_balance_by_name(%s) AS data', [queries.escaped(row['name'])])[0]['data']
+            if isinstance(data, str):
+                data = json.loads(data)
+            if data and data.get('found'):
+                row['balance'] = str(data['balance'])
+    if kind == 'item' and any(policy.PAGES[key].allowed(request) for key in ('stock', 'detail')) and rows:
+        ids = [queries.record_id(row['id']) for row in rows]
+        stock = {str(value['item_id']): value for value in queries.fetch(
+            'SELECT item_id, quantity_in_stock, reserved_on_drafts FROM stock_summary() WHERE item_id=ANY(%s)', [ids])}
+        reserved = policy.serial_access(request)['reserved']
+        for row in rows:
+            value = stock.get(row['id'])
+            if value:
+                row['in_stock'] = value['quantity_in_stock']
+                if reserved:
+                    row['reserved_units'] = value['reserved_on_drafts']
+    return rows
+
+
 def record_summary(request, kind, ident):
     if not allowed_kind(request, kind):
         return None
@@ -123,7 +154,8 @@ def record_summary(request, kind, ident):
         record = queries.master(kind, ident)
         if not record:
             return None
-        return decorate(request, kind, dict(id=str(ident), name=record[kind + '_name'], meta=record.get('party_type', record.get('brand', ''))))
+        row = decorate(request, kind, dict(id=str(ident), name=record[kind + '_name'], meta=record.get('party_type', record.get('brand', ''))))
+        return add_facts(request, kind, [row])[0]
     # ID filter is numeric/exact and remains inside the selected tenant.
     return next((decorate(request, kind, row) for row in queries.search(kind, str(ident)) if row['id'] == str(ident)), None)
 
@@ -178,6 +210,7 @@ def search(request):
             rows = queries.search(kind, exact[2] if named else numeric if kind in policy.DOCUMENTS else text, offset)
             shown = [result for row in rows[:queries.LIMIT] if (result := decorate(request, kind, row))]
             if shown:
+                add_facts(request, kind, shown)
                 groups.append(dict(key=kind, title=policy.MASTERS[kind].label if kind in policy.MASTERS else
                                    'Serials' if kind == 'serial' else policy.DOCUMENTS[kind].label + 's',
                                    results=shown, next=offset + queries.LIMIT if len(rows) > queries.LIMIT and offset + queries.LIMIT <= 600 else None))
