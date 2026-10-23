@@ -27,6 +27,8 @@ esac
     exit 2
 }
 
+export WEB_ENV_FILE="$RESTORE_ENV_FILE"
+
 compose=(
     docker compose
     --project-name "$RESTORE_PROJECT"

@@ -31,6 +31,9 @@ def main():
         "schema count compared":
             "restored_schema_count" in restore and "expected_schema_count" in restore,
         "all tenants preflighted": "manage.py release_preflight" in restore,
+        "restored report worker is muted and health checked":
+            'REPORT_EMAIL_ENABLED: "False"' in restore
+            and 'manage.py run_report_scheduler --health' in restore,
         "restore RTO recorded": "RESTORE_RTO_SECONDS" in restore,
         "isolated volumes removed by default": 'down -v' in restore,
         "runbook names exact private repository":

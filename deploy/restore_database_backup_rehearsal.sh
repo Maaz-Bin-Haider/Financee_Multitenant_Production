@@ -58,13 +58,25 @@ work_dir=$(mktemp -d)
 started_at=$(date +%s)
 cleanup() {
     status=$?
-    rm -rf -- "$work_dir"
     if [[ "${KEEP_RESTORE_STACK:-0}" != "1" ]]; then
         "${compose[@]}" down -v >/dev/null 2>&1 || true
     fi
+    rm -rf -- "$work_dir"
     return "$status"
 }
 trap cleanup EXIT
+# Suppress restored report schedules in both web and worker during the drill.
+cat >"$work_dir/report-mail-muted.yml" <<'YAML'
+services:
+  web:
+    environment:
+      REPORT_EMAIL_ENABLED: "False"
+  report_worker:
+    environment:
+      REPORT_EMAIL_ENABLED: "False"
+YAML
+compose+=(-f "$work_dir/report-mail-muted.yml")
+
 trap 'exit 130' HUP INT TERM
 
 echo "==> Decrypting DB-only recovery bundle"
@@ -133,6 +145,10 @@ for _ in $(seq 1 90); do
     sleep 2
 done
 [[ "$(docker inspect -f '{{.State.Health.Status}}' "$web_cid")" == "healthy" ]]
+if "${compose[@]}" exec -T web python manage.py help run_report_scheduler >/dev/null 2>&1; then
+    "${compose[@]}" up -d --no-deps --wait --wait-timeout 150 report_worker
+    "${compose[@]}" exec -T report_worker python manage.py run_report_scheduler --health
+fi
 "${compose[@]}" exec -T web python manage.py release_preflight
 
 finished_at=$(date +%s)

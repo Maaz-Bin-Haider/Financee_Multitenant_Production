@@ -85,10 +85,14 @@ cat >"$work_dir/source.override.yml" <<EOF
 services:
   web:
     env_file: $work_dir/source.env
+  report_worker:
+    env_file: $work_dir/source.env
 EOF
 cat >"$work_dir/restore.override.yml" <<EOF
 services:
   web:
+    env_file: $work_dir/restore.env
+  report_worker:
     env_file: $work_dir/restore.env
 EOF
 # Compose validates the base service's ignored deploy/.env before applying the
@@ -245,8 +249,11 @@ for _ in $(seq 1 90); do
     sleep 2
 done
 [[ "$(docker inspect -f '{{.State.Health.Status}}' "$restore_web")" = healthy ]]
-WEB_IMAGE="$current_image" "${restore_compose[@]}" exec -T web \
-    python manage.py release_preflight >"$artifact_dir/final-preflight.txt"
+WEB_IMAGE="$current_image" "${restore_compose[@]}" up -d --no-deps --wait --wait-timeout 150 report_worker
+worker_id=$("${restore_compose[@]}" ps -q report_worker)
+[[ "$(docker inspect -f '{{.Image}}' "$worker_id")" == "$(docker inspect -f '{{.Image}}' "$restore_web")" ]]
+"${restore_compose[@]}" exec -T report_worker python manage.py shell -c     'from django.conf import settings; assert not settings.REPORT_EMAIL_ENABLED; print("PASS: restored worker is healthy, matches web and has delivery disabled")'     >"$artifact_dir/report-worker-recovery.txt"
+WEB_IMAGE="$current_image" "${restore_compose[@]}" exec -T web     python manage.py release_preflight >"$artifact_dir/final-preflight.txt"
 WEB_IMAGE="$current_image" "${restore_compose[@]}" exec -T web python -c \
     'from pathlib import Path; p=Path("/app/staticfiles"); assert not list((p/"js").glob("quantity_*.js")); assert not list((p/"css").glob("quantity_*.css")); assert (p/"js/phase2-serial-cache-sentinel.012345abcdef.js").read_text()=="preserved-serial-cache"; print("PASS: retired static assets removed; serial cached asset preserved")' \
     >"$artifact_dir/final-static-retirement.txt"
