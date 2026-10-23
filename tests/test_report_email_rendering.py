@@ -37,6 +37,11 @@ class Rendering(unittest.TestCase):
         self.assertIn('120.50,100.00,20.50,20.50',csv)
         self.assertIn('Margin on revenue,17.01',csv)
 
+    def test_source_cents_are_not_hidden_by_zero_decimal_currency(self):
+        self.company.base_currency_id='JPY'
+        self.company.base_currency.minor_units=0
+        self.assertEqual(reports.money(Decimal('12.50'),self.company),'JPY 12.50')
+
     def test_company_currency_and_no_sales(self):
         self.company.base_currency_id='AED'
         empty={'rows':[], 'totals':{'units':0,'revenue':0,'cost':0,'profit':0,'margin_pct':0}}

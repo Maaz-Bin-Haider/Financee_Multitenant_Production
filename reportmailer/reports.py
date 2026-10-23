@@ -22,7 +22,10 @@ def fetch_report(day):
 
 
 def money(value, company):
-    return f'{company.base_currency_id} {Decimal(str(value or 0)):,.{company.base_currency.minor_units}f}'
+    # SQL report values have two places even for a zero-decimal currency.
+    # Preserve those source cents rather than hiding a financial difference.
+    places=max(2,company.base_currency.minor_units)
+    return f'{company.base_currency_id} {Decimal(str(value or 0)):,.{places}f}'
 
 
 def percent(value):
