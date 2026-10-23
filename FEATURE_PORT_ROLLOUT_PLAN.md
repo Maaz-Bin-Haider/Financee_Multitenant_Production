@@ -1,6 +1,6 @@
 # Financee feature rollout plan
 
-Created: 2026-10-23. Status: Phase 1 deployed and owner-confirmed; Phase 2 implementation authorized. Phase 2 push and later phases remain gated.
+Created: 2026-10-23. Status: Phase 1 deployed and owner-confirmed; Phase 2 implemented and verified locally, awaiting owner manual review. Phase 2 push and later phases remain gated.
 
 ## 1. Scope and working agreement
 
@@ -230,3 +230,13 @@ The owner subsequently confirmed Phase 1 works in production and authorized
 Phase 2. Main `da30168` and workflow `39972044447`, including production deploy,
 are successful. Implement report emails locally on `codex/report-emails`.
 Gate 2 still requires manual review and a new explicit push instruction.
+
+Phase 2 checkpoint: report emails are implemented in focused local commits.
+All 23 regression modules, report-email isolation/concurrency/recovery checks,
+historical migration transition, encrypted DB-only and DB/media restore drills,
+worker rollback checks and production-like staging acceptance passed. See
+`tests/PHASE2_REPORT_EMAIL_REVIEW.md` for exact coverage, evidence, limitations,
+commit history and the manual checklist. Leave the isolated application on
+`http://financee-review-email.localhost:8181/` and local capture inbox on
+`http://financee-review-email-mail.localhost:8182/` running for the owner.
+No Phase 2 branch push, merge, release or Phase 3 implementation is authorized.

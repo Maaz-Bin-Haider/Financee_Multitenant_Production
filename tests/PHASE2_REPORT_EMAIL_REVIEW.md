@@ -61,6 +61,9 @@ database. Test evidence is outside Git under `/private/tmp/financee-phase2-*`.
 | Source/release/backup contracts | All 17 scripts passed |
 | Worker lifecycle | Matching image start, unsupported old image stop, unhealthy rejection and post-HTTP rollback passed |
 | Encrypted database-only restore | Passed with conflicting inherited credentials; 5 tenant schemas verified, healthy muted worker, 50-second restore |
+| Encrypted database/media recovery and rollback | Passed; 51-second restore, old-image compatibility, forward recovery, matching healthy worker with delivery disabled |
+| Immutable staging acceptance | Passed on `db82641`: worker image/health, security, serial workflows, four-company isolation, capacity preflight and Phase 30 continuity |
+| Final Django/schema readiness | `check`, `makemigrations --check --dry-run` and `release_preflight` passed |
 
 The integration tests cover forged tenant/actor inputs, cross-company IDs,
 permissions and feature revocation, subscriptions, method/CSRF validation,
@@ -72,8 +75,12 @@ when acknowledgement is lost.
 
 The full regression and migration-transition runs used candidate `d86b739`.
 Subsequent targeted checks cover the UI status/labels, currency precision,
-restore credential handling and narrow email layout. Final recovery/staging
-results and the exact running review image are recorded at handoff.
+restore credential handling and narrow email layout. The final recovery drill
+passed on `1c4af61` with its raw restore output and numeric timing retained.
+Staging and the refreshed manual review build used `db82641`, containing the
+final application code. Subsequent handoff/checkpoint edits are documentation
+only; the review helper rebuilds from the final clean committed checkout.
+The exact running review image is recorded in the private local handoff.
 
 No new GitHub CI run, real-provider SMTP delivery, production migration or
 deployment is claimed. The local SMTP service captures all test mail. The
@@ -112,8 +119,11 @@ separate captured test messages with reconciled figures, CSV presence, light
 and dark views, and arrow-key tab navigation. The real local worker delivered
 Alpha's scheduled report separately from its test message. Alpha is left
 enabled with that delivered day; Beta is paused. Desktop app views were
-checked. The email's phone preview was checked separately; application phone
-layout remains an owner manual check.
+checked. A new captured message verified the corrected phone email summary
+wraps within its preview; application phone layout remains an owner manual
+check. After rebuilding/restarting the real review worker, Alpha still had
+exactly one unsuperseded scheduled delivery for 2026-10-22. The helper preserved
+all existing review data and captured messages.
 
 ## Owner manual checklist
 

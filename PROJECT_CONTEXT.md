@@ -6,6 +6,20 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
+- **Phase 2 ready for owner manual review (2026-10-23):** report emails are
+  implemented locally on `codex/report-emails`. All 23 regression modules,
+  targeted tenant isolation/concurrency/SMTP recovery checks, historical
+  migration transition, encrypted DB-only and DB/media recovery, worker
+  lifecycle/rollback and immutable staging acceptance passed. See
+  `tests/PHASE2_REPORT_EMAIL_REVIEW.md` for scope, evidence and the checklist,
+  and `REPORT_EMAIL_RUNBOOK.md` for operations. Leave the isolated review app
+  at `http://financee-review-email.localhost:8181/report-email/` and capture
+  inbox at `http://financee-review-email-mail.localhost:8182/` running; the
+  private temporary `financee-review-501/financee_review_email/handoff.txt`
+  records its exact committed image and synthetic password. Alpha is enabled
+  with yesterday's scheduled report already delivered; Beta is paused.
+  Accounting remains unchanged. STOP for manual review and a new explicit
+  push instruction. No Phase 2 push/merge/deployment or Phase 3 work yet.
 - **Phase 2 report emails authorized (2026-10-23):** the owner confirmed Phase 1
   works in production and instructed moving to Phase 2. Main release `da30168`,
   workflow `39972044447`, including production deployment, is verified successful.
