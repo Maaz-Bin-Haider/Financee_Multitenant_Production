@@ -1,6 +1,6 @@
 # Financee feature rollout plan
 
-Created: 2026-10-23. Status: Phase 1 authorized and in progress; later phases remain gated.
+Created: 2026-10-23. Status: Phase 1 implemented and awaiting manual review; later phases remain gated.
 
 ## 1. Scope and working agreement
 
@@ -215,4 +215,7 @@ GitHub will receive these commits only after the owner's authorized push. No con
 - [ ] Phase 3: Spotlight, automated checks, owner review, authorized push/release.
 - [ ] Phase 4: Team Activity, automated checks, owner review, authorized push/release; separately authorized production backfill where needed.
 
-Current action: implement and verify Phase 1, then leave its isolated review build running for the owner. Nothing has been pushed.
+Current checkpoint: Phase 1 is implemented, committed and verified locally.
+See `tests/PHASE1_DARK_MODE_REVIEW.md` for results and the manual checklist.
+Leave its isolated review stack running for the owner. No push is authorized;
+do not start Phase 2 while review/push/release gates are pending.
