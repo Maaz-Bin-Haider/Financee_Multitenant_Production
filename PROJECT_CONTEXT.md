@@ -915,3 +915,7 @@ and worker; restore drills explicitly mute report delivery. Isolated review
 includes internal-only Mailpit SMTP, served to localhost through Nginx's edge
 network. A separate localhost inbox port is assigned by `review_stack.py`;
 regression workers are delivery-disabled while tests invoke controlled ticks.
+
+Report Email operation, setup, provider policy, schedule semantics, SMTP
+ambiguity and worker rollback/recovery commands are in `REPORT_EMAIL_RUNBOOK.md`.
+Review handoffs use project-specific `.localhost` hosts to isolate browser cookies.
