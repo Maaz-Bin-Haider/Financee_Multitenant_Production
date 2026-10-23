@@ -267,7 +267,14 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
   let _recipients = [];
   let _schedule = null;
   let _logOffset = 0;
-  setInterval(() => { if (!document.hidden) refreshSettings().catch(() => {}); }, 30000);
+  // Refresh status without replacing unsaved form fields or password input.
+  setInterval(async () => {
+    if (document.hidden) return;
+    try {
+      const data = await api("settings/");
+      _settings = data.settings || {}; _schedule = data.schedule || null; renderHero();
+    } catch (_) { /* Keep the last status; explicit actions report failures. */ }
+  }, 30000);
   let _countdownTimer = null;
 
   function csrf() {
@@ -346,7 +353,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     // Offered only where it means something: a day the schedule has finished
     // with. In every other state there is nothing to re-arm.
     const rearm = document.getElementById("reRearm");
-    if (rearm) rearm.hidden = !(_schedule && _schedule.due === false);
+    if (rearm) rearm.hidden = !(_schedule && !_schedule.in_progress && _schedule.due === false && (_schedule.unknown || _schedule.last_sent_at || _schedule.attempts));
 
     const wrap = document.getElementById("reNextWrap");
     wrap.hidden = !state.showNext;
