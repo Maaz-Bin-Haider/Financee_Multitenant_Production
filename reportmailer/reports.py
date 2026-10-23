@@ -82,16 +82,17 @@ def build_html(report, day, company, zone):
         body.append(f'<tr style="background:{shade}">{"".join(cells)}</tr>')
     if not body:
         body = ['<tr><td colspan="10" style="padding:24px">No sales for this business day.</td></tr>']
-    return (f'<!doctype html><html><head><meta charset="utf-8"></head>'
+    return (f'<!doctype html><html><head><meta charset="utf-8">'
+        f'<meta name="viewport" content="width=device-width,initial-scale=1"></head>'
         f'<body style="background:#eef2f7;font:14px Arial,sans-serif;color:#142540;padding:20px">'
-        f'<table role="presentation" style="background:white;width:100%;max-width:1100px;margin:auto">'
+        f'<table role="presentation" style="background:white;width:100%;max-width:1100px;table-layout:fixed;margin:auto">'
         f'<tr><td style="padding:20px;background:#142540;color:white">'
         f'<h1 style="font-size:22px">{escape(company.name)} · Sale-wise Profit</h1>'
         f'{escape(day.isoformat())} · {escape(zone)} · {escape(company.base_currency_id)}</td></tr>'
-        f'<tr><td style="padding:20px"><pre style="white-space:pre-wrap;font:14px Arial,sans-serif">'
+        f'<tr><td style="padding:20px"><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:14px Arial,sans-serif">'
         f'{escape(build_text(report, day, company))}</pre></td></tr>'
-        f'<tr><td><table style="border-collapse:collapse;width:100%;font-size:12px">'
-        f'<thead style="background:#e8eef7"><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></td></tr>'
+        f'<tr><td><div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:900px;font-size:12px">'
+        f'<thead style="background:#e8eef7"><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div></td></tr>'
         f'<tr><td style="padding:18px;color:#50617b">Financee · Row markup uses purchase cost; '
         f'total margin uses revenue. Figures match the existing report; no GST adjustment is applied.</td></tr>'
         f'</table></body></html>')
