@@ -31,6 +31,12 @@ def validate_project(project):
     return project
 
 
+def review_hostname(project):
+    # Cookies are scoped by hostname, not port. Separate review databases
+    # cannot share sessionid/csrftoken on 127.0.0.1 while both tabs are open.
+    return validate_project(project).replace("_", "-") + ".localhost"
+
+
 def validate_port(port):
     if not 1024 <= port <= 65535:
         raise ValueError("Choose an unprivileged localhost port (1024-65535).")
@@ -154,6 +160,10 @@ def main(argv=None):
             raise ValueError("Commit the source before building a review image.")
         config = initialize(args.project, args.port, args.mail_port)
         config["env"].setdefault("REVIEW_MAIL_PORT", str(int(config["env"]["REVIEW_PORT"]) + 1))
+        host = review_hostname(args.project)
+        config["env"]["ALLOWED_HOSTS"] = f"localhost,127.0.0.1,{host}"
+        config["env"]["CSRF_TRUSTED_ORIGINS"] = ",".join(
+            f"http://{name}:{config['env']['REVIEW_PORT']}" for name in ("localhost", "127.0.0.1", host))
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         config["commit"] = sha
         config["env"]["REVIEW_IMAGE"] = f"financee-review:{args.project}-{sha[:12]}"
@@ -166,8 +176,8 @@ def main(argv=None):
                 raise ValueError("The host's localhost review URL is not ready.")
         run(config, "exec", "-T", "web", "python", "tests/review_seed.py")
         write_private(state_directory(args.project) / "handoff.txt",
-                      f"Commit: {sha}\nURL: http://127.0.0.1:{config['env']['REVIEW_PORT']}\n"
-                      f"Capture inbox: http://127.0.0.1:{config['env']['REVIEW_MAIL_PORT']}\n"
+                      f"Commit: {sha}\nURL: http://{host}:{config['env']['REVIEW_PORT']}\n"
+                      f"Capture inbox: http://{host.replace('.localhost','-mail.localhost')}:{config['env']['REVIEW_MAIL_PORT']}\n"
                       f"Password for all synthetic accounts: {config['env']['REVIEW_LOGIN_PASSWORD']}\n"
                       "Accounts: review_operator, alpha_manager, alpha_staff, alpha_reader, "
                       "beta_manager, beta_staff, suspended_user\n")

@@ -38,6 +38,11 @@ class ReviewSafety(unittest.TestCase):
         self.assertEqual(command[command.index("--project-name") + 1], "financee_review_darkmode")
         self.assertEqual(command.count("-f"), 1)
 
+    def test_review_hostnames_isolate_browser_cookies(self):
+        self.assertEqual(review.review_hostname("financee_review_email"), "financee-review-email.localhost")
+        self.assertNotEqual(review.review_hostname("financee_review_email"), review.review_hostname("financee_review_darkmode"))
+        with self.assertRaises(ValueError): review.review_hostname("production")
+
     def test_remote_daemon_refused(self):
         with patch.dict(review.os.environ, {"DOCKER_HOST": "tcp://production:2376"}):
             with self.assertRaises(ValueError):

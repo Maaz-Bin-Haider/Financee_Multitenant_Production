@@ -891,3 +891,14 @@ objects, so those paths failed although actual local SMTP delivery worked.
 ordinary text and numeric values unchanged and preserving Decimal parsing.
 All 15 real-PostgreSQL report-email integration scenarios passed after the fix,
 including concurrent claims, actual local SMTP capture and per-company logs.
+
+## 2026-10-23: Parallel Local Review Databases Shared Browser Cookies
+
+Opening the dark-mode and email review stacks on `127.0.0.1` at different
+ports caused login to be lost: browser cookies are scoped by host, not port,
+and the other stack's polling request could reject/delete the new stack's
+session cookie. Review handoffs now use a validated per-project `.localhost`
+hostname and matching allowed hosts/CSRF origins. Those names resolve to
+loopback in the browser without changing the host's DNS configuration.
+The capture inbox uses a separate `.localhost` name. Port publication remains
+loopback-only; production cookie behavior and Accounting are unchanged.
