@@ -622,7 +622,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
       const data = await api(`log/?limit=50&offset=${_logOffset}`);
       document.getElementById("reLogPrev").disabled = _logOffset === 0;
       document.getElementById("reLogNext").disabled = _logOffset + 50 >= data.log.total;
-      document.getElementById("reLogPage").textContent = `${_logOffset + 1}–${Math.min(_logOffset + 50, data.log.total)} of ${data.log.total}`;
+      document.getElementById("reLogPage").textContent = data.log.total ? `${_logOffset + 1}–${Math.min(_logOffset + 50, data.log.total)} of ${data.log.total}` : "0 of 0";
       renderLogStats((data.log || {}).summary);
       renderLogRows(((data.log || {}).rows) || []);
     } catch (err) {
@@ -725,7 +725,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
         document.getElementById("reAdvancedSummary").textContent =
           `${document.getElementById("reSmtpHost").value || "smtp.gmail.com"} : ` +
           `${document.getElementById("reSmtpPort").value || 587} · ` +
-          `${document.getElementById("reUseTls").checked ? "TLS" : "no TLS"}`;
+          `${document.getElementById("reUseTls").checked ? "TLS" : "implicit TLS"}`;
       });
     });
 
