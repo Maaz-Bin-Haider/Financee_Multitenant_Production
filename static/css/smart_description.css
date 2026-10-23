@@ -1,16 +1,16 @@
 .smart-description-shell {
   --sd-accent: #3b82f6;
-  --sd-accent-strong: #1d4ed8;
-  --sd-accent-soft: #eff6ff;
-  --sd-ink: #1f2937;
-  --sd-muted: #64748b;
-  --sd-border: #bfdbfe;
-  --sd-surface: #ffffff;
+  --sd-accent-strong: var(--ink-blue);
+  --sd-accent-soft: var(--tint-blue);
+  --sd-ink: var(--text-primary);
+  --sd-muted: var(--text-tertiary);
+  --sd-border: var(--brand-primary-border);
+  --sd-surface: var(--card-bg);
   position: relative;
   border: 1px solid var(--sd-border);
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(239, 246, 255, 0.9), rgba(255, 255, 255, 0) 38%),
+    linear-gradient(135deg, var(--tint-blue), transparent 38%),
     var(--sd-surface);
   padding: 8px;
   box-shadow: 0 10px 24px rgba(30, 64, 175, 0.06);
@@ -36,7 +36,7 @@
 }
 
 .smart-description-shell.has-value {
-  border-color: #93c5fd;
+  border-color: var(--brand-primary-border);
 }
 
 .smart-description-shell.has-table {
@@ -71,7 +71,7 @@
   gap: 5px;
   color: var(--sd-accent-strong);
   background: var(--sd-accent-soft);
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--brand-primary-border);
   border-radius: 8px;
   padding: 4px 7px;
   white-space: nowrap;
@@ -96,10 +96,10 @@
   gap: 5px;
   min-width: 30px;
   height: 28px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--brand-primary-border);
   border-radius: 8px;
   color: var(--sd-accent-strong);
-  background: #eff6ff;
+  background: var(--tint-blue);
   padding: 0 8px;
   font-size: 0.72rem;
   font-weight: 900;
@@ -145,9 +145,9 @@
   min-height: 48px;
   max-height: 150px;
   resize: vertical;
-  border: 1px solid #dbeafe !important;
+  border: 1px solid var(--input-border) !important;
   border-radius: 8px !important;
-  background: rgba(255, 255, 255, 0.94) !important;
+  background: var(--input-bg) !important;
   color: var(--sd-ink) !important;
   padding: 9px 10px !important;
   line-height: 1.45;
@@ -157,7 +157,7 @@
 
 .smart-description-shell textarea:focus {
   border-color: var(--sd-accent) !important;
-  background: #ffffff !important;
+  background: var(--bg-surface) !important;
   box-shadow: none !important;
 }
 
@@ -178,9 +178,9 @@
 .smart-description-preview {
   display: none;
   margin-top: 8px;
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--card-bg);
   overflow: hidden;
 }
 
@@ -201,8 +201,8 @@
 
 .smart-description-table th,
 .smart-description-table td {
-  border-bottom: 1px solid #f1f5f9;
-  border-right: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
   padding: 7px 8px;
   text-align: left;
   vertical-align: top;
@@ -218,8 +218,8 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  color: #1e3a8a;
-  background: #eff6ff;
+  color: var(--ink-blue);
+  background: var(--tint-blue);
   font-weight: 900;
 }
 
@@ -227,7 +227,7 @@
 .smart-description-table td:focus {
   outline: 2px solid #60a5fa;
   outline-offset: -2px;
-  background: #dbeafe;
+  background: var(--tint-blue);
 }
 
 .smart-description-table tr:last-child td {
@@ -235,7 +235,7 @@
 }
 
 .smart-description-table td {
-  color: #334155;
+  color: var(--text-secondary);
   font-weight: 650;
 }
 
@@ -244,10 +244,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--border-color);
   padding: 6px 8px;
   color: var(--sd-muted);
-  background: #eff6ff;
+  background: var(--tint-blue);
   font-size: 0.7rem;
   font-weight: 800;
 }
@@ -256,14 +256,14 @@
   border-radius: 10px !important;
   padding: 0 !important;
   overflow: hidden !important;
-  border: 1px solid #bfdbfe !important;
+  border: 1px solid var(--brand-primary-border) !important;
   box-shadow: 0 30px 80px rgba(15, 23, 42, 0.24) !important;
 }
 
 .smart-description-modal-title {
   margin: 0 !important;
   padding: 18px 22px 8px !important;
-  color: #0f172a !important;
+  color: var(--text-primary) !important;
   font-size: 1.05rem !important;
   font-weight: 900 !important;
 }
@@ -274,11 +274,11 @@
 }
 
 .smart-description-modal-body {
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   background:
-    linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0) 42%),
-    #ffffff;
+    linear-gradient(135deg, var(--tint-blue), transparent 42%),
+    var(--card-bg);
   padding: 12px;
 }
 
@@ -287,7 +287,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
-  color: #1d4ed8;
+  color: var(--ink-blue);
   font-size: 0.78rem;
   font-weight: 850;
   text-align: left;
@@ -295,9 +295,9 @@
 
 .smart-description-modal-table-scroll {
   max-height: min(58vh, 520px);
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--card-bg);
 }
 
 .smart-description-modal-table {
@@ -312,10 +312,10 @@
 .smart-description-modal-textarea {
   width: 100%;
   min-height: min(52vh, 440px);
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--input-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--input-bg);
+  color: var(--input-text);
   padding: 12px;
   font: inherit;
   font-size: 0.9rem;
@@ -437,4 +437,12 @@
   .smart-description-btn {
     flex: 1;
   }
+}
+
+/* ── Dark mode ──
+   The panel, table, textarea and modal colours above come from the theme
+   tokens in base_styling.css. Only the white shimmer sweep needs a dark
+   value: at full strength it reads as a bright bar across a dark panel. */
+:root.dark-mode .smart-description-shell::before {
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.08), transparent);
 }

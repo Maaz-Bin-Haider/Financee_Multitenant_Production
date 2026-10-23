@@ -34,7 +34,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
 /* ── Invoice card ── */
 .sale-card {
-  background: #ffffff;
+  background: var(--card-bg);
   border-radius: 16px;
   box-shadow: 0 2px 12px rgba(15, 30, 60, 0.08), 0 0 0 1px rgba(15,30,60,0.04);
   overflow: hidden;
@@ -131,32 +131,32 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: #6b7280;
+  color: var(--text-primary);
 }
 
 .sale-input {
   padding: 10px 14px;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border-color);
   border-radius: 10px;
   font-family: 'DM Sans', sans-serif;
   font-size: 0.92rem;
-  color: #111827;
-  background: #f9fafb;
+  color: var(--text-primary);
+  background: var(--bg-surface-alt);
   transition: all 0.18s ease;
   width: 100%;
 }
 
 .sale-input:focus {
   outline: none;
-  border-color: #2563eb;
-  background: #fff;
+  border-color: var(--brand-primary);
+  background: var(--card-bg);
   box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
 }
 
 /* ── Divider ── */
 .sale-divider {
   height: 1px;
-  background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 60%, transparent 100%);
+  background: linear-gradient(90deg, var(--border-strong) 0%, var(--border-color) 60%, transparent 100%);
   margin: 0 0 22px;
 }
 
@@ -173,13 +173,13 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .items-section-title {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary);
   display: flex; align-items: center; gap: 8px;
 }
 
 .items-section-title .title-icon {
   width: 28px; height: 28px;
-  background: #eff6ff;
+  background: var(--tint-blue);
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   font-size: 14px;
@@ -201,7 +201,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #9ca3af;
+  color: var(--text-tertiary);
 }
 
 /* ── Item rows ── */
@@ -212,8 +212,8 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   grid-template-columns: 280px 1fr 100px 70px 1fr auto;
   gap: 8px;
   align-items: start;
-  background: #f9fafb;
-  border: 1.5px solid #e5e7eb;
+  background: var(--bg-surface-alt);
+  border: 1.5px solid var(--border-color);
   border-radius: 12px;
   padding: 12px 14px;
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
@@ -226,9 +226,9 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 }
 
 .item-row:focus-within {
-  border-color: #93c5fd;
+  border-color: var(--brand-primary-border);
   box-shadow: 0 0 0 3px rgba(37,99,235,0.06);
-  background: #fff;
+  background: var(--card-bg);
 }
 
 /* Item name — display only (readonly) */
@@ -241,12 +241,12 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   align-items: center;
   min-height: 38px;
   padding: 9px 12px;
-  background: #eff6ff;
-  border: 1.5px solid #bfdbfe;
+  background: var(--tint-blue);
+  border: 1.5px solid var(--brand-primary-border);
   border-radius: 9px;
   font-size: 0.87rem;
   font-weight: 600;
-  color: #1e40af;
+  color: var(--ink-blue);
   font-family: 'DM Sans', sans-serif;
   white-space: nowrap;
   overflow: hidden;
@@ -255,10 +255,10 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 }
 
 .item-name-display.empty {
-  color: #9ca3af;
+  color: var(--text-tertiary);
   font-weight: 400;
-  background: #f9fafb;
-  border-color: #e5e7eb;
+  background: var(--bg-surface-alt);
+  border-color: var(--border-color);
   font-style: italic;
 }
 
@@ -281,70 +281,70 @@ input.item_name.sale-item-name-hidden {
   display: block !important;
   width: 100%;
   padding: 9px 12px;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border-color);
   border-radius: 9px;
   font-family: 'DM Sans', sans-serif;
   font-size: 0.87rem;
-  color: #111827;
-  background: #fff;
+  color: var(--text-primary);
+  background: var(--card-bg);
   transition: all 0.18s;
 }
 .item-row.purchase-row .item_name_field input.item_name:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--brand-primary);
   box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-  background: #eff6ff;
+  background: var(--tint-blue);
 } */
 
 .item-row.purchase-row .item_name_field input.item_name {
   display: block !important;
   width: 100%;
   padding: 9px 12px;
-  border: 1.5px solid #bfdbfe;
+  border: 1.5px solid var(--brand-primary-border);
   border-radius: 9px;
   font-family: 'DM Sans', sans-serif;
   font-size: 0.87rem;
   font-weight: 600;
-  color: #1e40af;
-  background: #eff6ff;
+  color: var(--ink-blue);
+  background: var(--tint-blue);
   transition: all 0.18s;
 }
 .item-row.purchase-row .item_name_field input.item_name:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--brand-primary);
   box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-  background: #dbeafe;
+  background: var(--tint-blue);
 }
 
 /* Unit price */
 .item-row input.unit_price {
   padding: 9px 12px;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border-color);
   border-radius: 9px;
   font-family: 'DM Mono', monospace;
   font-size: 0.87rem;
-  color: #111827;
-  background: #fff;
+  color: var(--text-primary);
+  background: var(--card-bg);
   width: 100%;
   transition: all 0.18s;
 }
 
 .item-row input.unit_price:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--brand-primary);
   box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
 }
 
 /* Qty box */
 .item-row .qty-box {
   padding: 9px 6px;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border-color);
   border-radius: 9px;
   font-family: 'DM Mono', monospace;
   font-size: 0.87rem;
   text-align: center;
-  color: #374151;
-  background: #f3f4f6;
+  color: var(--ink-blue);
+  background: var(--bg-surface-alt);
   width: 100%;
 }
 
@@ -362,30 +362,30 @@ input.item_name.sale-item-name-hidden {
 
 .serials::-webkit-scrollbar { width: 4px; }
 .serials::-webkit-scrollbar-track { background: transparent; }
-.serials::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+.serials::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
 
 .serials input {
   width: 100%;
   padding: 7px 10px;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border-color);
   border-radius: 8px;
   font-family: 'DM Mono', monospace;
   font-size: 0.82rem;
-  color: #111827;
-  background: #fff;
+  color: var(--text-primary);
+  background: var(--card-bg);
   transition: all 0.18s;
 }
 
 .serials input:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--brand-primary);
   box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
-  background: #eff6ff;
+  background: var(--tint-blue);
 }
 
 .serials input.serial-valid {
-  border-color: #10b981;
-  background: #f0fdf4;
+  border-color: var(--brand-success);
+  background: var(--tint-green);
 }
 
 /* Row action buttons column */
@@ -417,15 +417,15 @@ input.item_name.sale-item-name-hidden {
 
 /* Topbar buttons */
 .btn-topbar {
-  background: #fff;
-  border: 1.5px solid #e5e7eb;
-  color: #374151;
+  background: var(--card-bg);
+  border: 1.5px solid var(--border-color);
+  color: var(--ink-blue);
   padding: 9px 16px;
   border-radius: 10px;
   font-size: 0.85rem;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
-.btn-topbar:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+.btn-topbar:hover { border-color: var(--brand-primary); color: var(--ink-blue); background: var(--tint-blue); }
 
 /* Add item */
 .btn-add-item {
@@ -439,18 +439,18 @@ input.item_name.sale-item-name-hidden {
 
 /* Bulk paste */
 .btn-bulk {
-  background: #f5f3ff;
-  color: #6d28d9;
+  background: var(--tint-purple);
+  color: var(--ink-purple);
   border: 1.5px solid #ddd6fe;
   padding: 8px 16px;
   border-radius: 8px;
 }
-.btn-bulk:hover { background: #ede9fe; border-color: #8b5cf6; }
+.btn-bulk:hover { background: var(--tint-blue); border-color: #8b5cf6; }
 
 /* Add serial */
 .custom-btn.add-serial {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--tint-blue);
+  color: var(--ink-blue);
   border: 1.5px solid #bae6fd;
   font-size: 0.75rem;
   padding: 5px 10px;
@@ -460,8 +460,8 @@ input.item_name.sale-item-name-hidden {
 
 /* Remove serial */
 .custom-btn.remove-serial {
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--tint-red);
+  color: var(--ink-red);
   border: 1.5px solid #fecaca;
   font-size: 0.75rem;
   padding: 5px 10px;
@@ -471,8 +471,8 @@ input.item_name.sale-item-name-hidden {
 
 /* Remove item */
 .custom-btn.remove-item {
-  background: #fff7ed;
-  color: #ea580c;
+  background: var(--tint-amber);
+  color: var(--ink-amber);
   border: 1.5px solid #fed7aa;
   font-size: 0.75rem;
   padding: 5px 10px;
@@ -480,10 +480,32 @@ input.item_name.sale-item-name-hidden {
 }
 .custom-btn.remove-item:hover { background: #fed7aa; }
 
+/* ── Dark mode for the pastel action buttons ──
+   Everything above sets its *fill* from a --tint-* token, which is
+   translucent in dark mode and therefore correct. Its borders and its
+   hover fills are hardcoded light pastels, which are not: on a #111827
+   card, hovering "Add serial" painted a solid #bae6fd block, and the
+   same for Remove serial (#fecaca), Remove item (#fed7aa) and Bulk
+   paste (#ddd6fe).
+
+   This sheet had no dark half at all, on the four screens the business
+   spends its day in. The values below follow the translucent --tint-*
+   convention so they sit on whatever surface is behind them. */
+:root.dark-mode .custom-btn.add-serial    { border-color: rgba(59, 130, 246, 0.32); }
+:root.dark-mode .custom-btn.add-serial:hover    { background: rgba(59, 130, 246, 0.26); }
+:root.dark-mode .custom-btn.remove-serial { border-color: rgba(239, 68, 68, 0.32); }
+:root.dark-mode .custom-btn.remove-serial:hover { background: rgba(239, 68, 68, 0.26); }
+:root.dark-mode .custom-btn.remove-item   { border-color: rgba(245, 158, 11, 0.32); }
+:root.dark-mode .custom-btn.remove-item:hover   { background: rgba(245, 158, 11, 0.26); }
+:root.dark-mode .btn-bulk                 { border-color: rgba(139, 92, 246, 0.32); }
+:root.dark-mode .btn-bulk:hover           { border-color: rgba(139, 92, 246, 0.55); }
+:root.dark-mode .delete-btn,
+:root.dark-mode .btn-pdf                  { border-color: rgba(239, 68, 68, 0.32); }
+
 /* ── Footer: totals + action buttons ── */
 .sale-card-footer {
   padding: 18px 28px 24px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -504,19 +526,19 @@ input.item_name.sale-item-name-hidden {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #9ca3af;
+  color: var(--text-tertiary);
 }
 
 .total-chip-value {
   font-family: 'DM Mono', monospace;
   font-size: 1.2rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary);
   letter-spacing: -0.5px;
 }
 
 .total-chip-value.amount-value {
-  color: #2563eb;
+  color: var(--ink-blue);
   font-size: 1.35rem;
 }
 
@@ -546,8 +568,8 @@ input.item_name.sale-item-name-hidden {
 }
 
 .delete-btn {
-  background: #fff;
-  color: #dc2626;
+  background: var(--card-bg);
+  color: var(--ink-red);
   border: 1.5px solid #fecaca;
   font-family: 'DM Sans', sans-serif;
   font-weight: 600;
@@ -561,15 +583,15 @@ input.item_name.sale-item-name-hidden {
   gap: 8px;
 }
 .delete-btn:hover {
-  background: #fee2e2;
+  background: var(--tint-red);
   border-color: #dc2626;
   transform: translateY(-1px);
 }
 
 /* PDF download button */
 .btn-pdf {
-  background: #fff;
-  color: #dc2626;
+  background: var(--card-bg);
+  color: var(--ink-red);
   border: 1.5px solid #fecaca;
   font-family: 'DM Sans', sans-serif;
   font-weight: 600;
@@ -582,7 +604,7 @@ input.item_name.sale-item-name-hidden {
   align-items: center;
   gap: 6px;
 }
-.btn-pdf:hover { background: #fff1f2; border-color: #dc2626; transform: translateY(-1px); }
+.btn-pdf:hover { background: var(--tint-red); border-color: #dc2626; transform: translateY(-1px); }
 
 /* ── Navigation strip ── */
 .sale-nav-strip {
@@ -594,9 +616,9 @@ input.item_name.sale-item-name-hidden {
 }
 
 .sale-nav-btn {
-  background: #fff;
-  border: 1.5px solid #e5e7eb;
-  color: #374151;
+  background: var(--card-bg);
+  border: 1.5px solid var(--border-color);
+  color: var(--ink-blue);
   font-family: 'DM Sans', sans-serif;
   font-weight: 600;
   font-size: 0.85rem;
@@ -610,9 +632,9 @@ input.item_name.sale-item-name-hidden {
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 .sale-nav-btn:hover {
-  border-color: #2563eb;
-  color: #2563eb;
-  background: #eff6ff;
+  border-color: var(--brand-primary);
+  color: var(--ink-blue);
+  background: var(--tint-blue);
   transform: translateY(-1px);
   box-shadow: 0 3px 10px rgba(37,99,235,0.15);
 }
@@ -620,7 +642,7 @@ input.item_name.sale-item-name-hidden {
 .nav-divider {
   width: 1px;
   height: 24px;
-  background: #e5e7eb;
+  background: var(--border-color);
 }
 
 /* ── Autocomplete dropdowns ── */
@@ -632,8 +654,8 @@ input.item_name.sale-item-name-hidden {
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: #fff;
-  border: 1.5px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1.5px solid var(--border-color);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   max-height: 220px;
@@ -650,16 +672,16 @@ input.item_name.sale-item-name-hidden {
 .items_suggestions div, #suggestions div, .suggestion-item {
   padding: 10px 14px;
   font-size: 0.88rem;
-  color: #374151;
+  color: var(--ink-blue);
   cursor: pointer;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--border-color);
   transition: background 0.14s;
 }
 .items_suggestions div:last-child, #suggestions div:last-child { border-bottom: none; }
 .items_suggestions div:hover, #suggestions div:hover,
 .suggestion-item:hover, .suggestion-item.highlight {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--tint-blue);
+  color: var(--ink-blue);
 }
 
 /* ── Responsive ── */
@@ -746,31 +768,31 @@ input.item_name.sale-item-name-hidden {
   padding: 6px 10px;
   font-family: 'DM Mono', monospace;
   font-size: 0.82rem;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--input-border);
   border-radius: 8px;
-  background: #fff;
-  color: #111827;
+  background: var(--input-bg);
+  color: var(--input-text);
   transition: all 0.18s;
 }
 
 /* Purchase serial inputs — match sale page serial-valid styling by default */
 .item-row.purchase-row .serials .serial-pair input.sn {
-  background: #f0fdf4;
-  border-color: #10b981;
-  color: #111827;
+  background: var(--tint-green);
+  border-color: var(--brand-success);
+  color: var(--text-primary);
 }
 
 .item-row.purchase-row .serials .serial-pair input.sn:focus {
   outline: none;
   border-color: #059669;
   box-shadow: 0 0 0 2px rgba(16,185,129,0.15);
-  background: #dcfce7;
+  background: var(--tint-green);
 }
 
 /* Empty serial inputs stay white until filled */
 .item-row.purchase-row .serials .serial-pair input.sn:placeholder-shown {
-  background: #fff;
-  border-color: #e5e7eb;
+  background: var(--card-bg);
+  border-color: var(--border-color);
 }
 
 /* Comment input — shorter, fills remaining space up to a cap */
@@ -782,23 +804,23 @@ input.item_name.sale-item-name-hidden {
   padding: 6px 10px;
   font-size: 0.79rem;
   font-style: italic;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--input-border);
   border-radius: 8px;
-  color: #4b5563;
-  background: #f9fafb;
+  color: var(--text-secondary);
+  background: var(--input-bg);
   transition: border-color 0.18s;
 }
 
 .serials .serial-pair input.sn:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--brand-primary);
   box-shadow: 0 0 0 2px rgba(37,99,235,0.08);
-  background: #eff6ff;
+  background: var(--tint-blue);
 }
 .serials .serial-pair input.cmt:focus {
   outline: none;
-  border-color: #2563eb;
-  background: #fff;
+  border-color: var(--brand-primary);
+  background: var(--card-bg);
 }
 
 /* Status tag after comment */

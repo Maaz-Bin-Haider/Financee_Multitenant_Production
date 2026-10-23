@@ -23,18 +23,18 @@
     border: 1.5px solid #e5e7eb;
     border-radius: 8px;
     transition: all 0.18s;
-    background: #fff;
-    color: #111827;
+    background: var(--bg-surface-alt);
+    color: var(--ink-blue);
   }
   .serial-pair input.sn:focus {
     outline: none; border-color: #2563eb;
     box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
-    background: #eff6ff;
+    background: var(--tint-blue);
   }
-  .serial-pair input.sn.dup-self    { border-color: #f59e0b; background: #fffbeb; }
-  .serial-pair input.sn.dup-stock   { border-color: #dc2626; background: #fff1f2; }
-  .serial-pair input.sn.dup-existed { border-color: #9333ea; background: #fdf4ff; }
-  .serial-pair input.sn.dup-ok      { border-color: #10b981; background: #f0fdf4; }
+  .serial-pair input.sn.dup-self    { border-color: #f59e0b; background: var(--tint-amber); }
+  .serial-pair input.sn.dup-stock   { border-color: #dc2626; background: var(--tint-red); }
+  .serial-pair input.sn.dup-existed { border-color: #9333ea; background: var(--tint-purple); }
+  .serial-pair input.sn.dup-ok      { border-color: #10b981; background: var(--tint-green); }
 
   .serial-pair input.cmt {
     flex: 1;
@@ -43,13 +43,13 @@
     border: 1.5px solid #e5e7eb;
     border-radius: 8px;
     font-style: italic;
-    color: #4b5563;
-    background: #f9fafb;
+    color: var(--text-primary);
+    background: var(--tint-blue);
     transition: border-color 0.18s;
   }
   .serial-pair input.cmt:focus {
     outline: none; border-color: #2563eb;
-    background: #fff;
+    background: var(--bg-surface-alt);
   }
 
   .serial-status-tag {
@@ -60,15 +60,15 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
-  .tag-ok       { background:#dcfce7; color:#15803d; }
-  .tag-dup      { background:#fef9c3; color:#92400e; }
-  .tag-stock    { background:#fee2e2; color:#dc2626; }
-  .tag-existed  { background:#f3e8ff; color:#7e22ce; }
+  .tag-ok       { background: var(--tint-green); color: var(--ink-green); }
+  .tag-dup      { background: var(--tint-amber); color: var(--ink-amber); }
+  .tag-stock    { background: var(--tint-red); color: var(--ink-red); }
+  .tag-existed  { background: var(--tint-purple); color: var(--ink-purple); }
 
   .item-locked-badge {
     display: inline-flex; align-items: center; gap: 5px;
     font-size: 0.72rem; font-weight: 600;
-    background: #f0fdf4; color: #15803d;
+    background: var(--tint-green); color: var(--ink-green);
     border: 1.5px solid #bbf7d0; border-radius: 6px;
     padding: 3px 8px; margin-left: 8px;
   }
@@ -142,7 +142,7 @@
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
               <input type="radio" name="purchase_type" value="cash" onchange="onPurchaseTypeChange()"> Cash Purchase
             </label>
-            <span id="cashPaidBadge" style="display:none;align-self:center;font-weight:600;color:#1a7f37;">● Paid (Cash)</span>
+            <span id="cashPaidBadge" style="display:none;align-self:center;font-weight:600;color:var(--ink-green);">● Paid (Cash)</span>
           </div>
         </div>
 

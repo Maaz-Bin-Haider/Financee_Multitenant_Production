@@ -31,7 +31,7 @@
 }
 
 #serials input[type="text"]:focus {
-  border-color: #2563eb;
+  border-color: var(--brand-primary);
   box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
 }
 
@@ -40,7 +40,7 @@
 .add-serial {
   margin-top: 16px;
   width: 50%;
-  background-color: #2563eb;
+  background-color: var(--ink-blue);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -61,7 +61,7 @@
   text-align: right;
   margin-top: 10px;
   font-weight: 500;
-  color: #444;
+  color: var(--text-primary);
   font-size: 0.95rem;
 }
 
@@ -84,13 +84,13 @@
 
 .item-input:focus,
 .serial-input:focus {
-  border-color: #2563eb;
+  border-color: var(--brand-primary);
   box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
 }
 
 .item-input[readonly] {
-  background-color: #fbfcfc;
-  color: #555;
+  background-color: var(--bg-surface-alt);
+  color: var(--text-primary);
   
 }
 /* ---------- REMOVE BTN FOR ROWS ---------- */

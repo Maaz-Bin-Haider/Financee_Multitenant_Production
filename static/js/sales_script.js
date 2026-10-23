@@ -1372,14 +1372,14 @@ function openBulkSerialsDialog() {
   Alerts.dialog({  /* was Swal.fire — centered input dialog, standardized animation */
     title: "📋 Bulk Paste Serials",
     html: `
-      <div style="text-align:left;font-size:13px;color:#6b7280;margin-bottom:10px;line-height:1.5;">
+      <div style="text-align:left;font-size:13px;color:var(--text-primary);margin-bottom:10px;line-height:1.5;">
         Paste serial numbers separated by <b>newline, tab, comma, or semicolon</b>.<br>
         Works directly with Excel column copy (Ctrl+C → Ctrl+V).
       </div>
       <textarea id="bulkSerialsTextarea"
         style="width:100%;min-height:200px;padding:12px;font-family:'DM Mono',monospace;
                font-size:13px;border:1.5px solid #e5e7eb;border-radius:10px;resize:vertical;
-               background:#f9fafb;color:#111827;"
+               background:var(--tint-blue);color:var(--ink-blue);"
         placeholder="SN001&#10;SN002&#10;SN003&#10;…"></textarea>
       <div style="margin-top:8px;font-size:12px;color:#9ca3af;">
         Items will be grouped by their item type automatically.
@@ -1491,10 +1491,10 @@ function processBulkSerialsText(rawText, { preferRow = null } = {}) {
     // Build summary popup
     const invalidHtml = invalid.length ? `
       <details style="margin-top:10px;text-align:left;">
-        <summary style="cursor:pointer;color:#dc2626;font-size:13px;">
+        <summary style="cursor:pointer;color:var(--ink-red);font-size:13px;">
           ❌ Show ${invalid.length} invalid serial${invalid.length>1?"s":""}
         </summary>
-        <ul style="max-height:160px;overflow:auto;margin:6px 0 0 16px;padding:0;font-size:12px;color:#374151;">
+        <ul style="max-height:160px;overflow:auto;margin:6px 0 0 16px;padding:0;font-size:12px;color:var(--ink-blue);">
           ${invalid.map(i=>`<li><code>${escapeHtml(i.serial)}</code> — ${escapeHtml(i.reason)}</li>`).join("")}
         </ul>
       </details>` : "";
@@ -1502,12 +1502,12 @@ function processBulkSerialsText(rawText, { preferRow = null } = {}) {
     const totalDupes = skippedDuplicates.length + intraPasteDupes;
     const dupHtml = totalDupes ? `
       <details style="margin-top:8px;text-align:left;">
-        <summary style="cursor:pointer;color:#d97706;font-size:13px;">
+        <summary style="cursor:pointer;color:var(--ink-amber);font-size:13px;">
           ⚠️ Show ${totalDupes} duplicate${totalDupes>1?"s":""}
           ${intraPasteDupes ? `(${intraPasteDupes} within pasted text, ${skippedDuplicates.length} already in form)` : ""}
         </summary>
-        <ul style="max-height:120px;overflow:auto;margin:6px 0 0 16px;padding:0;font-size:12px;color:#374151;">
-          ${intraPasteDupes ? `<li style="color:#92400e;"><i>${intraPasteDupes} duplicate(s) removed from pasted text</i></li>` : ""}
+        <ul style="max-height:120px;overflow:auto;margin:6px 0 0 16px;padding:0;font-size:12px;color:var(--ink-blue);">
+          ${intraPasteDupes ? `<li style="color:var(--ink-amber);"><i>${intraPasteDupes} duplicate(s) removed from pasted text</i></li>` : ""}
           ${skippedDuplicates.map(s=>`<li><code>${escapeHtml(s)}</code> — already in form</li>`).join("")}
         </ul>
       </details>` : "";
@@ -1518,9 +1518,9 @@ function processBulkSerialsText(rawText, { preferRow = null } = {}) {
       html: `
         <div style="text-align:left;line-height:1.8;font-size:14px;">
           <div>📥 Total pasted: <b>${data.total_input}</b></div>
-          <div>✅ Added to invoice: <b style="color:#16a34a;">${accepted.length}</b></div>
-          <div>⚠️ Duplicates skipped: <b style="color:#d97706;">${totalDupes}</b></div>
-          <div>❌ Invalid / not in stock: <b style="color:#dc2626;">${invalid.length}</b></div>
+          <div>✅ Added to invoice: <b style="color:var(--ink-green);">${accepted.length}</b></div>
+          <div>⚠️ Duplicates skipped: <b style="color:var(--ink-amber);">${totalDupes}</b></div>
+          <div>❌ Invalid / not in stock: <b style="color:var(--ink-red);">${invalid.length}</b></div>
           ${dupHtml}${invalidHtml}
         </div>
       `,
@@ -2055,13 +2055,13 @@ async function fetchSaleSummary(from = null, to = null) {
       <style>
         .sh-search { width:100%;padding:9px 14px;margin-bottom:10px;border:1.5px solid #e5e7eb;
           border-radius:9px;font-size:13px;outline:none;font-family:inherit; }
-        .sh-search:focus { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,0.1); }
+        .sh-search:focus { border-color:var(--brand-primary); box-shadow:0 0 0 2px rgba(37,99,235,0.1); }
         .sh-wrap { max-height:400px;overflow-y:auto;border-radius:8px; }
         .sh-table { width:100%;border-collapse:collapse;font-size:13px; }
-        .sh-table th { background:#f9fafb;font-weight:700;color:#374151;
+        .sh-table th { background:var(--tint-blue);font-weight:700;color:var(--ink-blue);
           padding:8px 10px;border-bottom:2px solid #e5e7eb;text-align:left; }
-        .sh-table td { padding:8px 10px;border-bottom:1px solid #f3f4f6;color:#374151; }
-        .sh-table .sale-row:hover td { background:#eff6ff;color:#1d4ed8; }
+        .sh-table td { padding:8px 10px;border-bottom:1px solid #f3f4f6;color:var(--ink-blue); }
+        .sh-table .sale-row:hover td { background:var(--tint-blue);color:var(--ink-blue); }
       </style>
       <input type="text" class="sh-search" placeholder="🔍 Search by customer…" onkeyup="filterSaleTable(this.value)">
       <div class="sh-wrap">
@@ -2125,9 +2125,9 @@ function saleDateWise()  {
     title: "📅 Select Date Range",
     html: `
       <div style="text-align:left;margin:8px 0;">
-        <label style="font-size:13px;color:#6b7280;">From Date</label>
+        <label style="font-size:13px;color:var(--text-primary);">From Date</label>
         <input type="date" id="fromDate" class="swal2-input" style="width:100%;margin:4px 0 12px;">
-        <label style="font-size:13px;color:#6b7280;">To Date</label>
+        <label style="font-size:13px;color:var(--text-primary);">To Date</label>
         <input type="date" id="toDate" class="swal2-input" style="width:100%;margin:4px 0;" value="${today}">
       </div>
     `,

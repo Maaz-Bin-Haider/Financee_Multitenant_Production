@@ -3214,14 +3214,14 @@ function openBulkForRow(row, prefill = "") {
   Alerts.dialog({  /* was Swal.fire — centered input dialog, standardized animation */
     title: `📋 Bulk Paste — ${escapeHtml(itemName)}`,
     html: `
-      <div style="text-align:left;font-size:13px;color:#6b7280;margin-bottom:10px;line-height:1.5;">
+      <div style="text-align:left;font-size:13px;color:var(--text-primary);margin-bottom:10px;line-height:1.5;">
         Paste serial numbers (newline, tab, comma, or semicolon separated).<br>
         Each serial gets a default comment <b>"All Ok"</b>. Duplicates &amp; stock conflicts are highlighted automatically.
       </div>
       <textarea id="bulkTA"
         style="width:100%;min-height:190px;padding:12px;font-family:'DM Mono',monospace;
                font-size:13px;border:1.5px solid #e5e7eb;border-radius:10px;resize:vertical;
-               background:#f9fafb;color:#111827;"
+               background:var(--tint-blue);color:var(--ink-blue);"
         placeholder="SN001&#10;SN002&#10;SN003&#10;…">${escapeHtml(prefill)}</textarea>
     `,
     showCancelButton: true,
@@ -3289,12 +3289,12 @@ function openBulkForRow(row, prefill = "") {
       html: `
         <div style="text-align:left;line-height:1.8;font-size:14px;">
           <div>📥 Total pasted: <b>${tokens.length}</b></div>
-          <div>✅ Added: <b style="color:#16a34a;">${accepted.length}</b></div>
-          <div>⚠️ Duplicates skipped: <b style="color:#d97706;">${totalDups}</b>
+          <div>✅ Added: <b style="color:var(--ink-green);">${accepted.length}</b></div>
+          <div>⚠️ Duplicates skipped: <b style="color:var(--ink-amber);">${totalDups}</b>
             ${totalDups ? `<span style="font-size:12px;color:#9ca3af;"> (${dupDetails})</span>` : ""}
           </div>
         </div>
-        <div style="margin-top:8px;font-size:12px;color:#6b7280;">
+        <div style="margin-top:8px;font-size:12px;color:var(--text-primary);">
           ⚠️ Stock conflicts are shown inline in red/purple on the serial fields.
         </div>
       `,
@@ -3531,7 +3531,7 @@ function highlightMatch(text, query) {
   const idx = text.toUpperCase().indexOf(query.toUpperCase());
   if (idx < 0) return escapeHtml(text);
   return escapeHtml(text.slice(0, idx))
-    + `<b style="color:#2563eb;">${escapeHtml(text.slice(idx, idx+query.length))}</b>`
+    + `<b style="color:var(--ink-blue);">${escapeHtml(text.slice(idx, idx+query.length))}</b>`
     + escapeHtml(text.slice(idx + query.length));
 }
 
@@ -3902,13 +3902,13 @@ async function fetchPurchaseSummary(from = null, to = null) {
         .ph-search { width:100%;padding:9px 14px;margin-bottom:10px;
           border:1.5px solid #e5e7eb;border-radius:9px;font-size:13px;
           outline:none;font-family:inherit; }
-        .ph-search:focus { border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,0.1); }
+        .ph-search:focus { border-color:var(--brand-primary);box-shadow:0 0 0 2px rgba(37,99,235,0.1); }
         .ph-wrap { max-height:400px;overflow-y:auto;border-radius:8px; }
         .ph-table { width:100%;border-collapse:collapse;font-size:13px; }
-        .ph-table th { background:#f9fafb;font-weight:700;color:#374151;
+        .ph-table th { background:var(--tint-blue);font-weight:700;color:var(--ink-blue);
           padding:8px 10px;border-bottom:2px solid #e5e7eb;text-align:left; }
-        .ph-table td { padding:8px 10px;border-bottom:1px solid #f3f4f6;color:#374151; }
-        .ph-table .purchase-row:hover td { background:#eff6ff;color:#1d4ed8; }
+        .ph-table td { padding:8px 10px;border-bottom:1px solid #f3f4f6;color:var(--ink-blue); }
+        .ph-table .purchase-row:hover td { background:var(--tint-blue);color:var(--ink-blue); }
       </style>
       <input type="text" class="ph-search" placeholder="🔍 Search by vendor…"
         onkeyup="filterPurchaseTable(this.value)">
@@ -3971,9 +3971,9 @@ function purchaseDateWise() {
     title:"📅 Select Date Range",
     html:`
       <div style="text-align:left;margin:8px 0;">
-        <label style="font-size:13px;color:#6b7280;">From Date</label>
+        <label style="font-size:13px;color:var(--text-primary);">From Date</label>
         <input type="date" id="fromDate" class="swal2-input" style="width:100%;margin:4px 0 12px;">
-        <label style="font-size:13px;color:#6b7280;">To Date</label>
+        <label style="font-size:13px;color:var(--text-primary);">To Date</label>
         <input type="date" id="toDate" class="swal2-input"
           style="width:100%;margin:4px 0;" value="${today}">
       </div>

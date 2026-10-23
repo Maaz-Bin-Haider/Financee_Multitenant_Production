@@ -25,7 +25,7 @@
     grid-template-columns: 1fr 1.6fr 1fr auto;
     gap: 10px;
     align-items: center;
-    background: #f9fafb;
+    background: var(--tint-blue);
     border: 1.5px solid #e5e7eb;
     border-radius: 10px;
     padding: 10px 14px;
@@ -36,7 +36,7 @@
   .return-serial-row:focus-within {
     border-color: #fcd34d;
     box-shadow: 0 0 0 3px rgba(217,119,6,0.08);
-    background: #fff;
+    background: var(--bg-surface-alt);
   }
 
   .return-serial-row input {
@@ -45,8 +45,8 @@
     border-radius: 9px;
     font-family: 'DM Sans', sans-serif;
     font-size: 0.87rem;
-    color: #111827;
-    background: #fff;
+    color: var(--ink-blue);
+    background: var(--bg-surface-alt);
     width: 100%;
     transition: all 0.18s;
     outline: none;
@@ -55,12 +55,12 @@
   .return-serial-row input:focus {
     border-color: #d97706;
     box-shadow: 0 0 0 2px rgba(217,119,6,0.12);
-    background: #fffbeb;
+    background: var(--tint-amber);
   }
 
   .return-serial-row input[readonly] {
-    background: #f3f4f6;
-    color: #6b7280;
+    background: var(--bg-surface-alt);
+    color: var(--text-primary);
     cursor: default;
   }
 
@@ -72,7 +72,7 @@
 
   .return-serial-row input.serial-valid {
     border-color: #10b981;
-    background: #f0fdf4;
+    background: var(--tint-green);
   }
 
   .return-row-remove {
@@ -80,8 +80,8 @@
     height: 32px;
     border-radius: 50%;
     border: 1.5px solid #fecaca;
-    background: #fff;
-    color: #dc2626;
+    background: var(--bg-surface-alt);
+    color: var(--ink-red);
     font-size: 16px;
     font-weight: 700;
     cursor: pointer;
@@ -91,7 +91,7 @@
     flex-shrink: 0;
     transition: all 0.18s;
   }
-  .return-row-remove:hover { background: #fee2e2; border-color: #dc2626; transform: scale(1.1); }
+  .return-row-remove:hover { background: var(--tint-red); border-color: #dc2626; transform: scale(1.1); }
 
   /* Column header labels */
   .return-col-headers {
@@ -179,7 +179,7 @@
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
               <input type="radio" name="return_type" value="cash" onchange="onSaleReturnTypeChange()"> Cash Sale Return
             </label>
-            <span id="cashReturnBadge" style="display:none;align-self:center;font-weight:600;color:#1a7f37;">● Cash</span>
+            <span id="cashReturnBadge" style="display:none;align-self:center;font-weight:600;color:var(--ink-green);">● Cash</span>
           </div>
         </div>
 

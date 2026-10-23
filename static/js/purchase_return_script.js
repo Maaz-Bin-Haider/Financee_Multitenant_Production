@@ -467,7 +467,7 @@
 //             data-vendor="${purchaseReturn.vendor.toLowerCase()}"
 //             style="cursor:pointer; transition:background 0.2s;"
 //             onclick="viewPurchaseReturnDetails(${purchaseReturn.purchase_return_id})"
-//             onmouseover="this.style.background='#f3f4f6';"
+//             onmouseover="this.style.background='var(--bg-surface-alt)';"
 //             onmouseout="this.style.background='';"
 //           >
 //             <td>${idx + 1}</td>
@@ -1027,7 +1027,7 @@ async function fetchPurchaseReturnSummary(from = null, to = null) {
         rows += `
           <tr onclick="viewPurchaseReturnDetails(${pr.purchase_return_id})"
               style="cursor:pointer;"
-              onmouseover="this.style.background='#f3f4f6';"
+              onmouseover="this.style.background='var(--bg-surface-alt)';"
               onmouseout="this.style.background='';">
             <td>${idx + 1}</td>
             <td>${pr.purchase_return_id}</td>
@@ -1048,7 +1048,7 @@ async function fetchPurchaseReturnSummary(from = null, to = null) {
         .pr-search:focus { border-color:#7c3aed; box-shadow:0 0 0 2px rgba(124,58,237,0.1); }
         .pr-table { width:100%; border-collapse:collapse; font-size:13px; }
         .pr-table th,.pr-table td { padding:8px 10px; border-bottom:1px solid #e5e7eb; }
-        .pr-table th { background:#f9fafb; font-weight:600; color:#374151; }
+        .pr-table th { background:var(--tint-blue); font-weight:600; color:var(--ink-blue); }
       </style>
       <input class="pr-search" placeholder="🔍 Search by vendor…" oninput="filterPurchaseReturnTable(this.value)">
       <div class="pr-wrap">

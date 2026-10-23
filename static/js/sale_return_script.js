@@ -338,7 +338,7 @@
 //             data-vendor="${saleReturn.customer.toLowerCase()}"
 //             style="cursor:pointer; transition:background 0.2s;"
 //             onclick="viewSaleReturnDetails(${saleReturn.sales_return_id})"
-//             onmouseover="this.style.background='#f3f4f6';"
+//             onmouseover="this.style.background='var(--bg-surface-alt)';"
 //             onmouseout="this.style.background='';"
 //           >
 //             <td>${idx + 1}</td>
@@ -895,7 +895,7 @@ async function fetchSaleReturnSummary(from = null, to = null) {
         rows += `
           <tr onclick="viewSaleReturnDetails(${sr.sales_return_id})"
               style="cursor:pointer;"
-              onmouseover="this.style.background='#f3f4f6';"
+              onmouseover="this.style.background='var(--bg-surface-alt)';"
               onmouseout="this.style.background='';">
             <td>${idx + 1}</td>
             <td>${sr.sales_return_id}</td>
@@ -913,10 +913,10 @@ async function fetchSaleReturnSummary(from = null, to = null) {
         .sr-wrap { max-height:420px; overflow-y:auto; }
         .sr-search { width:100%; padding:8px 12px; margin-bottom:10px; border:1px solid #d1d5db;
                      border-radius:8px; font-size:14px; outline:none; }
-        .sr-search:focus { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,0.1); }
+        .sr-search:focus { border-color:var(--brand-primary); box-shadow:0 0 0 2px rgba(37,99,235,0.1); }
         .sr-table { width:100%; border-collapse:collapse; font-size:13px; }
         .sr-table th,.sr-table td { padding:8px 10px; border-bottom:1px solid #e5e7eb; }
-        .sr-table th { background:#f9fafb; font-weight:600; color:#374151; }
+        .sr-table th { background:var(--tint-blue); font-weight:600; color:var(--ink-blue); }
       </style>
       <input class="sr-search" placeholder="🔍 Search by customer…" oninput="filterSaleReturnTable(this.value)">
       <div class="sr-wrap">

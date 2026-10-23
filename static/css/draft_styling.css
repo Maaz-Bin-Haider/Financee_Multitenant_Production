@@ -10,11 +10,10 @@
  * conversion picker, the draft-return rows, the history popups, the summary
  * chips and the warning banner.
  *
- * Tokens come from base_styling.css :root. The source's --tint-* and --ink-*
- * tokens do not exist here: the tints map onto our --brand-*-light tokens
- * (same values), and each ink is written var(--ink-x, <source light value>).
- * Dark mode is retired in this app, so the source's dark-mode specificity
- * overrides are not carried over.
+ * Tokens come from base_styling.css :root, including the --tint-* / --ink-*
+ * scales, which flip in dark mode. Inks are still written
+ * var(--ink-x, <light value>). The dark-mode specificity overrides are at the
+ * end of this file ("Colours that must win against dark_mode.css").
  *
  * This file is also linked from the dashboard for the "Stock Reserved on
  * Drafts" card, so every selector here is scoped to a draft-specific class.
@@ -46,7 +45,7 @@
 }
 
 .draft-status-badge.status-partially-converted {
-  background: var(--brand-warning-light);
+  background: var(--tint-amber);  /* not --brand-warning-light: it stays #fffbeb in dark mode */
   border-color: var(--brand-warning);
   color: var(--ink-amber, #92400e);
 }
@@ -109,7 +108,7 @@
 /* The caution variant: what a screen is NOT for. */
 .draft-explainer.draft-explainer-note {
   border-color: var(--brand-warning);
-  background: var(--brand-warning-light);
+  background: var(--tint-amber);  /* not --brand-warning-light: it stays #fffbeb in dark mode */
   color: var(--ink-amber, #92400e);
   margin-top: 8px;
 }
@@ -290,7 +289,7 @@
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--brand-warning);
-  background: var(--brand-warning-light);
+  background: var(--tint-amber);  /* not --brand-warning-light: it stays #fffbeb in dark mode */
   color: var(--ink-amber, #92400e);
   font-size: 0.78rem;
   line-height: 1.5;
@@ -727,7 +726,7 @@
   padding: 10px 14px;
   border-radius: var(--radius-md);
   border: 1px solid var(--brand-warning);
-  background: var(--brand-warning-light);
+  background: var(--tint-amber);  /* not --brand-warning-light: it stays #fffbeb in dark mode */
   color: var(--ink-amber, #92400e);
   font-size: 0.82rem;
   line-height: 1.55;
@@ -750,4 +749,68 @@
     flex: 1 1 calc(50% - 10px);
     min-width: 0;
   }
+}
+
+
+/* ── Colours that must win against dark_mode.css ──────────────────────────
+ *
+ * dark_mode.css carries
+ *     body.dark-mode p, body.dark-mode span, body.dark-mode div
+ *         { color: var(--text-primary); }
+ * at specificity (0,1,2). A plain `.draft-explainer` is (0,1,0) and loses to
+ * it in dark mode -- no error, no warning, the colour simply never applies.
+ * The doubled classes below are (0,2,0), which beats (0,1,2) on class count;
+ * descendants are named explicitly for the same reason. (Ported with the
+ * rest of the dark mode from the sibling project's draft_styling.css.)
+ * ---------------------------------------------------------------------- */
+
+.draft-status-badge.draft-status-badge {
+  color: var(--text-primary);
+}
+
+.draft-status-badge.draft-status-badge.status-open {
+  color: var(--ink-blue);
+}
+
+.draft-status-badge.draft-status-badge.status-partially-converted {
+  color: var(--ink-amber);
+}
+
+.draft-status-badge.draft-status-badge.status-converted {
+  color: var(--ink-green);
+}
+
+.draft-status-badge.draft-status-badge.status-cancelled {
+  color: var(--ink-red);
+}
+
+.draft-entry-badge.draft-entry-badge {
+  color: var(--text-secondary, var(--text-primary));
+}
+
+.draft-explainer.draft-explainer {
+  color: var(--ink-blue);
+}
+
+.draft-explainer.draft-explainer-note,
+.draft-explainer.draft-explainer-note span,
+.draft-explainer.draft-explainer-note strong,
+.draft-explainer.draft-explainer-note i {
+  color: var(--ink-amber);
+}
+
+.draft-hint.draft-hint {
+  color: var(--text-secondary, var(--text-primary));
+}
+
+.convert-line-item.convert-line-item {
+  color: var(--text-primary);
+}
+
+.convert-below-cost.convert-below-cost {
+  color: var(--ink-amber);
+}
+
+.dr-col-headers.dr-col-headers {
+  color: var(--text-primary);
 }
