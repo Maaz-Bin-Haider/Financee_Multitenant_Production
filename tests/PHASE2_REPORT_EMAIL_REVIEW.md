@@ -1,8 +1,10 @@
 # Phase 2: company report emails
 
 Date: 2026-10-23. Branch: `codex/report-emails`, based on deployed main
-`da30168`. Implementation is local. Owner manual review and explicit push
-authorization are required. Spotlight and Team Activity remain unstarted.
+`da30168`. Implementation is local. Owner manual review passed on 2026-10-23
+for application `c2a63b3`; the owner explicitly said **do not push** and asked
+for a new session. No push, merge or deployment is authorized. Spotlight and
+Team Activity remain unstarted.
 Accounting Plus Inventory is an unchanged, read-only reference.
 
 ## Delivered behavior

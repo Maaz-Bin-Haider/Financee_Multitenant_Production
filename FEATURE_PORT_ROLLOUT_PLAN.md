@@ -1,6 +1,6 @@
 # Financee feature rollout plan
 
-Created: 2026-10-23. Status: Phase 1 deployed and owner-confirmed; Phase 2 implemented and verified locally, awaiting owner manual review. Phase 2 push and later phases remain gated.
+Created: 2026-10-23. Status: Phase 1 deployed and owner-confirmed; Phase 2 automated checks and owner manual review passed. The owner explicitly said do not push. Phase 2 release and later phases remain gated.
 
 ## 1. Scope and working agreement
 
@@ -240,3 +240,8 @@ commit history and the manual checklist. Leave the isolated application on
 `http://financee-review-email.localhost:8181/` and local capture inbox on
 `http://financee-review-email-mail.localhost:8182/` running for the owner.
 No Phase 2 branch push, merge, release or Phase 3 implementation is authorized.
+
+The owner confirmed Phase 2 works and instructed "dont push but start new
+session". Manual review of application `c2a63b3` has passed. Preserve the local
+branch and running review stack, hand off to a fresh chat, and await further
+instructions. The documentation handoff does not change the approved build.
