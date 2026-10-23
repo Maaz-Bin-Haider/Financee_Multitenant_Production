@@ -69,5 +69,6 @@ urlpatterns = [
     path('opening-stock/', include(opening_stock_urls, namespace='opening_stock')),
     path('attachments/', include(attachments_urls, namespace='attachments')),
     path('draft/', include(draft_urls, namespace='draft')),
+    path('spotlight/', include('spotlight.urls', namespace='spotlight')),
     path('report-email/', include('reportmailer.urls', namespace='reportmailer')),
 ]

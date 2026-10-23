@@ -51,6 +51,7 @@ def is_ajax_or_api(request):
         request.headers.get("x-requested-with") == "XMLHttpRequest"
         or request.path.startswith(("/home/api/", "/sales-reports/api/"))
         or (request.path.startswith("/report-email/") and request.path != "/report-email/")
+        or request.path.startswith("/spotlight/")
         or "/api/" in request.path
         or request.path.endswith((".json",))
     )
