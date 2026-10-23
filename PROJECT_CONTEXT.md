@@ -575,25 +575,22 @@ checkpoint-4B transition gate requires to stay byte-identical.
 - The admin dashboard must remain single-column/responsive: recent actions stack below the main dashboard, and changelist/filter panels must fit small laptops and iPad widths without horizontal scrolling.
 - Avoid inline styles in admin templates; put layout, spacing, and color in `financee_admin.css` so small laptop and iPad behavior stays consistent.
 
-## Dark Mode (temporarily retired) & Sidebar Identity
+## Dark Mode & Sidebar Identity
 
-- Dark mode is **temporarily retired** pending a rework (2026-07-06). The
-  tenant sidebar toggle, the early theme-apply scripts, and the
-  `dark_mode.js` include in `templates/base/base.html` are **commented out**
-  (not deleted, per project convention); `static/js/dark_mode.js` and
-  `static/css/dark_mode.css` remain in the tree for the future rework. Stored
-  `localStorage` theme preferences are ignored — everyone gets light mode.
-- The admin is locked to the light theme: `templates/admin/base_site.html`
-  blanks Django's `{% block dark-mode-vars %}` (drops the admin dark CSS
-  variables and `theme.js`), and `templates/admin/color_theme_toggle.html` is
-  a blank override of the stock toggle. Delete that override and restore the
-  block to bring the stock behavior back.
-- The tenant sidebar footer shows the logged-in username **and the company
-  name** (`request.tenant_company.name`, server-rendered, hidden when the
-  request has no tenant company). Styles: `.company_name` in
-  `static/css/base_styling.css`. The retired inventory-mode badge that sat
-  under the company name (and had rendered empty since the serial-only
-  consolidation) was removed on 2026-09-26.
+Phase 1 restores the reviewed theme foundations from preserved commit `6e4fe68`
+and changes the preference rule to match Accounting: dark is the default and
+only an explicit `light` value opts out. Head scripts in the base, login and
+suspended templates run before stylesheets, including when localStorage is
+unavailable. The base body follows the head's class. `dark_mode.js` owns the
+sidebar toggle, accessible state, persistence, cross-tab updates and a bounded
+cross-fade; clearing preferences returns to dark. Node behavior tests run in CI.
+
+Colours come from semantic tokens in `base_styling.css`; soft `--tint-*`
+backgrounds pair with `--ink-*` text. Do not redefine base tokens in page CSS.
+The custom admin and PDF/print output retain their own fixed light treatment.
+The sidebar still identifies both company and user. Screen-specific colour
+parity is being completed in the subsequent Phase 1 commits; see the rollout
+plan for the local review gate.
 
 ## Frontend Alert Layer (SweetAlert2)
 

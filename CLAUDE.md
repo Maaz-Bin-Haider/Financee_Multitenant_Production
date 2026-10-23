@@ -93,6 +93,11 @@ The suite surfaced genuine **tenant schema drift** — idempotent `tenancy/sql/`
 
 ## When you change things
 
+Dark mode defaults to dark unless `localStorage['theme']` is explicitly `light`.
+Keep the pre-paint scripts in base/login/suspended templates and
+`static/js/dark_mode.js` consistent. Run `node tests/test_dark_mode.js` after
+theme behavior changes. Use semantic tokens; admin/PDFs keep their fixed theme.
+
 For the dark mode, report email, Spotlight and Team Activity rollout, follow
 `FEATURE_PORT_ROLLOUT_PLAN.md`. The owner requires small local commits, an
 isolated running Financee build for manual review after each completed feature,

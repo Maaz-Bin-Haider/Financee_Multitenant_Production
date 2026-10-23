@@ -20,6 +20,25 @@
   --brand-warning: #d97706;
   --brand-warning-light: #fffbeb;
 
+  /* Soft tints for icon chips, badges and status buckets. These are the
+     pastel fills that stayed light in dark mode; they flip below. */
+  --tint-blue:    #eff6ff;
+  --tint-green:   #f0fdf4;
+  --tint-purple:  #f5f3ff;
+  --tint-cyan:    #ecfeff;
+  --tint-red:     #fef2f2;
+  --tint-amber:   #fffbeb;
+  --tint-neutral: #f1f5f9;
+
+  /* Ink that sits on the soft tints above. Flips in dark mode so status
+     text stays legible once the tint becomes translucent. */
+  --ink-blue:   #1e40af;
+  --ink-green:  #166534;
+  --ink-amber:  #92400e;
+  --ink-red:    #991b1b;
+  --ink-purple: #5b21b6;
+  --ink-cyan:   #155e75;
+
   /* Neutral scale */
   --gray-50:  #f8fafc;
   --gray-100: #f1f5f9;
@@ -89,7 +108,7 @@
 
   --text-primary:    #f1f5f9;
   --text-secondary:  #94a3b8;
-  --text-tertiary:   #64748b;
+  --text-tertiary:   #8fa1b8;
 
   --border-color:    rgba(255,255,255,0.08);
   --border-strong:   rgba(255,255,255,0.14);
@@ -107,8 +126,24 @@
   --sidebar-bg-end:  #0a1020;
 
   --brand-primary-light: rgba(37,99,235,0.12);
+  --brand-primary-border: rgba(59,130,246,0.35);
   --brand-success-light: rgba(5,150,105,0.12);
   --brand-danger-light:  rgba(220,38,38,0.12);
+
+  --tint-blue:    rgba(59,130,246,0.16);
+  --tint-green:   rgba(16,185,129,0.16);
+  --tint-purple:  rgba(139,92,246,0.18);
+  --tint-cyan:    rgba(6,182,212,0.16);
+  --tint-red:     rgba(239,68,68,0.16);
+  --tint-amber:   rgba(245,158,11,0.16);
+  --tint-neutral: rgba(255,255,255,0.06);
+
+  --ink-blue:   #93c5fd;
+  --ink-green:  #6ee7b7;
+  --ink-amber:  #fcd34d;
+  --ink-red:    #fca5a5;
+  --ink-purple: #c4b5fd;
+  --ink-cyan:   #67e8f9;
 }
 
 /* ===== RESET & BASE ===== */
@@ -160,11 +195,15 @@ label {
 }
 
 /* ===== FORM INPUTS ===== */
+input:not([type]),
 input[type="text"],
 input[type="number"],
 input[type="date"],
+input[type="datetime-local"],
 input[type="email"],
 input[type="password"],
+input[type="search"],
+input[type="tel"],
 select,
 textarea {
   width: 100%;
@@ -193,8 +232,8 @@ textarea:focus {
 }
 
 input[readonly] {
-  background: var(--gray-100);
-  color: var(--gray-500);
+  background: var(--bg-surface-alt);
+  color: var(--text-secondary);
   cursor: default;
 }
 
@@ -379,7 +418,7 @@ textarea {
   gap: 6px;
   font-size: 0.82rem;
   font-weight: 500;
-  color: var(--gray-400);
+  color: var(--text-tertiary);
   margin-bottom: 0.65rem;
   padding: 0.4rem 0.5rem;
   border-radius: var(--radius-md);
@@ -487,7 +526,7 @@ textarea {
 }
 
 .menu-toggle:hover {
-  color: var(--brand-primary);
+  color: var(--ink-blue);
   box-shadow: var(--shadow-lg);
 }
 
@@ -577,11 +616,11 @@ textarea {
 .btn-danger:hover { background: #b91c1c; }
 
 .btn-ghost {
-  background: var(--gray-100);
+  background: var(--bg-surface-alt);
   color: var(--gray-700);
   border: 1px solid var(--border-color);
 }
-.btn-ghost:hover { background: var(--gray-200); }
+.btn-ghost:hover { background: var(--border-color); }
 
 :root.dark-mode .btn-ghost {
   background: rgba(255,255,255,0.06);
@@ -670,7 +709,7 @@ textarea {
 
 .badge-blue {
   background: var(--brand-primary-light);
-  color: var(--brand-primary);
+  color: var(--ink-blue);
   border: 1px solid var(--brand-primary-border);
 }
 

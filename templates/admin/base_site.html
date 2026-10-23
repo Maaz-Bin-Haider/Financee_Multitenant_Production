@@ -4,9 +4,10 @@
 {% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ financee_system_name|default:"Financee" }} Admin{% endblock %}
 
 {% comment %}
-Dark mode temporarily retired: blanking this block drops Django's admin
+The admin stays light: blanking this block drops Django's admin
 dark-theme CSS variables and theme.js, so the admin always renders the
-light Financee theme and stored theme preferences are ignored.
+light Financee theme. The tenant pages' dark mode (PROJECT_CONTEXT.md,
+Dark Mode) does not reach the admin.
 {% endcomment %}
 {% block dark-mode-vars %}{% endblock %}
 
@@ -29,8 +30,8 @@ light Financee theme and stored theme preferences are ignored.
   </a>
 </div>
 {% comment %}
-Dark mode temporarily retired: the anonymous-page toggle include is
-disabled (the shared color_theme_toggle.html override is blank anyway).
+The admin stays light: the anonymous-page toggle include is disabled
+(the shared color_theme_toggle.html override is blank anyway).
 {% endcomment %}
 {% endblock %}
 

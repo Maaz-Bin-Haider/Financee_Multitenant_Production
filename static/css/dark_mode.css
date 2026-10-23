@@ -85,7 +85,7 @@ body.dark-mode .panel,
 body.dark-mode .box {
   background: var(--card-bg);
   color: var(--text-primary);
-  box-shadow: 0 4px 12px var(--shadow-color);
+  box-shadow: var(--card-shadow);  /* --shadow-color no longer exists */
 }
 
 /* Button Variants for Dark Mode */
@@ -186,7 +186,10 @@ body.dark-mode .swal2-title {
   color: var(--text-primary);
 }
 
-body.dark-mode .swal2-content {
+/* .swal2-content is SweetAlert2 v10's name; v11 (what base.html loads)
+   renders the body as .swal2-html-container. */
+body.dark-mode .swal2-content,
+body.dark-mode .swal2-html-container {
   color: var(--text-secondary);
 }
 
@@ -205,9 +208,54 @@ body.dark-mode a:not(.nav-links a):not(.logout-link):not(.btn):hover {
   color: #93c5fd;
 }
 
-/* Ensure smooth transitions */
-body.dark-mode * {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+/* The theme cross-fade used to live here as
+
+     body.dark-mode * {
+       transition: background-color 0.3s ease, color 0.3s ease,
+                   border-color 0.3s ease;
+     }
+
+   which put three animated paint properties on every element of
+   every page, permanently, in what is now the default theme.
+   Hovering one row of the 1,700px Detailed Ledger transitioned
+   every cell in it; generating a report transitioned the whole
+   table; and every element added afterwards inherited a 300ms
+   background transition nobody asked for. It is also the reason
+   getComputedStyle reports every background as rgba(0,0,0,0) in
+   a hidden tab, recorded in CONTEXT.md as a measurement trap.
+
+   The cross-fade itself was worth keeping. It now runs as a
+   one-shot: dark_mode.js puts .theme-switching on <html> for the
+   length of the toggle and removes it again, and the rule below
+   scopes the transition to the surfaces that actually carry the
+   theme. Same effect when you press the button, nothing paid for
+   the rest of the session. (In the sibling project this rule lives in
+   motion.css; this project has no motion layer, so it lives here.
+   380ms must stay under dark_mode.js's SWITCH_MS of 420.) */
+html.theme-switching body,
+html.theme-switching .sidebar,
+html.theme-switching .main-content,
+html.theme-switching .dash-card,
+html.theme-switching .panel-card,
+html.theme-switching .card,
+html.theme-switching .table-container,
+html.theme-switching .modal-shell {
+  transition: background-color 380ms cubic-bezier(0.4, 0, 0.2, 1),
+              color 380ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 380ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-switching body,
+  html.theme-switching .sidebar,
+  html.theme-switching .main-content,
+  html.theme-switching .dash-card,
+  html.theme-switching .panel-card,
+  html.theme-switching .card,
+  html.theme-switching .table-container,
+  html.theme-switching .modal-shell {
+    transition: none;
+  }
 }
 
 /* Fix for text visibility in dark mode */
@@ -228,91 +276,8 @@ body.dark-mode h6 {
 }
 
 
-/* body.dark-mode .payment-date-header,
-body.dark-mode .receipt-date-header {
-  background-color: transparent;
-  box-shadow: none;
-  border-bottom: none;
-}
-
-body.dark-mode .payment-row, body.dark-mode .receipt-row{
-
-  background-color: #0f172a;
-  box-shadow: none;
-  border-bottom: none;
-}
-
-body.dark-mode .right-panel{
-  
-  background: linear-gradient(160deg, #1f2937, #111827) !important;
-}
-
-body.dark-mode .no-data{
-  border: none;
-}
-
-body.dark-mode .table-container{
-  
-  background-color: transparent;
-}
-
-
-
-body.dark-mode #report-form-container{
-  background: transparent;
-  box-shadow: none;
-  border: none;
-} 
-
-body.dark-mode #report-form-container .form-row input{
-  background: transparent;
-  background-color: transparent;
-}
-
-body.dark-mode .valuation-section,
-body.dark-mode .valuation-table td{
-  background: none;
-  color: white; 
-}
-
-body.dark-mode #search_name,
-body.dark-mode .suggestion-item{
-  color: rgb(252, 248, 248);
-  background-color: #2e2f31;
-}
-
-
-
-body.dark-mode .highlight{
-  background-color: #0e508d;
-  border-radius: 6px;
-  margin: 2px;
-}
-
-body.dark-mode .suggestion-item:hover{
-  background-color: #0e508d;
-} */
-
 
 /* Apply to BOTH html and body dark mode */
-html.dark-mode .payment-date-header,
-html.dark-mode .receipt-date-header,
-body.dark-mode .payment-date-header,
-body.dark-mode .receipt-date-header {
-  background-color: transparent;
-  box-shadow: none;
-  border-bottom: none;
-}
-
-html.dark-mode .payment-row, 
-html.dark-mode .receipt-row,
-body.dark-mode .payment-row, 
-body.dark-mode .receipt-row {
-  background-color: #0f172a;
-  box-shadow: none;
-  border-bottom: none;
-}
-
 html.dark-mode .right-panel,
 body.dark-mode .right-panel {
   background: linear-gradient(160deg, #1f2937, #111827) !important;
@@ -349,22 +314,11 @@ body.dark-mode .valuation-table td {
   color: white; 
 }
 
-html.dark-mode #search_name,
-html.dark-mode .suggestion-item,
-body.dark-mode #search_name,
-body.dark-mode .suggestion-item {
-  color: rgb(252, 248, 248);
-  background-color: #2e2f31;
-}
-
-html.dark-mode .highlight,
-body.dark-mode .highlight {
-  background-color: #0e508d;
-  border-radius: 6px;
-  margin: 2px;
-}
-
-html.dark-mode .suggestion-item:hover,
-body.dark-mode .suggestion-item:hover {
+/* The Company Valuation totals rows (profit_reports.js) keep the blue a
+   generic .highlight rule here gave them. That rule, the #search_name grey
+   and the .suggestion-item colours went with the search plan's Phase 11:
+   every search box now takes its page's own input style and lookup.css. */
+html.dark-mode .valuation-table tr.highlight,
+body.dark-mode .valuation-table tr.highlight {
   background-color: #0e508d;
 }

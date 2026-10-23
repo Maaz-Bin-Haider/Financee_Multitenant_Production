@@ -6,6 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Account Suspended — Financee</title>
 
+  <!-- Same theme contract as base/base.html: dark unless 'light' is explicitly stored.
+       This page does not extend that template, so it carries its own copy
+       (PROJECT_CONTEXT.md, Dark Mode). Above the stylesheet on purpose. -->
+  <script>
+    (function () {
+      var dark = true;
+      try { dark = localStorage.getItem('theme') !== 'light'; } catch (e) {}
+      if (dark) document.documentElement.classList.add('dark-mode');
+    })();
+  </script>
+
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 

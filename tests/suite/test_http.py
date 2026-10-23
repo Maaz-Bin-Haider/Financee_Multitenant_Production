@@ -2,6 +2,9 @@
 """HTTP layer: drives the real Django views through the test client as a
 logged-in tenant user. Verifies pages render, JSON APIs respond without server
 errors (no 5xx), auth endpoints work, and a master-data write flow succeeds.
+On builds with the restored dark mode it also checks that the theme toggle and
+the theme scripts reach the page (the Phase 3B rehearsal runs this file inside
+an older image, whose base.html only carries the retired toggle in a comment).
 
 Run inside the web container:
     docker compose -f deploy/docker-compose.yml exec -e PYTHONPATH=/app web \
@@ -28,6 +31,18 @@ RESULTS = []
 
 def chk(name, ok, detail=""):
     RESULTS.append((name, bool(ok), "" if ok else str(detail)))
+
+
+def build_has_dark_mode():
+    """Whether the RUNNING build's base.html carries the restored theme toggle."""
+    try:
+        base = (settings.BASE_DIR / "templates" / "base" / "base.html").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return "data-theme-toggle" in base
+
+
+THEME_SCRIPT = "localStorage.getItem('theme') !== 'light'"
 
 
 # GET routes that must not raise a server error (5xx). Pages should also be 200;
@@ -117,6 +132,21 @@ def main():
         for path in JSON_APIS + REPORTS:
             r = c.get(path)
             chk(f"no server error: {path}", r.status_code < 500, f"status {r.status_code}")
+
+        if build_has_dark_mode():
+            from django.contrib.staticfiles.storage import staticfiles_storage
+
+            html = c.get("/home/").content.decode("utf-8", "ignore")
+            chk("dark mode: theme script applies the stored choice before paint", THEME_SCRIPT in html)
+            chk("dark mode: sidebar toggle is rendered", "data-theme-toggle" in html and 'id="themeToggle"' in html)
+            chk("dark mode: dark_mode.js is loaded", "js/dark_mode" in html)
+            try:
+                chk("dark mode: dark_mode.js is in the static manifest",
+                    bool(staticfiles_storage.url("js/dark_mode.js")))
+            except ValueError as exc:
+                chk("dark mode: dark_mode.js is in the static manifest", False, exc)
+            login_html = Client(SERVER_NAME=server).get("/authentication/login/").content.decode("utf-8", "ignore")
+            chk("dark mode: login page applies the stored choice before paint", THEME_SCRIPT in login_html)
 
         # write flow: create a party via the real endpoint (form-encoded)
         pname = f"HTTP PARTY {TAG}"

@@ -493,7 +493,7 @@ flowchart LR
 - **Static files are content-hashed** at Docker build time (`ManifestStaticFilesStorage`), so a changed CSS/JS file gets a new name automatically — no cache-busting, ever.
 - **Unified alert layer** — every user-facing alert goes through the `Alerts` helper (`static/js/alerts.js`, a SweetAlert2 wrapper). Never call `Swal.fire` directly. Only consequential actions get a confirm dialog (deletes, month close and its reversal, opening-balance reclassify, selling below cost, replacing an attachment); other feedback is a non-blocking toast, with `Alerts.loading` / `Alerts.dialog` for spinners and input forms.
 - **Custom admin site** (`financee/admin_site.py`) — muted professional theme, KPI cards, subscription badges, user-activity pages with PDF export. Activity is aggregated across tenant schemas only when `TENANCY_CROSS_TENANT_ACTIVITY=True` (off by default).
-- Dark mode is **temporarily retired** (commented out, not deleted) pending a rework.
+- Dark mode follows the Accounting interface: dark by default, with a sidebar toggle and a remembered browser preference; admin and PDF exports retain their separate light treatment.
 
 ---
 

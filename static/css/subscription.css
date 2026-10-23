@@ -102,6 +102,51 @@
   color: #ffffff;
 }
 
+/* Suspended page, dark theme. This page loads no base_styling.css, so it
+   has no tokens; the values are base_styling.css's dark tokens, copied. */
+html.dark-mode .suspended-body {
+  background: #0a0f1e;
+  color: #f1f5f9;
+}
+
+html.dark-mode .suspended-card {
+  background: #111827;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+html.dark-mode .suspended-brand {
+  color: #93c5fd;
+}
+
+html.dark-mode .suspended-icon {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+html.dark-mode .suspended-company,
+html.dark-mode .suspended-message {
+  color: #cbd5e1;
+}
+
+html.dark-mode .suspended-hint {
+  color: #8fa1b8;
+}
+
+html.dark-mode .suspended-actions {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+html.dark-mode .suspended-logout {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+html.dark-mode .suspended-logout:hover {
+  background: #334155;
+}
+
 /* ── 2. Renewal warning banner (base.html) ──────────────────────────────── */
 
 .subscription-banner {
