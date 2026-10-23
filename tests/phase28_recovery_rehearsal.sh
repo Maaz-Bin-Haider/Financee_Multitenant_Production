@@ -65,6 +65,7 @@ DB_USER=financee
 DB_PASSWORD=phase28-source-db
 DB_HOST=db
 DB_PORT=5432
+REPORT_EMAIL_ENABLED=False
 WEB_IMAGE=$current_image
 EOF
 cat >"$work_dir/restore.env" <<EOF
@@ -77,6 +78,7 @@ DB_USER=financee
 DB_PASSWORD=phase28-restore-db
 DB_HOST=db
 DB_PORT=5432
+REPORT_EMAIL_ENABLED=False
 WEB_IMAGE=$current_image
 EOF
 cat >"$work_dir/source.override.yml" <<EOF
@@ -193,6 +195,7 @@ echo "==> Verifying previous production image against forward-applied database"
 "${restore_compose[@]}" exec -T web python -c \
     'from pathlib import Path; Path("/app/staticfiles/js/phase2-serial-cache-sentinel.012345abcdef.js").write_text("preserved-serial-cache")'
 docker pull "$old_image"
+"${restore_compose[@]}" stop report_worker
 WEB_IMAGE="$old_image" "${restore_compose[@]}" up -d --no-deps web
 restore_web=$("${restore_compose[@]}" ps -q web)
 for _ in $(seq 1 90); do

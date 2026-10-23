@@ -35,6 +35,8 @@ $COMPOSE build
 echo "==> Starting database"
 $COMPOSE up -d db
 
+bash report_worker_control.sh stop
+
 echo "==> Recreating app + nginx"
 $COMPOSE up -d --no-deps web nginx
 
@@ -49,6 +51,8 @@ $COMPOSE exec -T web python manage.py migrate --no-input
 # Safe to run every deploy because the scripts use IF NOT EXISTS / OR REPLACE.
 echo "==> Applying tenant SQL to all schemas"
 $COMPOSE exec -T web python manage.py apply_sql_all_tenants tenancy/sql/tenant_indexes.sql
+
+bash report_worker_control.sh start
 
 echo "==> Pruning old images"
 docker image prune -f

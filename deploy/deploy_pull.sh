@@ -79,6 +79,8 @@ $COMPOSE pull web
 echo "==> Ensuring db + redis are up"
 $COMPOSE up -d db redis
 
+bash report_worker_control.sh stop
+
 echo "==> Recreating web + nginx"
 $COMPOSE up -d --no-deps web nginx
 
@@ -99,7 +101,9 @@ if [ -z "$healthy" ]; then
     $COMPOSE logs --tail=100 web || true
     if [ -n "$PREV_IMAGE" ]; then
         echo "==> Rolling web back to previous image $PREV_IMAGE"
+        bash report_worker_control.sh stop
         WEB_IMAGE="$PREV_IMAGE" $COMPOSE up -d --no-deps web
+        WEB_IMAGE="$PREV_IMAGE" bash report_worker_control.sh restore
     fi
     exit 1
 fi
@@ -109,6 +113,9 @@ $COMPOSE exec -T web python manage.py apply_sql_all_tenants tenancy/sql/tenant_i
 
 echo "==> Post-deploy tenant family/version/fingerprint and safe-report checks"
 $COMPOSE exec -T web python manage.py release_preflight
+
+echo "==> Starting and checking the matching report worker"
+bash report_worker_control.sh start
 
 if [ "${DEFER_IMAGE_PRUNE:-0}" = "1" ]; then
     echo "==> Deferring superseded-image pruning to the release controller"

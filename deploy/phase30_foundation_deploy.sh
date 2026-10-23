@@ -62,6 +62,7 @@ rollback() {
         } >"$evidence_dir/rollback-incident.txt"
         echo "!! Phase 30 gate failed; rolling web back to $previous_image"
         set +e
+        bash report_worker_control.sh stop
         WEB_IMAGE="$previous_image" "${compose[@]}" up -d --no-deps web
         rollback_container=$("${compose[@]}" ps -q web)
         for _ in $(seq 1 60); do
@@ -73,6 +74,7 @@ rollback() {
         done
         curl -fsS --retry 20 --retry-delay 3 --retry-all-errors \
             -o /dev/null http://localhost/authentication/login/
+        WEB_IMAGE="$previous_image" bash report_worker_control.sh restore
         set -e
     fi
     exit "$status"
@@ -137,6 +139,9 @@ deployment_started=1
 deploy_started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 WEB_IMAGE="$WEB_IMAGE" DEFER_IMAGE_PRUNE=1 \
     bash deploy_pull.sh | tee "$evidence_dir/deploy.txt"
+
+echo "==> Checking report worker health and matching image"
+bash report_worker_control.sh health
 
 echo "==> Comparing all tenant balances and continuity fingerprints"
 "${compose[@]}" cp "$evidence_dir/continuity-before.json" \

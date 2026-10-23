@@ -37,6 +37,9 @@ jobs:
         with:
           node-version: "22"
       - run: node tests/test_dark_mode.js
+      - run: node tests/test_report_email.js
+      - run: python tests/test_report_email_rendering.py
+      - run: bash tests/test_report_worker_lifecycle.sh
       - run: python tests/phase0_serial_only_discovery_contracts.py
       - run: python tests/phase1_serial_only_creation_contracts.py
       - run: python tests/phase2_serial_runtime_removal_contracts.py

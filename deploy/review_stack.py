@@ -70,7 +70,7 @@ def command(config, *args):
 def run(config, *args):
     # An inherited shell's production DB/Compose settings must not win.
     env = {key: value for key, value in os.environ.items()
-           if not key.startswith(("COMPOSE_", "DB_", "REVIEW_", "WEB_"))}
+           if not key.startswith(("COMPOSE_", "DB_", "REVIEW_", "WEB_", "REPORT_EMAIL_", "FINANCEE_REVIEW_"))}
     env.update(config["env"])
     env["REVIEW_ENV_FILE"] = str(state_directory(config["project"]) / "review.env")
     subprocess.run(command(config, *args), env=env, cwd=ROOT, check=True)
@@ -86,7 +86,7 @@ def read_config(project):
     return config
 
 
-def initialize(project, port):
+def initialize(project, port, mail_port=None):
     directory = state_directory(project)
     for path in (directory.parent, directory):
         if path.is_symlink():
@@ -105,14 +105,20 @@ def initialize(project, port):
     if existing or volumes:
         raise ValueError("Project resources already exist without owned review state.")
     validate_port(port)
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", port))
+    mail_port = validate_port(mail_port if mail_port is not None else port + 1)
+    if port == mail_port:
+        raise ValueError("Application and inbox need different ports.")
+    for candidate in (port, mail_port):
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", candidate))
     env = {
         "SECRET_KEY": secrets.token_urlsafe(48), "DEBUG": "False",
         "ALLOWED_HOSTS": "localhost,127.0.0.1", "SECURE_COOKIES": "False",
         "CSRF_TRUSTED_ORIGINS": f"http://127.0.0.1:{port},http://localhost:{port}",
         "DB_NAME": "financee_review", "DB_USER": "review", "DB_HOST": "db", "DB_PORT": "5432",
         "DB_PASSWORD": secrets.token_urlsafe(24), "REVIEW_PORT": str(port),
+        "REVIEW_MAIL_PORT": str(mail_port),
+        "REPORT_EMAIL_ENABLED": "False" if project.startswith("financee_review_regression") else "True",
         "FINANCEE_REVIEW_PROJECT": project, "REVIEW_LOGIN_PASSWORD": secrets.token_urlsafe(18),
         "REVIEW_DB_PASSWORD": "", "REVIEW_IMAGE": "pending",
     }
@@ -134,6 +140,7 @@ def main(argv=None):
     parser.add_argument("--project", required=True)
     parser.add_argument("--port", type=int, default=8180)
     parser.add_argument("--confirm")
+    parser.add_argument("--mail-port", type=int)
     args = parser.parse_args(argv)
     validate_project(args.project)
     if args.action == "remove" and args.confirm != args.project:
@@ -145,7 +152,8 @@ def main(argv=None):
         dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True)
         if dirty.strip():
             raise ValueError("Commit the source before building a review image.")
-        config = initialize(args.project, args.port)
+        config = initialize(args.project, args.port, args.mail_port)
+        config["env"].setdefault("REVIEW_MAIL_PORT", str(int(config["env"]["REVIEW_PORT"]) + 1))
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         config["commit"] = sha
         config["env"]["REVIEW_IMAGE"] = f"financee-review:{args.project}-{sha[:12]}"
@@ -159,6 +167,7 @@ def main(argv=None):
         run(config, "exec", "-T", "web", "python", "tests/review_seed.py")
         write_private(state_directory(args.project) / "handoff.txt",
                       f"Commit: {sha}\nURL: http://127.0.0.1:{config['env']['REVIEW_PORT']}\n"
+                      f"Capture inbox: http://127.0.0.1:{config['env']['REVIEW_MAIL_PORT']}\n"
                       f"Password for all synthetic accounts: {config['env']['REVIEW_LOGIN_PASSWORD']}\n"
                       "Accounts: review_operator, alpha_manager, alpha_staff, alpha_reader, "
                       "beta_manager, beta_staff, suspended_user\n")

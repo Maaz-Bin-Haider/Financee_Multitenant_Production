@@ -54,6 +54,7 @@ DB_USER=financee
 DB_PASSWORD=phase29-postgres-password
 DB_HOST=db
 DB_PORT=5432
+REPORT_EMAIL_ENABLED=False
 WEB_CONCURRENCY=2
 GUNICORN_THREADS=2
 EOF
@@ -65,7 +66,7 @@ docker build -f deploy/Dockerfile \
 expected_image_id=$(docker image inspect -f '{{.Id}}' "$image")
 
 echo "==> Starting isolated production-like staging services"
-WEB_IMAGE="$image" "${compose[@]}" up -d db redis web
+WEB_IMAGE="$image" "${compose[@]}" up -d db redis web report_worker
 web_id=$("${compose[@]}" ps -q web)
 for _ in $(seq 1 90); do
   health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "$web_id")
@@ -73,6 +74,14 @@ for _ in $(seq 1 90); do
   sleep 5
 done
 [[ "$(docker inspect -f '{{.State.Health.Status}}' "$web_id")" == "healthy" ]]
+
+worker_id=$("${compose[@]}" ps -q report_worker)
+for _ in $(seq 1 60); do
+  [[ "$(docker inspect -f '{{.State.Health.Status}}' "$worker_id")" == healthy ]] && break
+  sleep 3
+done
+[[ "$(docker inspect -f '{{.State.Health.Status}}' "$worker_id")" == healthy ]]
+[[ "$(docker inspect -f '{{.Image}}' "$worker_id")" == "$expected_image_id" ]]
 
 running_image_id=$(docker inspect -f '{{.Image}}' "$web_id")
 [[ "$running_image_id" == "$expected_image_id" ]]

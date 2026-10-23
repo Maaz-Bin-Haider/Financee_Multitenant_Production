@@ -904,3 +904,14 @@ SMTP result; unknown/partial delivery blocks automatic retry. Only yesterday
 is automatically scheduled; older days use explicit manual sends. Retryable
 failures wait 30 minutes and stop after 12 attempts. Re-arming preserves prior
 attempts, records its actor and still obeys the current schedule/timezone.
+
+The production `report_worker` Compose service uses exactly `WEB_IMAGE`, starts
+only after web is healthy, and bypasses the migrating web entrypoint. Its
+management-command heartbeat is checked in deployment and Phase 30. The pull
+deployer stops the worker before replacing web, then starts/checks the matching
+worker. `report_worker_control.sh restore` detects older images without the
+command and leaves their worker stopped. Phase 30 rollback handles both web
+and worker; restore drills explicitly mute report delivery. Isolated review
+includes internal-only Mailpit SMTP, served to localhost through Nginx's edge
+network. A separate localhost inbox port is assigned by `review_stack.py`;
+regression workers are delivery-disabled while tests invoke controlled ticks.

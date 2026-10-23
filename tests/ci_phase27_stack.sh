@@ -34,6 +34,7 @@ DB_USER=financee
 DB_PASSWORD=ci-postgres-password
 DB_HOST=db
 DB_PORT=5432
+REPORT_EMAIL_ENABLED=False
 EOF
 
 if [[ "$gate" != "arm64" ]]; then

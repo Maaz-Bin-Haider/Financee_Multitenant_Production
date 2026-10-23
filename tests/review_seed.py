@@ -112,12 +112,25 @@ def main():
                                            is_staff=role == "operator", is_superuser=role == "operator")
             if company:
                 Membership.objects.create(user=user, company=company)
-                user.user_permissions.set(readers if role == "reader" else permissions)
+                user.user_permissions.set(readers if role == "reader" else
+                    [p for p in permissions if role == "manager" or p.codename != "send_reports"])
             if role == "reader":
                 user.groups.add(readonly)
             users[name] = user
         seed_business(alpha, users["alpha_manager"], 0)
         seed_business(beta, users["beta_manager"], 100)
+        if os.environ.get("FINANCEE_REVIEW_PROJECT", "").startswith("financee_review_email"):
+            for company, key in ((alpha, "alpha"), (beta, "beta")):
+                set_search_path(company.schema_name)
+                scalar("SELECT save_report_email_settings_from_json(%s::jsonb)", json.dumps({
+                    "sender_email": f"reports-{key}@example.test", "sender_name": company.name,
+                    "app_password": "local-capture-only", "send_hour": 7 if key == "alpha" else 8,
+                    "timezone": "Asia/Karachi" if key == "alpha" else "Asia/Dubai",
+                    "is_enabled": False, "actor": f"{key}_manager",
+                    "authorized_user_id": users[f"{key}_manager"].pk}))
+                scalar("SELECT add_report_recipient_from_json(%s::jsonb)", json.dumps({
+                    "email": f"owner-{key}@example.test", "label": company.name}))
+            reset_search_path()
         with connection.cursor() as cur:
             cur.execute("INSERT INTO public.review_fixture_marker VALUES(true,1)")
     print("Review Alpha and Beta seeded with matching serials/document numbers and different amounts.")
