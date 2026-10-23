@@ -64,6 +64,7 @@
   <!-- Subscription renewal banner + suspended page -->
   <link rel="stylesheet" href="{% static 'css/subscription.css' %}">
 
+  {% if spotlight_config %}<link rel="stylesheet" href="{% static 'css/spotlight.css' %}">{% endif %}
   {% block SeperateCssFile %}{% endblock SeperateCssFile %}
 
   <style>
@@ -90,6 +91,12 @@
             </div>
         </div>
 
+        {% if spotlight_config %}
+        <button class="spotlight-open" type="button" data-open-spotlight aria-haspopup="dialog">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <span class="spotlight-open-label">Search everything</span><kbd class="spotlight-open-kbd">⌘ / Ctrl K</kbd>
+        </button>
+        {% endif %}
         <!-- Scrollable Nav -->
         <div class="sidebar-scroll">
             <nav class="nav-links">
@@ -337,6 +344,24 @@
         setInterval(fetchCurrentUser, 3000);
     </script>
     <script src="{% static 'js/dark_mode.js' %}"></script>
+    <script src="{% static 'js/record_link.js' %}"></script>
+    {% if spotlight_config %}
+    {{ spotlight_config|json_script:"spotlight-config" }}
+    <button class="spotlight-fab" type="button" data-open-spotlight aria-label="Search everything" aria-haspopup="dialog"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button>
+    <div class="sp-layer" id="spotlight-layer" hidden>
+      <section class="sp-panel" role="dialog" aria-modal="true" aria-label="Search everything">
+        <div class="sp-head">
+          <i class="sp-glass fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input class="sp-input" id="spotlight-query" type="search" maxlength="150" placeholder="Search names, serials, documents, pages…" autocomplete="off" role="combobox" aria-label="Search everything" aria-autocomplete="list" aria-controls="spotlight-results" aria-expanded="false">
+          <button class="sp-close" id="spotlight-close" type="button" aria-label="Close search">Esc</button>
+        </div>
+        <div class="sp-list" id="spotlight-results" role="listbox" aria-label="Search results"></div>
+        <div class="sp-foot"><span class="sp-foot-hint">↑ ↓ Navigate · Enter Open · Esc Close</span><button id="spotlight-clear" class="sp-clear" type="button">Clear recent records</button></div>
+        <span id="spotlight-live" class="sp-live" role="status" aria-live="polite"></span>
+      </section>
+    </div>
+    <script src="{% static 'js/spotlight.js' %}"></script>
+    {% endif %}
 
 </body>
 </html>

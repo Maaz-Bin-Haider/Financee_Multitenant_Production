@@ -499,5 +499,6 @@ $(document).ready(() => {
   const first = document.getElementById("btn-cash-ledger")
     ? "cash-ledger"
     : $(".report-btn").first().data("report");
-  if (first) selectReport(first);
+  const linked = window.FinanceeRecordLink.report(Array.from(document.querySelectorAll(".report-btn[data-report]")).map(b => b.dataset.report), first);
+  if (linked) selectReport(linked);
 });

@@ -457,5 +457,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // auto-select the first available report
   const first = document.querySelector("#sr-report-buttons .report-btn");
-  if (first) selectReport(first.dataset.report);
+  const linked = window.FinanceeRecordLink.report(Array.from(document.querySelectorAll("#sr-report-buttons .report-btn")).map(b => b.dataset.report), first && first.dataset.report);
+  if (linked) selectReport(linked);
 });

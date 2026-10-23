@@ -490,6 +490,8 @@
     placeholder.style.display = "none";
   }
 
+  window.FinanceeOpenMaster = function (record) { selectItemTab("update"); fillForm(record); };
+
   function doSearch() {
     var name = searchInput.value.trim();
     if (!name) {

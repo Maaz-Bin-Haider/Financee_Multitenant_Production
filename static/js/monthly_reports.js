@@ -337,5 +337,6 @@ function mprPrintIncome()   { mprPrintElement('mpr-income-card', 'Income Stateme
 document.addEventListener('DOMContentLoaded', () => {
   const firstBtn = document.getElementById('mpr-btn-position')
     || document.querySelector('.report-btn[data-report]');
-  if (firstBtn) mprSelectReport(firstBtn.dataset.report || 'position');
+  const linked = window.FinanceeRecordLink.report(Array.from(document.querySelectorAll('.report-btn[data-report]')).map(b => b.dataset.report), firstBtn && firstBtn.dataset.report);
+  if (linked) mprSelectReport(linked);
 });

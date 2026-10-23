@@ -165,9 +165,9 @@ checks = {
     # draft cross-links follow their screen switches; financee_admin.css nests
     # the admin sub-switches.
     # Previously re-pinned 2026-09-30 for draft sale invoices (212 -> 223).
-    "228 serial UI source files match the reviewed report-email baseline":
-        len(serial_ui_paths) == 228
-        and files_hash(serial_ui_paths) == "060e7a3cc669550ae27429f3f58bbf94a85a49817e0d74d46d1c05fb433988d2",
+    "231 serial UI source files match the local Spotlight baseline":
+        len(serial_ui_paths) == 231
+        and files_hash(serial_ui_paths) == "0b7c8edb62ba22db649ec276804c1a1d991d8c1d8563388f07da5a16f55fcf46",
     # Re-pinned 2026-09-16 for the dashboard receivables fix (tenant schema
     # version 7). These baselines exist to catch ACCIDENTAL drift in serial
     # behaviour; this change was deliberate and reviewed, so the pins move with

@@ -171,6 +171,8 @@ $(function () {
     placeholder.style.display = "none";
   }
 
+  window.FinanceeOpenMaster = function (record) { selectPartyTab("update"); fillForm(record); };
+
   function doSearch() {
     var name = searchInput.value.trim();
     if (!name) {

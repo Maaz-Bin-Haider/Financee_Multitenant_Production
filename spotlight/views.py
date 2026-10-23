@@ -2,7 +2,7 @@
 import json
 from functools import wraps
 from urllib.parse import urlencode
-from django.db import connection, transaction
+from django.db import DatabaseError, connection, transaction
 from django.http import JsonResponse
 from django.utils.crypto import salted_hmac, constant_time_compare
 from django.views.decorators.http import require_GET
@@ -44,6 +44,8 @@ def guarded(view):
                 with connection.cursor() as cursor:
                     cursor.execute("SET LOCAL statement_timeout = '1500ms'")
                 response = view(request, *args, **kwargs)
+        except DatabaseError:
+            response = JsonResponse({'message': 'Search took too long. Try a more specific query.'}, status=503)
         except ValueError as exc:
             response = JsonResponse({'message': str(exc)}, status=400)
         response['Cache-Control'] = 'private, no-store'
@@ -134,7 +136,7 @@ def action_record(request, action, ident):
     # another record; master links themselves always use the ID resolver.
     table, name = ('parties', 'party_name') if kind == 'party' else ('items', 'item_name')
     count = queries.fetch(f'SELECT count(*) AS n FROM {table} WHERE lower({name})=lower(%s)', [record[name]])[0]['n']
-    if count != 1:
+    if count != 1 or any(char in record[name] for char in ('%', '_', '\\')):
         return None
     return dict(kind='action', id=action + ':' + str(ident), action=action, record=record,
                 name=target.label + ' · ' + record[name], meta='Quick actions',
