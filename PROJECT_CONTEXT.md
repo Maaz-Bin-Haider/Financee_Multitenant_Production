@@ -6,6 +6,20 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
+- **Phase 2 report emails authorized (2026-10-23):** the owner confirmed Phase 1
+  works in production and instructed moving to Phase 2. Main release `da30168`,
+  workflow `39972044447`, including production deployment, is verified successful.
+  Work locally on `codex/report-emails`; no Phase 2 push is authorized. Follow
+  `FEATURE_PORT_ROLLOUT_PLAN.md`, keep Accounting read-only, make small commits,
+  and stop with an isolated email review stack plus local capture inbox running.
+  Report figures come from `sale_wise_profit_json(date,date)` unchanged: rows
+  use sale_price/purchase_price/profit_loss/profit_loss_percent/vendor_name;
+  totals use units/revenue/cost/profit/margin_pct. Markup per row differs from
+  the total margin, and neither should be replaced by GST calculations.
+  Schedule authorization belongs to the configuring company member and must
+  be rechecked on every delivery. Reserve attempts before SMTP under a
+  tenant-specific lock; uncertain delivery outcomes require reconciliation
+  and explicit re-arming, rather than an automatic duplicate retry.
 - **Phase 1 review/branch CI passed; main merge authorized (2026-10-23):** dark mode matches the
   Accounting theme with dark as the default, while explicit light preferences
   persist. All 22 regression modules, 75 HTTP checks, four-company isolation,

@@ -1,6 +1,6 @@
 # Financee feature rollout plan
 
-Created: 2026-10-23. Status: Phase 1 manual review and branch CI passed; main merge authorized, release gates and later phases remain pending.
+Created: 2026-10-23. Status: Phase 1 deployed and owner-confirmed; Phase 2 implementation authorized. Phase 2 push and later phases remain gated.
 
 ## 1. Scope and working agreement
 
@@ -210,12 +210,12 @@ GitHub will receive these commits only after the owner's authorized push. No con
 - [x] Review both existing projects and verify their latest recorded releases.
 - [x] Preserve the existing dark-mode branch and create a local rollout branch from main.
 - [x] Write the phased plan and persist the owner's review/push boundaries.
-- [ ] Phase 1: isolated environment plus dark-mode parity, automated checks, owner review, authorized push/release.
+- [x] Phase 1: isolated environment plus dark-mode parity, automated checks, owner review, authorized push/release.
 - [ ] Phase 2: report emails, automated checks, owner review, authorized push/release.
 - [ ] Phase 3: Spotlight, automated checks, owner review, authorized push/release.
 - [ ] Phase 4: Team Activity, automated checks, owner review, authorized push/release; separately authorized production backfill where needed.
 
-Current checkpoint: Phase 1 is implemented, committed and verified locally;
+Phase 1 checkpoint: Phase 1 is implemented, committed and verified locally;
 the owner reported manual review passed on 2026-10-23 and explicitly instructed
 the branch push and CI monitoring.
 See `tests/PHASE1_DARK_MODE_REVIEW.md` for results and the manual checklist.
@@ -225,3 +225,8 @@ Preserve the implementation commits with a fast-forward merge, push `main`,
 and watch its workflow. Leave the isolated review stack running and protected
 staging/production approvals to the owner. Do not start Phase 2 while the
 preceding release gates are pending.
+
+The owner subsequently confirmed Phase 1 works in production and authorized
+Phase 2. Main `da30168` and workflow `39972044447`, including production deploy,
+are successful. Implement report emails locally on `codex/report-emails`.
+Gate 2 still requires manual review and a new explicit push instruction.
