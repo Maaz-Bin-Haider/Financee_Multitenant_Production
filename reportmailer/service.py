@@ -7,6 +7,7 @@ import os
 import re
 import smtplib
 import time
+from decimal import Decimal
 from email.utils import formataddr
 from email.policy import SMTP
 from zoneinfo import ZoneInfo
@@ -36,7 +37,13 @@ def query(sql, params=None):
     with connection.cursor() as cursor:
         cursor.execute(sql, params or [])
         row = cursor.fetchone()
-        return row[0] if row else None
+        if not row: return None
+        value = row[0]
+        # Django deliberately registers jsonb as text for ORM JSONField decoding.
+        # Raw cursors must decode JSON OIDs explicitly; ordinary text stays text.
+        if cursor.description[0].type_code in (114, 3802) and isinstance(value, str):
+            return json.loads(value, parse_float=Decimal)
+        return value
 
 
 def review_transport():

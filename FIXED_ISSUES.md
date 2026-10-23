@@ -880,3 +880,14 @@ tenant_company_1: 111/111 passed, 0 failed
 tenant_company_2: 111/111 passed, 0 failed
 All CI/CD is applied
 ```
+
+## 2026-10-23: Report Email Raw JSONB Results Needed Explicit Decoding
+
+The first Phase 2 integration run found that Django's PostgreSQL connection
+returns raw-cursor `jsonb` values as text (the ORM normally decodes them for
+`JSONField`). The new settings schedule and delivery-history code expected
+objects, so those paths failed although actual local SMTP delivery worked.
+`reportmailer.service.query` now decodes JSON/JSONB by cursor type OID, keeping
+ordinary text and numeric values unchanged and preserving Decimal parsing.
+All 15 real-PostgreSQL report-email integration scenarios passed after the fix,
+including concurrent claims, actual local SMTP capture and per-company logs.
