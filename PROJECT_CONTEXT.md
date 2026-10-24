@@ -6,6 +6,15 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
+- **Purchase sizing main push authorized (2026-10-24):** following local
+  handoff `9e8f868`, the owner instructed "now push to main and watch CI to
+  complete". This supersedes the preceding local-only stop for this purchase
+  correction. Remote main at `dbd7d7e` is an ancestor of the clean feature
+  branch. Fast-forward main with the focused commits intact, push normally
+  and monitor the exact pushed SHA through CI. Protected staging/production
+  approvals remain with the owner. Preserve Accounting and local review data;
+  record actual CI/release results rather than inferring deployment success.
+
 - **Purchase sizing ready for local owner review (2026-10-24):** on
   `codex/purchase-ui-sizing`, the purchase page now adapts Accounting's
   field/serial tiers, readable 100px comments, wrapping actions, bottom add

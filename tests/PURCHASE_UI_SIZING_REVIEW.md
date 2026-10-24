@@ -94,3 +94,12 @@ Stop for manual review. No push or production change has been made.
   placement, theme-safe sizing and the intentional UI integrity pin.
 - Final handoff commit: touch item-picker specificity, final verification
   record and review checkpoint. The private handoff identifies its exact SHA.
+
+## Subsequent main push authorization
+
+After reviewing the local handoff `9e8f868`, the owner instructed "now push to
+main and watch CI to complete" on 2026-10-24. This supersedes the local-only
+push stop above. Preserve the implementation commits with a fast-forward from
+verified `origin/main` at `dbd7d7e`, push normally and monitor the exact SHA.
+This authorization record changes documentation only; application validation
+remains as recorded above. Protected release approvals stay with the owner.
