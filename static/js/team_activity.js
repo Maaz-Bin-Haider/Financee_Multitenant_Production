@@ -217,7 +217,8 @@
     const state = { user: data.user, year: "", days: {}, cells: [], selected: null, answer: null,
                     dayAnswer: null, team: null, watch: null, watchType: "" };
 
-    const link = root.FinanceeRecordLink ? root.FinanceeRecordLink.takeNumber("user") : null;
+    const linked = root.FinanceeRecordLink ? root.FinanceeRecordLink.number(root.FinanceeRecordLink.take("user").user) : null;
+    const link = linked ? Number(linked) : null;
     if (link && data.users.some((u) => u.id === link)) state.user = link;
 
     data.users.forEach((user) => {

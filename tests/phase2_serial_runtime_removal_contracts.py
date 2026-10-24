@@ -167,7 +167,7 @@ checks = {
     # Previously re-pinned 2026-09-30 for draft sale invoices (212 -> 223).
     "235 serial UI source files match the local Team Activity baseline":
         len(serial_ui_paths) == 235
-        and files_hash(serial_ui_paths) == "98fddae0287f3dca76dcdadef2ce56cafa8773c66c65cee81b6779697245653b",
+        and files_hash(serial_ui_paths) == "7c0e75290869a92efa6043413bb9b78a3bd9da560cc75c872243631748541e12",
     # Re-pinned 2026-09-16 for the dashboard receivables fix (tenant schema
     # version 7). These baselines exist to catch ACCIDENTAL drift in serial
     # behaviour; this change was deliberate and reviewed, so the pins move with

@@ -943,3 +943,11 @@ batch existence checks by kind under Spotlight's source capabilities, so a
 1,000-event day does not make a thousand individual document queries. Missing
 or forbidden targets remain unlinked. Tenant selection still comes exclusively
 from the current request, and labels expose no financial amounts.
+
+## 2026-10-24: Team Activity used the reference project's link-helper name
+
+The first browser pass caught a startup exception: Accounting exposes
+`takeNumber`, while Financee's released Spotlight helper exposes `take` and
+`number`. Team Activity now consumes/validates the user parameter using the
+actual Financee API, then matches it against the company-scoped roster. No
+existing record-link helper or target document behavior was changed.
