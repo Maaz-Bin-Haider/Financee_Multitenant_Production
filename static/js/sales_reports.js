@@ -412,6 +412,7 @@ function exportPDF() {
     },
   });
   doc.save(cfg.title.replace(/\s+/g, "_").toLowerCase() + "_" + from + "_" + to + ".pdf");
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 }
 
 function exportCSV() {
@@ -428,6 +429,7 @@ function exportCSV() {
   a.href = URL.createObjectURL(blob);
   a.download = cfg.title.replace(/\s+/g, "_").toLowerCase() + "_" + from + "_" + to + ".csv";
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("csv");
 }
 
 function exportVal(c, v) { // for PDF (formatted)

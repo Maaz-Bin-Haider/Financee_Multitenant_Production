@@ -352,6 +352,7 @@
   function save(o) {
     var doc = build(o);
     doc.save(o.filename || filename(o.title, o.generatedAt));
+    if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
     return doc;
   }
 

@@ -338,6 +338,7 @@ $(document).on("click", "#download_pdf", function () {
   for (let i = 1; i <= totalPg; i++) { doc.setPage(i); drawHeader(i, totalPg); drawFooter(i, totalPg); }
 
   doc.save(`${m.title.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`);
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 });
 
 // ═══════════════════════════════════════════
@@ -373,6 +374,7 @@ $(document).on("click", "#download_csv", function () {
     style: "display:none",
   });
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("csv");
 });
 
 // ═══════════════════════════════════════════

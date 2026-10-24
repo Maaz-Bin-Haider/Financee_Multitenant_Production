@@ -1023,3 +1023,12 @@ Their failed/denied submissions produce no work event. JSON opening stock,
 opening cash, owner equity and month-close outcomes are classified separately;
 nested SQL error payloads do not count as successful activity. Legacy standalone
 master-form HTML success paths are observed alongside the primary JSON hubs.
+
+Session signals resolve membership independently of request activation; unknown
+failed-login names are not assigned to any company's team. Report runs require
+an explicit successful JSON source response and deduplicate identical filters
+for 60 seconds. Browser PDF/CSV/Excel notifications carry a ten-minute signed
+source/session receipt, recheck source permissions and export switches, ignore
+client actor/label claims, and deduplicate repeated sends for five seconds.
+Browser events remain explicitly marked self-reported. Per-company manager
+analytics switches never stop ordinary staff business/session recording.

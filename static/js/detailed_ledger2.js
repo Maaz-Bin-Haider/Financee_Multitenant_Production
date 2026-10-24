@@ -4313,6 +4313,7 @@ function downloadLedger2PDF(withDetails) {
 
     addPageNumbers();
     doc.save(`Ledger_${d.partyName.replace(/\s+/g, "_")}_${d.fromDate}_${d.toDate}_Summary.pdf`);
+    if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
     return;
   }
 
@@ -4484,6 +4485,7 @@ function downloadLedger2PDF(withDetails) {
 
   addPageNumbers();
   doc.save(`Ledger_${d.partyName.replace(/\s+/g, "_")}_${d.fromDate}_${d.toDate}_Detailed.pdf`);
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 }
 
 /* ── CSV ───────────────────────────────────────────────────── */
@@ -4515,6 +4517,7 @@ function downloadLedger2CSV() {
   const a    = document.createElement("a");
   a.href = url; a.download = `Ledger_${d.partyName.replace(/\s+/g, "_")}_${d.fromDate}.csv`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("csv");
 }
 
 /* ── Autocomplete ──────────────────────────────────────────── */

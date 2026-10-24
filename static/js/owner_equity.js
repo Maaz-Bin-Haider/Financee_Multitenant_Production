@@ -193,6 +193,7 @@ function oeExportPDF() {
   });
 
   doc.save("owner_equity_" + new Date().toISOString().slice(0, 10) + ".pdf");
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 }
 
 function oeExportCSV() {
@@ -214,6 +215,7 @@ function oeExportCSV() {
   a.href = URL.createObjectURL(blob);
   a.download = "owner_equity_" + new Date().toISOString().slice(0, 10) + ".csv";
   document.body.appendChild(a); a.click(); a.remove();
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("csv");
   URL.revokeObjectURL(a.href);
 }
 

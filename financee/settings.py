@@ -102,6 +102,7 @@ TEMPLATES = [
                 'draft.context_processors.draft_feature',
                 'reportmailer.context_processors.report_email_feature',
                 'spotlight.context_processors.spotlight',
+                'activity.context_processors.activity',
             ],
         },
     },

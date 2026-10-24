@@ -43,6 +43,11 @@
     };
   </script>
 
+  {% if activity_config %}
+  {{ activity_config|json_script:"activity-config" }}
+  <script src="{% static 'js/activity_ping.js' %}"></script>
+  {% endif %}
+
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 

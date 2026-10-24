@@ -270,6 +270,7 @@ function mprPdfPosition() {
     theme: 'plain', styles: { fontStyle: 'bold', fontSize: 12 }
   });
   doc.save('company_position_' + d.as_of_date + '.pdf');
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 }
 
 function mprPdfIncome() {
@@ -306,6 +307,7 @@ function mprPdfIncome() {
     theme: 'plain', styles: { fontStyle: 'bold', fontSize: 12 }
   });
   doc.save('income_statement_' + d.from_date + '_' + d.to_date + '.pdf');
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 }
 
 /* ─────────────────────────── Print ─────────────────────────── */

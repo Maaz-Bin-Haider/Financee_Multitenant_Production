@@ -2013,6 +2013,7 @@ function downloadInvoicePDF() {
 
   const filename = invoiceId ? `Sale_Invoice_${invoiceId}.pdf` : `Sale_Invoice_DRAFT_${Date.now()}.pdf`;
   doc.save(filename);
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 }
 
 

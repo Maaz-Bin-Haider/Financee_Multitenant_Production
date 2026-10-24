@@ -3860,6 +3860,7 @@ function downloadInvoicePDF() {
     ? `Purchase_Invoice_${invoiceId}.pdf`
     : `Purchase_Invoice_DRAFT_${Date.now()}.pdf`;
   doc.save(fn);
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 }
 
 

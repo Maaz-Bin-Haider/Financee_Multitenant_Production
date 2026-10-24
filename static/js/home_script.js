@@ -319,6 +319,7 @@ $("chart-pdf-btn")?.addEventListener("click", async () => {
     });
   }
   doc.save(`revenue_profit_${new Date().toISOString().slice(0,10)}.pdf`);
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 });
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -422,6 +423,7 @@ $("cash-pdf-btn")?.addEventListener("click", () => {
     columnStyles:{4:{halign:"right"},5:{halign:"right"},6:{halign:"right",fontStyle:"bold"}},
   });
   doc.save(`cash_ledger_${$("cash-from").value}_${$("cash-to").value}.pdf`);
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 });
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1017,6 +1019,7 @@ function exportSectionPdf(section) {
     doc.autoTable({html:"#"+tableIds[section],startY:26,styles:{fontSize:8},headStyles:{fillColor:[59,130,246]}});
   }
   doc.save(`${section}_${new Date().toISOString().slice(0,10)}.pdf`);
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 }
 
 function exportModalPdf(title, tableId) {
@@ -1027,6 +1030,7 @@ function exportModalPdf(title, tableId) {
   doc.setFontSize(8); doc.setTextColor(100); doc.text("Generated: "+new Date().toLocaleDateString("en-PK"),14,22);
   doc.autoTable({html:"#"+tableId,startY:26,styles:{fontSize:8},headStyles:{fillColor:[59,130,246]}});
   doc.save(`${title.replace(/\s+/g,"_").toLowerCase()}_${new Date().toISOString().slice(0,10)}.pdf`);
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 }
 
 // ══════════════════════════════════════════════════════════════════════════

@@ -311,6 +311,8 @@ _PREFIXES_LONGEST_FIRST = tuple(
 
 def feature_for_path(path):
     """Feature key guarding this path, or None when the path is unrestricted."""
+    # Recording a permitted export does not grant manager analytics access.
+    if path == '/activity/record/': return None
     if path in FEATURE_EXACT_PATHS:
         return FEATURE_EXACT_PATHS[path]
     for prefix, key in _PREFIXES_LONGEST_FIRST:

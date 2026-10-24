@@ -180,6 +180,7 @@ function downloadPendingCsv() {
   link.download = "pending-drafts.csv";
   document.body.appendChild(link);
   link.click();
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("csv");
   link.remove();
   URL.revokeObjectURL(link.href);
 }

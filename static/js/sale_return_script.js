@@ -1051,6 +1051,7 @@ function downloadReturnPDF() {
   doc.text(`PKR ${totalAmt}`, W - margin, y, { align: "right" });
 
   doc.save(`SaleReturn_${returnId}.pdf`);
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 }
 // ── Cash Sale Return toggle ──────────────────────────────────────────────────
 function onSaleReturnTypeChange() {

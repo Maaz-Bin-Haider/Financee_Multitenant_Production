@@ -219,6 +219,7 @@ function mcExportPDF() {
   });
 
   doc.save("month_end_close_" + new Date().toISOString().slice(0, 10) + ".pdf");
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("pdf");
 }
 
 function mcExportCSV() {
@@ -241,6 +242,7 @@ function mcExportCSV() {
   a.href = URL.createObjectURL(blob);
   a.download = "month_end_close_" + new Date().toISOString().slice(0, 10) + ".csv";
   document.body.appendChild(a); a.click(); a.remove();
+  if (globalThis.FinanceeActivity) globalThis.FinanceeActivity.exported("csv");
   URL.revokeObjectURL(a.href);
 }
 
