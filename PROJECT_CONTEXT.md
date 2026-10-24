@@ -6,6 +6,26 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
+- **Purchase sizing comparison authorized (2026-10-24):** the owner confirmed
+  the new features are deployed and working, then requested a purchase-page
+  comparison against Accounting because Multitenant has sizing problems.
+  Work locally on `codex/purchase-ui-sizing` from deployed `dbd7d7e`.
+  Accounting remains read-only. Its purchase rows use separate field/serial
+  tiers; Multitenant still has a minimum-width five-column row, a fixed 205px
+  serial input and a two-column metadata grid for three fields. Its final
+  purchase rules also override earlier mobile rules. Adapt presentation only,
+  preserving tenant checks, autocomplete, serial validation, posting and PDFs.
+  Commit focused increments, verify at desktop/tablet/phone sizes, and stop
+  with an isolated local review build; no new push/deployment is authorized.
+
+- **Feature release confirmed (2026-10-24):** main `dbd7d7e` and workflow
+  `40109385644` completed successfully, including all 13 test gates, image
+  publication and owner-approved EC2 deployment. The owner confirmed production
+  works. Report Email, Spotlight Search and Team Activity are already separate
+  default-off Add Company/Edit Company switches under Features — Add-on
+  modules; the local admin form was verified without saving a company.
+  Dark mode remains available globally, outside company feature plans.
+
 - **Main CI portability correction (2026-10-24):** push `6942f6e` reached
   `origin/main`; run `40109251996` failed the static-check job because
   `tests/test_report_worker_lifecycle.sh` invoked `rg`, absent on the runner.
