@@ -1032,3 +1032,12 @@ source/session receipt, recheck source permissions and export switches, ignore
 client actor/label claims, and deduplicate repeated sends for five seconds.
 Browser events remain explicitly marked self-reported. Per-company manager
 analytics switches never stop ordinary staff business/session recording.
+
+`backfill_team_activity --company <id> --cutoff <aware ISO>` previews one active
+company; execution additionally requires the exact `--confirm` schema. It is
+never called by startup/migrations. Imports use approximate local-noon legacy
+business dates, verified current membership names, stable unique source keys,
+and skip records already observed live plus unknown/nonmember attribution.
+Confirmed returns are not imported twice through their linked SalesReturns row.
+Dry-run, execution/rerun, unchanged journal lines and restored search_path passed
+against disposable PostgreSQL. No production import has been authorized/run.
