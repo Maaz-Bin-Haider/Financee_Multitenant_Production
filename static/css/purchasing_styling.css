@@ -881,6 +881,7 @@ input.item_name.sale-item-name-hidden {
 @media (pointer: coarse) {
   .purchase-page .sale-input,
   .item-row.purchase-row input,
+  .item-row.purchase-row .item_name_field input.item_name,
   .item-row.purchase-row .serials .serial-pair input {
     min-height: 44px;
     font-size: 1rem;

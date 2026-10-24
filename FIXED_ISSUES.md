@@ -28,6 +28,14 @@ integrity anchors remain unchanged. Browser verification uses isolated
 synthetic Financee data and read-only source-derived Accounting layout
 snapshots, never Accounting's database or deployment.
 
+The live corrected Financee form was checked at 320, 390, 768, 1024, 1280 and
+1440px with no input/button/row overflow. Comments remain 100px. New and
+loaded rows, item selection, bulk duplicates, serial add/remove, keyboard
+entry, totals, cash/credit and both themes passed browser verification without
+saving a purchase. Source/hygiene/theme and Django checks passed; see
+`tests/PURCHASE_UI_SIZING_REVIEW.md`. This correction remains local pending
+owner review, with no push or production deployment.
+
 ## 2026-10-24: Worker Rollback Test Assumed Ripgrep on the CI Runner
 
 The first cumulative feature push (`6942f6e`, workflow `40109251996`) failed

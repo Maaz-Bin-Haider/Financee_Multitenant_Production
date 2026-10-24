@@ -6,6 +6,20 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
+- **Purchase sizing ready for local owner review (2026-10-24):** on
+  `codex/purchase-ui-sizing`, the purchase page now adapts Accounting's
+  field/serial tiers, readable 100px comments, wrapping actions, bottom add
+  button and final mobile overrides. Shared new/edit markup preserves the
+  original Financee credit/cash flow and all posting/validation functions.
+  JS syntax, 29 serial/source contracts, hygiene, 11 theme checks and Django
+  checks passed. Browser checks covered 320–1440px, new/loaded rows, item
+  suggestions, serial add/remove, bulk duplicates, keyboard entry and both
+  themes; no purchase was saved. See `tests/PURCHASE_UI_SIZING_REVIEW.md`.
+  Leave the separate review stack on 8187 running; the private temporary
+  `financee_review_activity_purchase/handoff.txt` names its final image and
+  credentials. Accounting is unchanged. STOP for review; no new push or
+  deployment is authorized.
+
 - **Purchase sizing comparison authorized (2026-10-24):** the owner confirmed
   the new features are deployed and working, then requested a purchase-page
   comparison against Accounting because Multitenant has sizing problems.
