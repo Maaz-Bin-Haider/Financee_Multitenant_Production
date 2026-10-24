@@ -1,3 +1,4 @@
+from activity.recorder import record as record_activity
 from django.shortcuts import render, redirect
 from django.db import connection, DatabaseError, IntegrityError
 from django.contrib import messages
@@ -105,6 +106,7 @@ def make_contra(request):
                         new_contra_id = result.get("contra_id") if isinstance(result, dict) else json.loads(result).get("contra_id")
                         save_document_attachments(request, "contra", new_contra_id)
                         messages.success(request, f"Transfer recorded: {amount} from {from_name} to {to_name}.")
+                        record_activity(request, 'create', 'contra', new_contra_id, 'Contra · create')
                         return redirect("contra:contra")
                     except ValidationError as e:
                         messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
@@ -118,6 +120,7 @@ def make_contra(request):
                         cursor.execute("SELECT update_contra(%s, %s)", [contra_id, payload])
                         save_document_attachments(request, "contra", contra_id)
                         messages.success(request, f"Transfer updated: {amount} from {from_name} to {to_name}.")
+                        record_activity(request, 'update', 'contra', contra_id, 'Contra · update')
                         return redirect("contra:contra")
                     except ValidationError as e:
                         messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
@@ -145,6 +148,7 @@ def make_contra(request):
                     cursor.execute("SELECT delete_contra(%s)", [contra_id])
                 delete_document_attachments("contra", contra_id)
                 messages.success(request, "Contra entry deleted successfully.")
+                record_activity(request, 'delete', 'contra', contra_id, 'Contra · delete')
                 return redirect("contra:contra")
             except Exception:
                 messages.error(request, "Unable to delete this contra entry! Try again.")

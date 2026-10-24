@@ -1016,3 +1016,10 @@ same thread-local connection, never max(id). Labels contain operation/record
 numbers, not amounts, contact information or arbitrary submitted descriptions.
 Recording uses a nested savepoint and schema-qualified insert, validates fresh
 membership and keeps any audit failure from aborting the business transaction.
+
+Payment/receipt/contra events are recorded directly after their successful SQL
+and attachment saves, because these forms return redirects rather than JSON.
+Their failed/denied submissions produce no work event. JSON opening stock,
+opening cash, owner equity and month-close outcomes are classified separately;
+nested SQL error payloads do not count as successful activity. Legacy standalone
+master-form HTML success paths are observed alongside the primary JSON hubs.

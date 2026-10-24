@@ -1,3 +1,4 @@
+from activity.recorder import record as record_activity
 # from django.shortcuts import render,redirect
 # from django.db import connection,IntegrityError
 # from django.contrib import messages
@@ -741,6 +742,7 @@ def update_party(request):
                     json_data = json.dumps(data)
                     cursor.execute("SELECT update_party_from_json(%s,%s)",[int(party_id),json_data])
                     messages.success(request,f"Updated '{data['party_name']}' Sucessfully!")
+                    record_activity(request, 'update', 'party', party_id, 'Party · update')
                 except Exception as e:
                     messages.error(request, f"An Unexpected Error Occured! {e}")
             else:
@@ -754,6 +756,7 @@ def update_party(request):
                     json_data = json.dumps(data)
                     cursor.execute("SELECT add_party_from_json(%s);", [json_data])
                     messages.success(request, f"Party '{data['party_name']}' created successfully!")
+                    record_activity(request, 'create', 'party', party_id, 'Party · create')
                 except IntegrityError:
                     messages.error(request, f"Party '{data['party_name']}' already exists!")
 

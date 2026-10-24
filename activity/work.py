@@ -17,8 +17,8 @@ DOCUMENTS = {
     'draft:release_units': ('draft','draftinvoices','draft_invoice_id','draft_date','draft_invoice_id'),
     'draft:cancel_draft': ('draft','draftinvoices','draft_invoice_id','draft_date','draft_invoice_id'),
     'draft:convert_draft': ('draft','draftinvoices','draft_invoice_id','draft_date','draft_invoice_id'),
-    'draft:save_draft_return': ('draft_return','draftreturns','draft_return_id','return_date','draft_return_id'),
-    'draft:delete_draft_return': ('draft_return','draftreturns','draft_return_id','return_date','draft_return_id'),
+    'draft:save_draft_return': ('draft_return','draftreturns','draft_return_id','date_created','draft_return_id'),
+    'draft:delete_draft_return': ('draft_return','draftreturns','draft_return_id','date_created','draft_return_id'),
 }
 NOUNS = {'sale':'Sale','purchase':'Purchase','sale_return':'Sale return','purchase_return':'Purchase return',
          'party':'Party','item':'Item','draft':'Draft','draft_return':'Confirmed draft return'}
@@ -54,7 +54,10 @@ def observe(request, payload, result):
                     ident = as_id(cur.fetchone()[0])
             doc_date = None
             if ident and action != 'delete':
-                cur.execute(f'SELECT {date_key}::date FROM {table} WHERE {key}=%s', [ident])
+                if kind == 'draft_return':
+                    cur.execute('SELECT r.return_date FROM draftreturns d JOIN salesreturns r ON r.sales_return_id=d.sales_return_id WHERE d.draft_return_id=%s',[ident])
+                else:
+                    cur.execute(f'SELECT {date_key}::date FROM {table} WHERE {key}=%s', [ident])
                 row = cur.fetchone()
                 if not row: return
                 doc_date = row[0]
@@ -62,3 +65,30 @@ def observe(request, payload, result):
     if action == 'convert' and as_id(result.get('sales_invoice_id')):
         label += f" to Sale #{as_id(result['sales_invoice_id'])}"
     record(request,action,kind,ident,label,document_date=doc_date)
+
+
+EXTRAS = {
+    'opening_stock:create': ('opening_stock','create','opening_stock_id'),
+    'opening_stock:delete': ('opening_stock','delete','id'),
+    'opening_stock:reclassify': ('opening_stock','update',None),
+    'set_opening:set_opening_cash': ('opening_cash','update',None),
+    'owner_equity:add_owner_equity': ('owner_equity','create','txn_id'),
+    'owner_equity:delete_owner_equity': ('owner_equity','delete','txn_id'),
+    'month_close:close_month': ('month_close','create',None),
+    'month_close:reverse_month': ('month_close','delete',None),
+}
+
+
+def observe_extra(request,payload,result):
+    spec = EXTRAS.get(request.resolver_match.view_name)
+    if not spec or request.method != 'POST' or not isinstance(result,dict) or result.get('status') != 'success': return
+    inner = result.get('result')
+    if isinstance(inner,dict) and inner.get('status') not in (None,'success'): return
+    kind,action,key = spec
+    inner = inner if isinstance(inner,dict) else result
+    ident = as_id(inner.get(key) or payload.get(key)) if key else None
+    label = kind.replace('_',' ').title() + (f' #{ident}' if ident else '') + ' · ' + action
+    if kind == 'month_close':
+        # These are validated by the successful source operation, not actor inputs.
+        label += f" · {int(payload['year']):04d}-{int(payload['month']):02d}"
+    record(request,action,kind,ident,label)

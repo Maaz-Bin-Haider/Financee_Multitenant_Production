@@ -1,3 +1,4 @@
+from activity.recorder import record as record_activity
 # from django.shortcuts import render,redirect
 # from django.db import connection,IntegrityError
 # from django.contrib import messages
@@ -697,6 +698,7 @@ def update_item_view(request):
                         })
                     cursor.execute("SELECT update_item_from_json(%s)",[json_data])
                     messages.success(request, f"Item '{data['item_name']}' Updated successfully!")
+                    record_activity(request, 'update', 'item', item_id, 'Item · update')
                 except Exception as e:
                     messages.error(request, f"An Unexpected Error Occured! {e}")
             else: # means adding new item
@@ -709,6 +711,7 @@ def update_item_view(request):
                         })
                     cursor.execute("SELECT add_item_from_json(%s)",[json_data])
                     messages.success(request, f"Item '{data['item_name']}' Added successfully!")
+                    record_activity(request, 'create', 'item', item_id, 'Item · create')
                 except IntegrityError:
                     messages.error(request, f"Item '{data['item_name']}' already exists!")
 
