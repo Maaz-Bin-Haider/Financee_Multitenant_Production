@@ -1041,3 +1041,14 @@ and skip records already observed live plus unknown/nonmember attribution.
 Confirmed returns are not imported twice through their linked SalesReturns row.
 Dry-run, execution/rerun, unchanged journal lines and restored search_path passed
 against disposable PostgreSQL. No production import has been authorized/run.
+
+The company manager dashboard ports Accounting's contribution scale, year/day
+views, work mix, hours, comparisons, watch list and PDF/CSV presentation. All
+rosters select current memberships plus legitimate local historical snapshots;
+foreign current profiles are never joined. Day/watch output is bounded, APIs
+are no-store and session-scoped, and cross-account tabs clear stale analytics.
+Record links reuse Spotlight's current source permission/feature resolvers.
+The review fixture grants manager analytics only to managers and adds clearly
+synthetic local history/watch examples only for the new activity review project.
+All 17 targeted PostgreSQL/HTTP scenarios passed; JS grid/export checks passed.
+Full regression and browser/release validation remain before owner handoff.

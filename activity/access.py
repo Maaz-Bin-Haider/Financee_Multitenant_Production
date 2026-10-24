@@ -18,6 +18,9 @@ def enabled(request, *, manager=True):
 def guarded(view):
     @wraps(view)
     def wrapped(request,*args,**kwargs):
+        if not request.user.is_authenticated:
+            from django.shortcuts import redirect
+            return redirect('authentication:login') if request.path=='/activity/' else JsonResponse({'error':'Sign in again.'},status=401)
         if not enabled(request): return JsonResponse({'error':'Team activity is unavailable for this account.'},status=403)
         from spotlight.views import scope
         from django.utils.crypto import constant_time_compare

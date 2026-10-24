@@ -38,6 +38,7 @@ class ActivityMiddleware(MiddlewareMixin):
             target=EXPORT_SOURCES.get(name)
             if target and target[0].allowed(request):
                 response['X-Activity-Export']=ticket(request,name)
+                response['Cache-Control']='private, no-store'
             if name in REPORTS and REPORTS[name][0].allowed(request):
                 from .recorder import record
                 try: body=request.body

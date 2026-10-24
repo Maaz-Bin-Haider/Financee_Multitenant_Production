@@ -23,6 +23,8 @@ class Target:
         if self.path.startswith('/draft/'):
             if not settings.DRAFT_SALES_ENABLED or request.user.groups.filter(name='view_only_users').exists():
                 return False
+        if self.path.startswith('/activity/') and not settings.TEAM_ACTIVITY_ENABLED:
+            return False
         if self.path.startswith('/report-email/') and not settings.REPORT_EMAIL_ENABLED:
             return False
         return all(request.user.has_perm('auth.' + perm) for perm in self.perms)
@@ -54,6 +56,7 @@ PAGES = {
     'opening_cash': Target('Opening Cash', '/set-opening/', ('can_set_or_update_opening',)),
     'owner_equity': Target('Owner Equity', '/owner-equity/', ('can_manage_owner_equity',)),
     'month_close': Target('Month-End Close', '/month-close/', ('can_close_period',)),
+    'team_activity': Target('Team Activity','/activity/',('view_team_activity',),feature='team_activity',words='team contributions work history'),
     'email': Target('Report Email', '/report-email/', ('send_reports', 'can_view_sale_wise_profit'),
                     feature='report_email', words='mail schedule recipients'),
 }

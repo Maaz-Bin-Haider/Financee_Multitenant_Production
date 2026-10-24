@@ -38,6 +38,8 @@ jobs:
           node-version: "22"
       - run: node tests/test_dark_mode.js
       - run: node tests/test_spotlight.js
+      - run: node tests/test_team_activity.js
+      - run: node tests/test_activity_ping.js
       - run: node tests/test_report_email.js
       - run: python tests/test_report_email_rendering.py
       - run: bash tests/test_report_worker_lifecycle.sh

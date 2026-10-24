@@ -218,6 +218,9 @@
                 <i class="fa-solid fa-boxes-stacked"></i> Opening Stock
             </a>
             {% endif %}
+            {% if team_activity_available %}
+            <a href="{% url 'activity:page' %}" class="{% if request.resolver_match.app_name == 'activity' %}active{% endif %}"><i class="fa-solid fa-chart-simple"></i> Team Activity</a>
+            {% endif %}
             {% if features.report_email.enabled and features.sales_reports.enabled and features.sales_reports.subs.sale_wise and perms.auth.send_reports and perms.auth.can_view_sale_wise_profit and report_email_enabled %}
             <a href="{% url 'reportmailer:report_email' %}" class="{% if request.resolver_match.app_name == 'reportmailer' %}active{% endif %}"><i class="fa-solid fa-paper-plane"></i> Report Email</a>
             {% endif %}

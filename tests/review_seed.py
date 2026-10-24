@@ -101,7 +101,7 @@ def main():
         blocked = Company.objects.create(name="Review Suspended", is_suspended=True)
         readonly, _ = Group.objects.get_or_create(name="view_only_users")
         permissions = list(Permission.objects.filter(content_type__app_label="auth"))
-        readers = [p for p in permissions if p.codename.startswith(("view_", "can_view_"))]
+        readers = [p for p in permissions if p.codename != "view_team_activity" and p.codename.startswith(("view_", "can_view_"))]
         people = [("review_operator", None, "operator"), ("alpha_manager", alpha, "manager"),
                   ("alpha_staff", alpha, "staff"), ("alpha_reader", alpha, "reader"),
                   ("beta_manager", beta, "manager"), ("beta_staff", beta, "staff"),
@@ -113,7 +113,7 @@ def main():
             if company:
                 Membership.objects.create(user=user, company=company)
                 user.user_permissions.set(readers if role == "reader" else
-                    [p for p in permissions if role == "manager" or p.codename != "send_reports"])
+                    [p for p in permissions if role == "manager" or p.codename not in ("send_reports","view_team_activity")])
             if role == "reader":
                 user.groups.add(readonly)
             users[name] = user
@@ -130,6 +130,28 @@ def main():
                     "authorized_user_id": users[f"{key}_manager"].pk}))
                 scalar("SELECT add_report_recipient_from_json(%s::jsonb)", json.dumps({
                     "email": f"owner-{key}@example.test", "label": company.name}))
+            reset_search_path()
+        if os.environ.get("FINANCEE_REVIEW_PROJECT", "").startswith("financee_review_activity"):
+            # Explicit synthetic examples only; never a production historical import.
+            for company, key in ((alpha,"alpha"),(beta,"beta")):
+                set_search_path(company.schema_name)
+                for role in ("manager","staff"):
+                    actor=users[f"{key}_{role}"]
+                    with connection.cursor() as cur:
+                        cur.execute("""INSERT INTO activity_events(user_id,username,action,kind,label,source,at,dedupe_key)
+                          SELECT %s,%s,'create',CASE WHEN n%%3=0 THEN 'item' ELSE 'sale' END,
+                            'Synthetic review historical example','backfill',
+                            ((CURRENT_DATE-d*2)+time '12:00') AT TIME ZONE 'Asia/Karachi',
+                            'review:' || %s::text || ':' || d::text || ':' || n::text
+                          FROM generate_series(1,80) d
+                          CROSS JOIN LATERAL generate_series(1,CASE WHEN (d+%s)%%5=0 THEN 26 ELSE (d+%s)%%12 END) n""",
+                          [actor.pk,actor.username,actor.pk,actor.pk,actor.pk])
+                actor=users[f"{key}_staff"]
+                with connection.cursor() as cur:
+                    cur.execute("""INSERT INTO activity_events(user_id,username,action,kind,label,source,at,document_date)
+                      VALUES(%s,%s,'delete','item','Synthetic review deletion','live',now()-interval '1 day',NULL),
+                      (%s,%s,'update','sale','Synthetic review old-document edit','live',now(),CURRENT_DATE-60)""",
+                      [actor.pk,actor.username,actor.pk,actor.username])
             reset_search_path()
         with connection.cursor() as cur:
             cur.execute("INSERT INTO public.review_fixture_marker VALUES(true,1)")
