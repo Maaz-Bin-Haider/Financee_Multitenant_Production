@@ -6,6 +6,22 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
+- **Phase 4 Team Activity ready for owner review (2026-10-24):** application
+  `703be6c` is complete locally on `codex/team-activity`, above unpushed
+  Spotlight checkpoint `7e4e01e`. All 25 regression modules passed on
+  `da2e17b`; all 18 activity integration scenarios passed again on `703be6c`
+  after the export-label and phone-layout fixes. Historical migration,
+  immutable staging, source/release contracts, two-company encrypted
+  activity-table restore, and browser account/theme/export checks passed.
+  See `tests/PHASE4_TEAM_ACTIVITY_REVIEW.md` for exact coverage and limits.
+  Leave `http://financee-review-activity.localhost:8185/activity/` running;
+  the private temporary handoff names its exact final committed image and
+  synthetic credentials. Earlier review data/branches are preserved; their
+  stacks were not running when this phase began. Accounting is unchanged.
+  Owner review remains pending. STOP: no push, merge, deployment or production
+  historical import. Phase 2 remains manually approved but unpushed; Phase 3
+  approval has not been inferred from the local Phase 4 instruction.
+
 - **Phase 4 locally authorized (2026-10-24):** the owner instructed "continue
   to next phase on local". The workspace already contains completed Spotlight
   at `7e4e01e`; continue with Team Activity on `codex/team-activity` from that
@@ -1050,8 +1066,8 @@ are no-store and session-scoped, and cross-account tabs clear stale analytics.
 Record links reuse Spotlight's current source permission/feature resolvers.
 The review fixture grants manager analytics only to managers and adds clearly
 synthetic local history/watch examples only for the new activity review project.
-All 17 targeted PostgreSQL/HTTP scenarios passed; JS grid/export checks passed.
-Full regression and browser/release validation remain before owner handoff.
+All 18 targeted PostgreSQL/HTTP scenarios passed; JS grid/export checks passed.
+Full regression and browser/release validation passed; owner review is pending.
 
 Activity day/watch links are resolved in batches by kind, with existing source
 permissions and tenant-local existence checks. Successful updates retain the
@@ -1065,3 +1081,9 @@ explicitly includes Team Activity only in builds that install the app, retaining
 old-image compatibility and adding independent read-versus-record path checks.
 The browser pass also corrected Accounting's different user-link helper API;
 Financee's shared record-link implementation itself remains unchanged.
+
+The clean rerun passed all 25 modules, including the exact feature plan.
+Activity CSV/PDF exports explicitly name the current company and timezone.
+At a 390px viewport the activity page stays inside the screen; wide calendar,
+hours and table sections retain internal scrolling. Review evidence and
+release limitations are recorded in `tests/PHASE4_TEAM_ACTIVITY_REVIEW.md`.

@@ -1,6 +1,6 @@
 # Financee feature rollout plan
 
-Created: 2026-10-23. Status: Phase 1 deployed and owner-confirmed; Phase 2 automated checks and owner manual review passed. The owner explicitly said do not push. Phase 2 release and later phases remain gated.
+Created: 2026-10-23. Updated: 2026-10-24. Status: Phase 1 deployed and owner-confirmed; Phase 2 manual review passed, unpushed. Phases 3 and 4 are implemented and verified locally under explicit local exceptions below, awaiting owner review. No further push, merge, deployment or production historical import is authorized.
 
 ## 1. Scope and working agreement
 
@@ -264,3 +264,17 @@ Team Activity on `codex/team-activity` from `7e4e01e`, preserving all earlier
 branches and review data. Spotlight manual approval is not inferred. All work
 stays local; no push, deployment or production backfill is authorized. Stop
 after Team Activity for the owner's manual review and further instruction.
+
+Phase 4 checkpoint (2026-10-24): Team Activity is complete locally on
+`codex/team-activity`. Application `703be6c` includes the final company export
+labels and phone layout. All 25 regression modules passed on `da2e17b` and
+all 18 activity integration scenarios passed again on `703be6c`. Historical
+migration transition, immutable staging, source/release contracts, activity-only
+encrypted restore and Alpha/Beta/staff/stale-tab browser checks passed. See
+`tests/PHASE4_TEAM_ACTIVITY_REVIEW.md` and `TEAM_ACTIVITY_RUNBOOK.md` for evidence,
+limitations and review instructions. Leave the dedicated activity app on 8185
+and capture inbox on 8186 running. The private handoff records the exact final
+image/commit. Earlier branches/data are preserved; their stacks were already
+stopped when this phase began. STOP for owner review; no push, merge, deployment
+or production historical import. GitHub contribution history changes only
+after an explicitly authorized push.
