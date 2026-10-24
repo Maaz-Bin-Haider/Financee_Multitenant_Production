@@ -61,7 +61,7 @@ def observe(request, payload, result):
                 row = cur.fetchone()
                 if not row: return
                 doc_date = row[0]
-    label = NOUNS[kind] + (f' #{ident}' if ident else '') + ' · ' + action
+    label = NOUNS[kind] + (f' #{ident}' if ident else '') 
     if action == 'convert' and as_id(result.get('sales_invoice_id')):
         label += f" to Sale #{as_id(result['sales_invoice_id'])}"
     record(request,action,kind,ident,label,document_date=doc_date)
@@ -87,7 +87,7 @@ def observe_extra(request,payload,result):
     kind,action,key = spec
     inner = inner if isinstance(inner,dict) else result
     ident = as_id(inner.get(key) or payload.get(key)) if key else None
-    label = kind.replace('_',' ').title() + (f' #{ident}' if ident else '') + ' · ' + action
+    label = kind.replace('_',' ').title() + (f' #{ident}' if ident else '') 
     if kind == 'month_close':
         # These are validated by the successful source operation, not actor inputs.
         label += f" · {int(payload['year']):04d}-{int(payload['month']):02d}"

@@ -756,7 +756,7 @@ def make_receipt(request):
                             new_receipt_id = result.get("receipt_id") if isinstance(result, dict) else json.loads(result).get("receipt_id")
                             save_document_attachments(request, "receipt", new_receipt_id)
                             messages.success(request, f"Transaction completed: {amount} received from {party_name}.")
-                            record_activity(request, 'create', 'receipt', new_receipt_id, 'Receipt · create')
+                            record_activity(request, 'create', 'receipt', new_receipt_id, f'Receipt #{new_receipt_id}')
                             return redirect("receipts:receipt")
                         except ValidationError as e:
                             messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
@@ -777,7 +777,7 @@ def make_receipt(request):
                             cursor.execute("SELECT update_receipt(%s,%s)",[receipt_id,json_data])
                             save_document_attachments(request, "receipt", receipt_id)
                             messages.success(request, f"Transaction Updated: {amount} received from {party_name}.")
-                            record_activity(request, 'update', 'receipt', receipt_id, 'Receipt · update')
+                            record_activity(request, 'update', 'receipt', receipt_id, f'Receipt #{receipt_id}')
                             return redirect("receipts:receipt")
                         except ValidationError as e:
                             messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
@@ -813,7 +813,7 @@ def make_receipt(request):
                     cursor.execute("SELECT delete_receipt(%s)",[receipt_id])
                     delete_document_attachments("receipt", receipt_id)
                     messages.success(request,"Receipt delete Sucessfully.")
-                    record_activity(request, 'delete', 'receipt', receipt_id, 'Receipt · delete')
+                    record_activity(request, 'delete', 'receipt', receipt_id, f'Receipt #{receipt_id}')
                     return redirect("receipts:receipt")
             except Exception:
                 messages.error(request,"Unable to delete this Receipt! Try Again..")

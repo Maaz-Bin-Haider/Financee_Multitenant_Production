@@ -754,7 +754,7 @@ def make_payment(request):
                             new_payment_id = result.get("payment_id") if isinstance(result, dict) else json.loads(result).get("payment_id")
                             save_document_attachments(request, "payment", new_payment_id)
                             messages.success(request, f"Transaction completed: {amount} paid to {party_name}.")
-                            record_activity(request, 'create', 'payment', new_payment_id, 'Payment · create')
+                            record_activity(request, 'create', 'payment', new_payment_id, f'Payment #{new_payment_id}')
                             return redirect("payments:payment")
                         except ValidationError as e:
                             messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
@@ -775,7 +775,7 @@ def make_payment(request):
                             cursor.execute("SELECT update_payment(%s,%s)",[payment_id,json_data])
                             save_document_attachments(request, "payment", payment_id)
                             messages.success(request, f"Transaction Updated: {amount} paid to {party_name}.")
-                            record_activity(request, 'update', 'payment', payment_id, 'Payment · update')
+                            record_activity(request, 'update', 'payment', payment_id, f'Payment #{payment_id}')
                             return redirect("payments:payment")
                         except ValidationError as e:
                             messages.error(request, e.messages[0] if hasattr(e, "messages") else str(e))
@@ -812,7 +812,7 @@ def make_payment(request):
                     cursor.execute("SELECT delete_payment(%s)",[payment_id])
                     delete_document_attachments("payment", payment_id)
                     messages.success(request,"Payment delete Sucessfully.")
-                    record_activity(request, 'delete', 'payment', payment_id, 'Payment · delete')
+                    record_activity(request, 'delete', 'payment', payment_id, f'Payment #{payment_id}')
                     return redirect("payments:payment")
             except Exception:
                 messages.error(request,"Unable to delete this Payment! Try Again..")

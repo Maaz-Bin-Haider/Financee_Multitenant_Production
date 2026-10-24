@@ -663,7 +663,8 @@
        everything else for today. */
     function downloadCsv(title, rows, day) {
       if (invalidated || (root.financeeFeatureEnabled && !root.financeeFeatureEnabled("excel_export"))) return;
-      const blob = new Blob([csv(rows)], { type: "text/csv;charset=utf-8;" });
+      const header = [["Company", `${data.company} (#${data.company_id})`], ["Time zone", data.timezone]];
+      const blob = new Blob([csv(header.concat(rows))], { type: "text/csv;charset=utf-8;" });
       const a = doc.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = `${title.replace(/[^\w]+/g, "_")}_${day || (state.answer ? state.answer.today : "")}.csv`;
@@ -676,7 +677,8 @@
       if (invalidated || (root.financeeFeatureEnabled && !root.financeeFeatureEnabled("pdf_export", "reports"))) return;
       if (!root.FinanceePdf || !root.jspdf) return;
       root.FinanceePdf.save({
-        jsPDF: root.jspdf.jsPDF, module: "activity", title, context: pdfSafe(context),
+        jsPDF: root.jspdf.jsPDF, module: "activity", title,
+        context: pdfSafe(`${data.company} (#${data.company_id}) · ${data.timezone} · ${context}`),
         orient: orient || "p", head, body: body.map((row) => row.map(pdfSafe)),
       });
     }

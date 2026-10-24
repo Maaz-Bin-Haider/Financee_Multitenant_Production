@@ -121,6 +121,7 @@ def team_activity_page(request):
     start_user = busiest[0] if busiest else (users[0]["id"] if users else None)
     return render(request, "activity_templates/team_activity.html", {
         "activity_page": {"timezone": settings.ACTIVITY_TIMEZONE, "scope": scope(request),
+            "company": request.tenant_company.name, "company_id": request.tenant_company.pk,
             "users": users, "years": years, "today": today.isoformat(),
             "user": start_user, "thresholds": list(figures.THRESHOLDS),
             "urls": {"year": reverse("activity:user_year"), "day": reverse("activity:user_day"),
