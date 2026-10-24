@@ -14,7 +14,7 @@ import io
 import json
 import time
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from concurrent.futures import ThreadPoolExecutor
 import psycopg2
 from django.contrib.auth import get_user_model
@@ -23,6 +23,7 @@ from django.core.cache import cache
 from django.core.management import call_command
 from django.db import connection, connections, transaction
 from django.test import Client, RequestFactory, override_settings
+from django.test.utils import CaptureQueriesContext
 from tenancy.models import Company, Membership
 from tenancy.utils import reset_search_path
 from spotlight.views import scope
@@ -234,12 +235,25 @@ class Activity(unittest.TestCase):
         r=c.get('/activity/api/day/',{'user':self.users[0].pk,'date':str(date.today())});self.assertEqual(r.status_code,200,r.content)
 
     def test_17_query_volume_is_bounded_on_representative_history(self):
-        t=self.testers[0];t.exec("INSERT INTO activity_events(user_id,username,action,kind,source,at) SELECT %s,'history','create','item','backfill',now()-n*interval '1 minute' FROM generate_series(1,12000) n",[self.users[0].pk])
+        t=self.testers[0];t.exec("INSERT INTO activity_events(user_id,username,action,kind,source,at,record_id) SELECT %s,'history','create','item','backfill',now()-n*interval '1 minute',10000000+n FROM generate_series(1,12000) n",[self.users[0].pk])
         started=time.monotonic();r=self.client().get('/activity/api/year/',{'user':self.users[0].pk})
         self.assertEqual(r.status_code,200,r.content);self.assertLess(time.monotonic()-started,5)
         self.assertLessEqual(len(r.json()['days']),372)
-        day=self.client().get('/activity/api/day/',{'user':self.users[0].pk,'date':str(date.today())})
-        self.assertEqual(day.status_code,200,day.content);self.assertLessEqual(len(day.json()['work'])+len(day.json()['sessions']),1000)
+        elapsed=time.monotonic()-started
+        client=self.client()
+        with CaptureQueriesContext(connection) as captured:
+            day=client.get('/activity/api/day/',{'user':self.users[0].pk,'date':str(date.today()-timedelta(days=1))})
+        self.assertEqual(day.status_code,200,day.content);self.assertEqual(len(day.json()['work']),1000)
+        self.assertTrue(day.json()['truncated']);self.assertLess(len(captured),50)
+        print(f'ACTIVITY_PERF: year/12000 events {elapsed*1000:.1f}ms; 1000-event day {len(captured)} SQL queries')
+
+    def test_18_old_document_watch_uses_pre_edit_date(self):
+        c=self.client();r=c.post('/payments/payment/',{'action':'submit','search_name':'ACT SAME VENDOR','amount':'11','payment_date':'2025-07-03'})
+        self.assertEqual(r.status_code,302);ident=self.rows()[-1][2]
+        r=c.post('/payments/payment/',{'action':'submit','current_id':ident,'search_name':'ACT SAME VENDOR','amount':'12','payment_date':str(date.today())})
+        self.assertEqual(r.status_code,302);self.assertEqual(self.rows()[-1][:3],('update','payment',ident))
+        r=c.get('/activity/api/watch/',{'days':7});self.assertEqual(r.status_code,200,r.content)
+        self.assertTrue(any(v['type']=='old_edit' and v['kind']=='payment' and v['record_id']==ident for v in r.json()['items']))
 
 
 if __name__=='__main__':

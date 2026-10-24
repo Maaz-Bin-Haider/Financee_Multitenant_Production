@@ -92,3 +92,26 @@ def observe_extra(request,payload,result):
         # These are validated by the successful source operation, not actor inputs.
         label += f" · {int(payload['year']):04d}-{int(payload['month']):02d}"
     record(request,action,kind,ident,label)
+
+
+CASH = {
+ 'payments:payment':('payment','payments','payment_id','payment_date','current_id'),
+ 'receipts:receipt':('receipt','receipts','receipt_id','receipt_date','current_id'),
+ 'contra:contra':('contra','contra_entries','contra_id','contra_date','current_id'),
+}
+
+
+def capture_document_date(request,payload):
+    spec=DOCUMENTS.get(request.resolver_match.view_name) or CASH.get(request.resolver_match.view_name)
+    if not spec:return
+    kind,table,key,day,input_key=spec
+    ident=as_id(payload.get(input_key))
+    if not ident:return
+    with transaction.atomic(),connection.cursor() as cur:
+        if kind=='draft_return':
+            cur.execute('SELECT r.return_date FROM draftreturns d JOIN salesreturns r ON r.sales_return_id=d.sales_return_id WHERE d.draft_return_id=%s',[ident])
+        else:cur.execute(f'SELECT {day}::date FROM {table} WHERE {key}=%s',[ident])
+        row=cur.fetchone()
+        if row:
+            request.activity_document=(kind,ident)
+            request.activity_document_date=row[0]

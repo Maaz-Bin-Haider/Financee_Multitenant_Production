@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 class ActivityMiddleware(MiddlewareMixin):
     def process_view(self, request, view_func, view_args, view_kwargs):
         if not settings.TEAM_ACTIVITY_RECORDING_ENABLED: return
-        if request.method == 'POST' and request.resolver_match.view_name in (work.DOCUMENTS | work.EXTRAS):
+        if request.method == 'POST' and request.resolver_match.view_name in (work.DOCUMENTS | work.EXTRAS | work.CASH):
             try:
                 payload = json.loads(request.body or '{}') if request.content_type == 'application/json' else request.POST.dict()
                 request.activity_payload = payload if isinstance(payload,dict) else {}
+                work.capture_document_date(request,request.activity_payload)
             except Exception:
                 request.activity_payload = {}
 

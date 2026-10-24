@@ -928,3 +928,18 @@ Re-reviewed those exact diffs from main and updated only the two expected
 hashes in `deploy/phase3_recovery_remote.py`. Backup status/bootstrap pins and
 the fail-closed source verification remain intact; no helper implementation,
 production state or review data changed. All 51 remote-helper unit tests pass.
+
+## 2026-10-24: Activity watch dates and large day lists
+
+Phase 4 validation found two issues in the initial local activity port. Reading
+only a document's post-edit date could miss an edit to an old document when
+that same save changed its date. The observer now captures the tenant's date
+before mutation and uses that snapshot only after a successful update; a real
+payment create/update/watch test verifies it. Cash redirects use the same
+snapshot without changing their posting SQL.
+
+The day/watch views initially resolved each event link separately. They now
+batch existence checks by kind under Spotlight's source capabilities, so a
+1,000-event day does not make a thousand individual document queries. Missing
+or forbidden targets remain unlinked. Tenant selection still comes exclusively
+from the current request, and labels expose no financial amounts.

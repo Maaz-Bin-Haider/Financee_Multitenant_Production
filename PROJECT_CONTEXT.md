@@ -1052,3 +1052,9 @@ The review fixture grants manager analytics only to managers and adds clearly
 synthetic local history/watch examples only for the new activity review project.
 All 17 targeted PostgreSQL/HTTP scenarios passed; JS grid/export checks passed.
 Full regression and browser/release validation remain before owner handoff.
+
+Activity day/watch links are resolved in batches by kind, with existing source
+permissions and tenant-local existence checks. Successful updates retain the
+pre-edit document date so changing an old document's date does not hide it from
+the watch list. Eighteen real integration scenarios cover these cases, including
+1,000-event day bounds over 12,000 generated history rows.

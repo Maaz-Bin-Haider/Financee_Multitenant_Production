@@ -35,6 +35,8 @@ def record(request, action, kind, record_id=None, label='', *, user=None,
     if not settings.TEAM_ACTIVITY_RECORDING_ENABLED or action not in ACTIONS or kind not in KINDS or source not in ('live','browser'):
         return False
     user = user if user is not None else getattr(request, 'user', None)
+    if action=='update' and getattr(request,'activity_document',None)==(kind,as_id(record_id)):
+        document_date=getattr(request,'activity_document_date',document_date)
     if not user or not user.is_authenticated:
         return False
     try:

@@ -24,6 +24,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from activity import figures, queries
 from spotlight.views import scope
+from .links import record_links
 from activity.recorder import as_id, plain, record
 
 PERMISSION = "auth.view_team_activity"
@@ -99,15 +100,6 @@ def _user(request, user_id):
     return {'id':row[0], 'username':row[1], 'active':row[2]} if row else None
 
 
-def href_for(request, kind, action, record_id):
-    if not record_id or action == 'delete': return ''
-    from spotlight.views import record_summary
-    if kind in LINKS:
-        row=record_summary(request,kind,str(record_id))
-        return row.get('href','') if row else ''
-    from spotlight.policy import PAGES
-    target=PAGES.get(kind)
-    return target.path if target and target.allowed(request) else ''
 
 
 @login_required
@@ -206,6 +198,7 @@ def user_day(request):
         rows = cursor.fetchall()
     truncated = len(rows)>1000
     rows=rows[:1000]
+    links=record_links(request,[(r[2],r[1],r[3]) for r in rows])
     work, sessions = [], []
     for local_at, action, kind, record_id, label, source, ip in rows:
         event = {"time": local_at.strftime("%H:%M"), "action": action, "kind": kind,
@@ -214,7 +207,7 @@ def user_day(request):
             event["ip"] = ip or ""
             sessions.append(event)
         else:
-            event["href"] = href_for(request, kind, action, record_id)
+            event["href"] = links.get((kind,record_id),"") if action!="delete" else ""
             work.append(event)
     return JsonResponse({
         "user": user, "day": day.isoformat(), "work": work, "sessions": sessions, "truncated": truncated,
@@ -287,13 +280,14 @@ def watch(request):
     rows = watch_rows({"tz": settings.ACTIVITY_TIMEZONE, "from": start.isoformat(),
                        "old_days": OLD_DOCUMENT_DAYS, "open_hour": OPENING_HOUR,
                        "burst": FAILED_SIGN_IN_BURST, "limit": WATCH_LIMIT})
+    links=record_links(request,[(r[3],"delete" if r[0]=="delete" else "update",r[4]) for r in rows])
     items = []
     for kind_of, local_at, username, kind, record_id, label, doc_date, attempts, ip in rows:
         items.append({
             "type": kind_of, "at": local_at.strftime("%Y-%m-%dT%H:%M"), "username": username,
             "kind": kind, "record_id": record_id, "label": label,
             "dated": doc_date.isoformat() if doc_date else None, "attempts": attempts,
-            "ip": ip or "", "href": href_for(request, kind, "delete" if kind_of == "delete" else "update", record_id),
+            "ip": ip or "", "href": links.get((kind,record_id),"") if kind_of!="delete" else "",
         })
     return JsonResponse({
         "days": days, "from": start.isoformat(), "today": today.isoformat(), "items": items,
