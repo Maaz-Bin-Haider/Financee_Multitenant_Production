@@ -1008,3 +1008,11 @@ default-off in new plans. Event collection and manager access are independent
 (`TEAM_ACTIVITY_RECORDING_ENABLED` and `TEAM_ACTIVITY_ENABLED`). Analytics
 uses the explicitly labeled `ACTIVITY_TIMEZONE`, default Asia/Karachi.
 Historical imports require an explicit cutoff and are never run on startup.
+
+Live JSON document/master/draft recording observes only explicit successful
+write responses, before tenant scope is reset. A created ID omitted by an old
+view is resolved with currval of that exact tenant table's sequence on the
+same thread-local connection, never max(id). Labels contain operation/record
+numbers, not amounts, contact information or arbitrary submitted descriptions.
+Recording uses a nested savepoint and schema-qualified insert, validates fresh
+membership and keeps any audit failure from aborting the business transaction.
