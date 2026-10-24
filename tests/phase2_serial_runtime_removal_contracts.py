@@ -165,9 +165,9 @@ checks = {
     # draft cross-links follow their screen switches; financee_admin.css nests
     # the admin sub-switches.
     # Previously re-pinned 2026-09-30 for draft sale invoices (212 -> 223).
-    "235 serial UI source files match the local Team Activity baseline":
+    "235 serial UI source files match the purchase sizing baseline":
         len(serial_ui_paths) == 235
-        and files_hash(serial_ui_paths) == "d786490b8033102051f08e401c9c3553200f2c11bdf422ca68a3d38204ab0f99",
+        and files_hash(serial_ui_paths) == "aee203ee6be15ddfcc7cde9cb9f7e68df32ff5599d14b9f5f7795d7683d4287c",
     # Re-pinned 2026-09-16 for the dashboard receivables fix (tenant schema
     # version 7). These baselines exist to catch ACCIDENTAL drift in serial
     # behaviour; this change was deliberate and reviewed, so the pins move with

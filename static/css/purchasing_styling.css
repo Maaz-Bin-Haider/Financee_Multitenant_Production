@@ -11,7 +11,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin
 input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
 /* ── Root overrides for this page ── */
-.main-content { font-family: 'DM Sans', sans-serif; }
+.main-content { font-family: 'DM Sans', sans-serif; min-width: 0; }
 
 /* ── Page wrapper ── */
 .sale-page-wrapper {
@@ -119,12 +119,12 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 /* ── Field grid: Party + Date ── */
 .sale-meta-grid {
   display: grid;
-  grid-template-columns: 1fr 220px;
+  grid-template-columns: minmax(0, 1fr) 200px;
   gap: 16px;
   margin-bottom: 24px;
 }
 
-.sale-field-group { display: flex; flex-direction: column; gap: 6px; }
+.sale-field-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 
 .sale-field-label {
   font-size: 0.78rem;
@@ -707,47 +707,81 @@ input.item_name.sale-item-name-hidden {
 }
 
 
-/* ============================================================
-   PURCHASE PAGE — ROW & SERIAL PAIR LAYOUT
-   
-   5-column single-row grid that matches the column headers:
-   Col 1 : Item Name        (minmax 180px, 1.8fr)
-   Col 2 : Unit Price       (120px)
-   Col 3 : Qty              (70px)
-   Col 4 : Serials+Comments (minmax 260px, 2fr)  ← wide
-   Col 5 : Actions          (110px fixed)
-   ============================================================ */
-
-/* ── Purchase row grid (overrides the sale 6-col grid) ── */
+/* Purchase rows match Accounting's two-tier layout: item/price/quantity
+   above a full-width serial list. Keep these after the generic row rules. */
 .item-row.purchase-row {
-  grid-template-columns: minmax(180px, 1.8fr) 120px 70px minmax(260px, 2fr) 110px;
-  grid-template-rows: auto;
-  align-items: start;
-  gap: 10px;
-}
-
-.item-row.purchase-row .item_name_field   { grid-column: 1; }
-.item-row.purchase-row input.unit_price   { grid-column: 2; width: 100%; }
-.item-row.purchase-row .qty-box           { grid-column: 3; width: 100%; }
-.item-row.purchase-row .serials           { grid-column: 4; }
-.item-row.purchase-row .row-actions       {
-  grid-column: 5;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  align-self: start;
+  align-items: stretch;
+  min-width: 0;
+  gap: 0;
 }
 
-/* ── Serials column (purchase only) ── */
+.item-row.purchase-row .row-fields,
+.items-col-headers.purchase-col-headers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px 70px;
+  gap: 10px;
+  align-items: center;
+}
+
+.items-col-headers.purchase-col-headers { padding: 6px 14px; }
+.item-row.purchase-row .row-fields > * { min-width: 0; }
+.item-row.purchase-row .item_name_field { grid-column: 1; }
+.item-row.purchase-row input.unit_price { grid-column: 2; width: 100%; }
+.item-row.purchase-row .qty-box { grid-column: 3; width: 100%; }
+
+.item-row.purchase-row .row-serials-block {
+  margin-top: 11px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border-color);
+  min-width: 0;
+}
+
+.item-row.purchase-row .serials-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 7px;
+}
+
+.item-row.purchase-row .serials-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+}
+
+.item-row.purchase-row .serial-count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 20px;
+  background: var(--tint-neutral);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.item-row.purchase-row .row-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
 .item-row.purchase-row .serials {
-  max-height: 240px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  gap: 6px;
+  width: 100%;
+  max-height: 260px;
   overflow-y: auto;
   overflow-x: hidden;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding-right: 2px;
 }
 
 /* ── Serial pair: SN + comment side by side ── */
@@ -760,10 +794,10 @@ input.item_name.sale-item-name-hidden {
   min-width: 0;
 }
 
-/* Serial number input — wider box */
+/* Serial number input — use the space left beside its readable comment. */
 .serials .serial-pair input.sn {
-  flex: 0 0 205px;
-  width: 205px !important;       /* override .serials input { width:100% } */
+  flex: 1 1 0;
+  width: auto !important;        /* share the available pair width */
   min-width: 0;
   padding: 6px 10px;
   font-family: 'DM Mono', monospace;
@@ -795,11 +829,10 @@ input.item_name.sale-item-name-hidden {
   border-color: var(--border-color);
 }
 
-/* Comment input — shorter, fills remaining space up to a cap */
+/* Keep comments readable instead of squeezing them into the old column. */
 .serials .serial-pair input.cmt {
-  flex: 1 1 0;
+  flex: 0 0 100px;
   min-width: 0;
-  max-width: 160px;
   width: auto !important;        /* override .serials input { width:100% } */
   padding: 6px 10px;
   font-size: 0.79rem;
@@ -831,4 +864,30 @@ input.item_name.sale-item-name-hidden {
   padding: 2px 7px;
   border-radius: 20px;
   white-space: nowrap;
+}
+
+
+.items-action-bar-bottom { margin-top: 12px; }
+
+@media (max-width: 900px) {
+  .items-col-headers.purchase-col-headers { display: none; }
+  .item-row.purchase-row .row-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .item-row.purchase-row .item_name_field { grid-column: 1 / -1; }
+  .item-row.purchase-row input.unit_price,
+  .item-row.purchase-row .qty-box { grid-column: auto; }
+  .item-row.purchase-row .serials { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (pointer: coarse) {
+  .purchase-page .sale-input,
+  .item-row.purchase-row input,
+  .item-row.purchase-row .serials .serial-pair input {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+  .purchase-page .custom-btn,
+  .purchase-page .nav-pill-btn,
+  .purchase-page .btn-pdf,
+  .purchase-page .save-and-update-btn,
+  .purchase-page .delete-btn { min-height: 44px; }
 }

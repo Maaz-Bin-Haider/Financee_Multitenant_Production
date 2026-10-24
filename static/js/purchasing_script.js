@@ -3013,6 +3013,8 @@ function updateQty(row) {
   const filled = Array.from(row.querySelectorAll(".serials .sn"))
     .filter(i => i.value.trim()).length;
   row.querySelector(".qty-box").value = filled;
+  const count = row.querySelector(".serial-count");
+  if (count) count.textContent = row.querySelectorAll(".serials .serial-pair").length;
   calculateTotal();
 }
 
@@ -3303,6 +3305,26 @@ function openBulkForRow(row, prefill = "") {
 }
 
 
+// Shared by new and loaded invoices: fields above, serials across the full row.
+function purchaseSerialsBlockHtml() {
+  return `
+    <div class="row-serials-block">
+      <div class="serials-head">
+        <span class="serials-label">Serials + Comments <span class="serial-count">0</span></span>
+        <div class="row-actions">
+          <button type="button" class="custom-btn add-serial add-serial-btn">＋ Serial</button>
+          <button type="button" class="custom-btn remove-serial">− Serial</button>
+          <button type="button" class="custom-btn btn-bulk bulk-row-btn" title="Paste bulk serials for this item">
+            <i class="fa-solid fa-list" style="font-size:10px;"></i> Bulk
+          </button>
+          <button type="button" class="custom-btn remove-item">✕ Remove</button>
+        </div>
+      </div>
+      <div class="serials"></div>
+    </div>`;
+}
+
+
 // ── addItemRow ────────────────────────────────────────────────────────────────
 function addItemRow(shouldFocus = true) {
   const itemsDiv = document.getElementById("items");
@@ -3310,25 +3332,17 @@ function addItemRow(shouldFocus = true) {
   row.className = "item-row purchase-row";
 
   row.innerHTML = `
-    <div class="item_name_field autocomplete-container">
-      <input type="text" class="item_name item_search_name sale-input"
-        placeholder="Search item name…" autocomplete="off"
-        data-autocomplete-url="${autocompleteItemUrl}"
-        style="font-size:0.87rem;">
-      <div class="items_suggestions"></div>
+    <div class="row-fields">
+      <div class="item_name_field autocomplete-container">
+        <input type="text" class="item_name item_search_name sale-input"
+          placeholder="Search item name…" aria-label="Item name" autocomplete="off"
+          data-autocomplete-url="${autocompleteItemUrl}">
+        <div class="items_suggestions"></div>
+      </div>
+      <input type="number" class="unit_price" step="0.01" min="0" placeholder="0.00" aria-label="Unit price">
+      <input type="number" class="qty-box" readonly value="0" aria-label="Quantity">
     </div>
-    <input type="number" class="unit_price" step="0.01" min="0" placeholder="0.00">
-    <input type="number" class="qty-box" readonly value="0">
-    <div></div>
-    <div class="serials" style="display:flex;flex-direction:column;gap:4px;"></div>
-    <div class="row-actions">
-      <button type="button" class="custom-btn add-serial add-serial-btn">＋ Serial</button>
-      <button type="button" class="custom-btn remove-serial">− Serial</button>
-      <button type="button" class="custom-btn btn-bulk bulk-row-btn" title="Paste bulk serials for this item">
-        <i class="fa-solid fa-list" style="font-size:10px;"></i> Bulk
-      </button>
-      <button type="button" class="custom-btn remove-item">✕ Remove</button>
-    </div>
+    ${purchaseSerialsBlockHtml()}
   `;
 
   row.querySelector(".add-serial-btn").onclick = () => addSerialPair(row);
@@ -3656,28 +3670,19 @@ function renderPurchaseData(data) {
       const row = document.createElement("div");
       row.className = "item-row purchase-row";
       row.innerHTML = `
-        <div class="item_name_field autocomplete-container">
-          <input type="text" class="item_name item_search_name sale-input"
-            value="${escapeHtml(item.item_name||"")}"
-            placeholder="Item name" autocomplete="off"
-            data-autocomplete-url="${autocompleteItemUrl}"
-            style="font-size:0.87rem;">
-          <div class="items_suggestions"></div>
+        <div class="row-fields">
+          <div class="item_name_field autocomplete-container">
+            <input type="text" class="item_name item_search_name sale-input"
+              value="${escapeHtml(item.item_name||"")}"
+              placeholder="Item name" aria-label="Item name" autocomplete="off"
+              data-autocomplete-url="${autocompleteItemUrl}">
+            <div class="items_suggestions"></div>
+          </div>
+          <input type="number" class="unit_price" step="0.01" min="0"
+            placeholder="0.00" value="${item.unit_price||0}" aria-label="Unit price">
+          <input type="number" class="qty-box" readonly value="${item.qty||0}" aria-label="Quantity">
         </div>
-        <input type="number" class="unit_price" step="0.01" min="0"
-          placeholder="0.00" value="${item.unit_price||0}">
-        <input type="number" class="qty-box" readonly value="${item.qty||0}">
-        <div></div>
-        <div class="serials" style="display:flex;flex-direction:column;gap:4px;"></div>
-        <div class="row-actions">
-          <button type="button" class="custom-btn add-serial add-serial-btn">＋ Serial</button>
-          <button type="button" class="custom-btn remove-serial">− Serial</button>
-          <button type="button" class="custom-btn btn-bulk bulk-row-btn"
-            title="Paste bulk serials">
-            <i class="fa-solid fa-list" style="font-size:10px;"></i> Bulk
-          </button>
-          <button type="button" class="custom-btn remove-item">✕ Remove</button>
-        </div>
+        ${purchaseSerialsBlockHtml()}
       `;
 
       row.querySelector(".add-serial-btn").onclick = () => addSerialPair(row);

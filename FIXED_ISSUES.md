@@ -2,6 +2,32 @@
 
 This file records production/setup issues that were diagnosed and fixed, including the root cause, code or SQL changes, and verification steps.
 
+## 2026-10-24: Purchase Line Items Squeezed Comments and Overflowed Small Screens
+
+Multitenant retained the old five-column purchase row (minimum 780px before
+padding/gaps), a 205px fixed serial input and vertically stacked actions.
+Those purchase-specific rules occurred after the responsive rules and won on
+phones too. Comments collapsed into the remaining serial-column space, while
+many serials made a very tall row. An extra empty grid child also consumed
+space in both new and loaded rows.
+
+Accounting's current purchase screen instead gives item/price/quantity their
+own tier, with full-width serial/comment pairs beneath and wrapping actions.
+The local Multitenant fix adapts that layout in both row builders, keeps
+comments at 100px, lets serials use the remaining pair width, and places
+purchase breakpoint overrides after the desktop rules. The new empty serial
+counter changes presentation only; quantity still counts filled serial inputs.
+The Add Item Row button follows the rows. Coarse-pointer controls use 44px
+targets and 16px input text. Semantic theme tokens remain in use.
+
+Financee's separate credit/cash radio controls and vendor/date grid remain;
+Accounting's different type selector and GST controls are not imported.
+No posting, validation, autocomplete, tenant SQL or PDF calculation changes.
+The intentional UI byte pin moves with this correction; financial and SQL
+integrity anchors remain unchanged. Browser verification uses isolated
+synthetic Financee data and read-only source-derived Accounting layout
+snapshots, never Accounting's database or deployment.
+
 ## 2026-10-24: Worker Rollback Test Assumed Ripgrep on the CI Runner
 
 The first cumulative feature push (`6942f6e`, workflow `40109251996`) failed

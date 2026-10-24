@@ -81,7 +81,7 @@
 {% endblock SeperateCssFile %}
 
 {% block body %}
-<div class="sale-page-wrapper">
+<div class="sale-page-wrapper purchase-page">
 
   <!-- ── TOP ACTION BAR ── -->
   <div class="sale-topbar">
@@ -185,20 +185,13 @@
             <div class="title-icon">📋</div>
             Line Items
           </div>
-          <div class="items-action-bar">
-            <button type="button" class="custom-btn btn-add-item" onclick="addItemRow()">
-              <i class="fa-solid fa-plus"></i> Add Item Row
-            </button>
-          </div>
         </div>
 
         <!-- Column headers -->
-        <div class="items-col-headers" style="grid-template-columns:minmax(180px,1.8fr) 120px 70px minmax(260px,2fr) 110px;">
+        <div class="items-col-headers purchase-col-headers">
           <span class="col-header">Item Name</span>
           <span class="col-header">Unit Price</span>
           <span class="col-header">Qty</span>
-          <span class="col-header">Serials + Comments</span>
-          <span class="col-header">Actions</span>
         </div>
 
         <!-- Hint -->
@@ -209,6 +202,12 @@
         </p>
 
         <div id="items"></div>
+
+        <div class="items-action-bar items-action-bar-bottom">
+          <button type="button" class="custom-btn btn-add-item" onclick="addItemRow()">
+            <i class="fa-solid fa-plus"></i> Add Item Row
+          </button>
+        </div>
 
       </div><!-- /.sale-card-body -->
 

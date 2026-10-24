@@ -11,12 +11,21 @@ This file is the persistent engineering context for Financee. Update it on every
   comparison against Accounting because Multitenant has sizing problems.
   Work locally on `codex/purchase-ui-sizing` from deployed `dbd7d7e`.
   Accounting remains read-only. Its purchase rows use separate field/serial
-  tiers; Multitenant still has a minimum-width five-column row, a fixed 205px
-  serial input and a two-column metadata grid for three fields. Its final
+  tiers; Multitenant still has a minimum-width five-column row and a fixed
+  205px serial input. Its purchase-type radios sit outside the vendor/date
+  grid, unlike Accounting's type selector; preserve this Financee flow. Its final
   purchase rules also override earlier mobile rules. Adapt presentation only,
   preserving tenant checks, autocomplete, serial validation, posting and PDFs.
   Commit focused increments, verify at desktop/tablet/phone sizes, and stop
   with an isolated local review build; no new push/deployment is authorized.
+
+  The implementation uses a shared serial-tier markup helper in the new and
+  loaded purchase row builders, full-width serial grids, readable comments,
+  wrapping row actions and final purchase-specific mobile overrides. The add
+  button sits below the rows. Quantity/submission/validation logic is retained;
+  the extra serial count reports displayed input slots. JavaScript syntax,
+  29 source contracts, repository hygiene and 11 theme checks pass before
+  isolated browser review. See `FIXED_ISSUES.md` for the root cause.
 
 - **Feature release confirmed (2026-10-24):** main `dbd7d7e` and workflow
   `40109385644` completed successfully, including all 13 test gates, image
