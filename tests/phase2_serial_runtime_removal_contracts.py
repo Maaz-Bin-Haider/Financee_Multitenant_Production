@@ -165,7 +165,7 @@ checks = {
     # draft cross-links follow their screen switches; financee_admin.css nests
     # the admin sub-switches.
     # Previously re-pinned 2026-09-30 for draft sale invoices (212 -> 223).
-    "231 serial UI source files match the local Spotlight baseline":
+    "231 serial UI source files match the local Team Activity baseline":
         len(serial_ui_paths) == 231
         and files_hash(serial_ui_paths) == "c368c676764db209a6abb5a49f63a7982b4874550df560ad2c28fa6a16eadf07",
     # Re-pinned 2026-09-16 for the dashboard receivables fix (tenant schema
@@ -185,9 +185,9 @@ checks = {
     # of tenant_template.sql and production_hardening.sql. It is deliberately
     # NOT in build_multitenant_db.sql (the bootstrap pin below is unchanged);
     # production_hardening.sql brings the bootstrap tenant up at first start.
-    "19 serial tenant SQL files match the reviewed report-email baseline":
-        len(serial_sql_paths) == 19
-        and files_hash(serial_sql_paths) == "54f4f530a7975215c5ccf45bae0015c846d78999aba310fe747778c4aa5834c7",
+    "20 serial tenant SQL files match the additive Team Activity baseline":
+        len(serial_sql_paths) == 20
+        and files_hash(serial_sql_paths) == "64530db0f4527e09ba5ca803f11324333ab58918359feb98af187ef323e348aa",
     # The serial gate lets only stored functions differ between the bootstrap
     # tenant (hardening) and a provisioned one (template), so the draft invoice
     # patch must stay byte-identical in all three places.

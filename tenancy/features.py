@@ -130,6 +130,7 @@ FEATURE_GROUPS = {
     "owner_equity": {"label": "Owner Equity", "subs": {}},
     "month_close": {"label": "Month-End Close", "subs": {}},
     "spotlight": {"label": "Spotlight Search", "subs": {}},
+    "team_activity": {"label": "Team Activity", "subs": {}},
     "report_email": {"label": "Report Email", "subs": {}},
     # Export & documents
     "pdf_export": {
@@ -151,7 +152,7 @@ FEATURE_CATEGORIES = (
     )),
     ("Reports", ("accounts_reports", "stock_reports", "monthly_reports", "sales_reports")),
     ("Add-on modules", (
-        "draft_invoices", "opening_stock", "opening_cash", "owner_equity", "month_close", "report_email", "spotlight",
+        "draft_invoices", "opening_stock", "opening_cash", "owner_equity", "month_close", "report_email", "spotlight", "team_activity",
     )),
     ("Export & documents", ("pdf_export", "excel_export", "attachments")),
 )
@@ -178,6 +179,7 @@ DEFAULT_DISABLED_FEATURES = frozenset({
     "attachments",
     "report_email",
     "spotlight",
+    "team_activity",
 })
 
 
@@ -281,6 +283,7 @@ FEATURE_PATH_PREFIXES = (
     # Add-on modules
     ("/report-email/", "report_email"),
     ("/spotlight/", "spotlight"),
+    ("/activity/", "team_activity"),
     ("/opening-stock/", "opening_stock"),
     ("/set-opening/", "opening_cash"),
     ("/owner-equity/", "owner_equity"),

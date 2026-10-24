@@ -22,6 +22,8 @@ IMG_3A=${PHASE4B_IMAGE_3A:-ghcr.io/maaz-bin-haider/financee-web:497b6650ed678bc4
 IMG_4A=${PHASE4B_IMAGE_4A:-ghcr.io/maaz-bin-haider/financee-web:a4f915f3e771d0769f410a3d9ee0cdb7bbc1cd00}
 IMG_4B=${PHASE4B_IMAGE_4B:-financee-web:4b-local}
 FAILED=0
+activity_permission_expected=0
+[[ -f ../activity/apps.py ]] && activity_permission_expected=1
 report_permission_expected=0
 [[ -f ../reportmailer/apps.py ]] && report_permission_expected=1
 
@@ -52,7 +54,7 @@ rows() { psql "SELECT count(*) FROM django_migrations WHERE app IN ('tenancy','a
 # retention checks below compare every OTHER permission. Report Email adds
 # send_reports the same way; assert its seed separately without masking changes
 # to any preexisting permission or grant.
-perms() { psql "SELECT count(*) FROM auth_permission WHERE codename NOT LIKE '%draft%' AND codename <> 'send_reports'"; }
+perms() { psql "SELECT count(*) FROM auth_permission WHERE codename NOT LIKE '%draft%' AND codename NOT IN ('send_reports','view_team_activity')"; }
 
 echo "== Part 1: fresh install on the 4B release =="
 mkproj fresh; trap teardown EXIT
@@ -71,6 +73,8 @@ check "fresh install registers the bootstrap tenant exactly once" \
   "$(psql "SELECT count(*) FROM tenancy_company WHERE schema_name='tenant_company_1'")" 1
 check "fresh install seeds only the report-email capability"   "$(psql "SELECT count(*) FROM auth_permission WHERE codename='send_reports'")" "$report_permission_expected"
 check "report-email capability is not automatically granted"   "$(psql "SELECT count(*) FROM auth_user_user_permissions up JOIN auth_permission p ON p.id=up.permission_id WHERE p.codename='send_reports'")" 0
+check "fresh install seeds the team-activity capability" "$(psql "SELECT count(*) FROM auth_permission WHERE codename='view_team_activity'")" "$activity_permission_expected"
+check "team-activity capability is not automatically granted" "$(psql "SELECT count(*) FROM auth_user_user_permissions up JOIN auth_permission p ON p.id=up.permission_id WHERE p.codename='view_team_activity'")" 0
 check "fresh install has nothing left to migrate" \
   "$(WEB_IMAGE="$IMG_4B" dc exec -T web python manage.py migrate --plan 2>/dev/null | grep -c 'No planned migration operations.')" 1
 teardown; trap - EXIT
@@ -103,6 +107,7 @@ check "company rows are retained across the 4B upgrade" "$(psql "SELECT count(*)
 check "the registry is byte-identical across the 4B upgrade" \
   "$(psql "SELECT md5(string_agg(t::text,'|' ORDER BY id)) FROM tenancy_company t")" "$before_digest"
 check "upgrade seeds the report-email capability without a migration"   "$(psql "SELECT count(*) FROM auth_permission WHERE codename='send_reports'")" "$report_permission_expected"
+check "upgrade seeds team activity without a migration" "$(psql "SELECT count(*) FROM auth_permission WHERE codename='view_team_activity'")" "$activity_permission_expected"
 check "permissions are retained across the 4B upgrade" "$(perms)" "$before_perms"
 check "the upgrade seeds the draft invoice permissions without a migration" \
   "$(psql "SELECT count(*) FROM auth_permission WHERE codename LIKE '%draft%'")" 11

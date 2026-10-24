@@ -996,3 +996,15 @@ use strict IDs instead of name matching. Quick actions prefill existing forms
 only, validate customer/vendor/cash scope, and refuse ambiguous or wildcard
 names because those forms still save by name. Existing entry pickers and
 business posting logic remain unchanged. Missing targets leave the form stable.
+
+### Team Activity foundation (Phase 4)
+
+`activity_events` is an append-only table in each company schema, installed by
+the registered `add_team_activity.sql` patch and verbatim template/hardening
+appendices. No public activity table, migration or financial SQL changes.
+Tenant version remains 6. `auth.view_team_activity` is seeded idempotently
+without grants via `post_migrate`; the company `team_activity` UI switch is
+default-off in new plans. Event collection and manager access are independent
+(`TEAM_ACTIVITY_RECORDING_ENABLED` and `TEAM_ACTIVITY_ENABLED`). Analytics
+uses the explicitly labeled `ACTIVITY_TIMEZONE`, default Asia/Karachi.
+Historical imports require an explicit cutoff and are never run on startup.

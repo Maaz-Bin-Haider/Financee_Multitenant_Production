@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'draft',
     'reportmailer',
     'spotlight',
+    'activity',
 ]
 
 MIDDLEWARE = [
@@ -265,3 +266,8 @@ DRAFT_AGE_WARNING_DAYS = env.int("DRAFT_AGE_WARNING_DAYS", default=30)
 # a process-wide password. Operators may allow additional public SMTP providers.
 REPORT_EMAIL_ENABLED = env.bool("REPORT_EMAIL_ENABLED", default=True)
 REPORT_EMAIL_SMTP_HOSTS = env.list("REPORT_EMAIL_SMTP_HOSTS", default=["smtp.gmail.com", "smtp.office365.com"])
+
+# Team analytics access and event recording are independent controls.
+TEAM_ACTIVITY_ENABLED = env.bool("TEAM_ACTIVITY_ENABLED", default=True)
+TEAM_ACTIVITY_RECORDING_ENABLED = env.bool("TEAM_ACTIVITY_RECORDING_ENABLED", default=True)
+ACTIVITY_TIMEZONE = env("ACTIVITY_TIMEZONE", default="Asia/Karachi")
