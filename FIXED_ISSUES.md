@@ -951,3 +951,11 @@ The first browser pass caught a startup exception: Accounting exposes
 `number`. Team Activity now consumes/validates the user parameter using the
 actual Financee API, then matches it against the company-scoped roster. No
 existing record-link helper or target document behavior was changed.
+
+## 2026-10-24: Team Activity calendar expanded the phone page
+
+A real 390px browser viewport showed the year grid increasing the main flex
+item's automatic minimum width. The activity stylesheet now sets that parent
+minimum to zero only when it contains this page, and constrains filter fields.
+The calendar/hour grids and team tables retain their own horizontal scrollers;
+shared report/sidebar styles are unchanged.

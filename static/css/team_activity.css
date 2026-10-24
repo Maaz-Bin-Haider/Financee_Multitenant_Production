@@ -300,3 +300,8 @@ a.ta-what.ta-what:hover { text-decoration: underline; }
   .ta-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ta-mix-row { grid-template-columns: minmax(0, 9em) minmax(0, 1fr) 3em; }
 }
+
+/* A flex item's automatic minimum otherwise expands to the year grid's width. */
+.main-content:has(.ta-page) { min-width: 0; }
+.ta-controls .filter-field { min-width: 0; max-width: 100%; }
+.ta-controls select { max-width: 100%; }
