@@ -6,6 +6,15 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
+- **Main CI portability correction (2026-10-24):** push `6942f6e` reached
+  `origin/main`; run `40109251996` failed the static-check job because
+  `tests/test_report_worker_lifecycle.sh` invoked `rg`, absent on the runner.
+  Reproduced locally with a system-only PATH (exit 127). Replace these test-only
+  assertions with equivalent standard `grep -Fq` / `grep -Eq`; no application
+  or deployment helper changes. Verify the same no-ripgrep environment, commit
+  the focused correction and push under the owner's active main/CI instruction.
+  Follow the new exact-SHA run; the failed run is not release success.
+
 - **Main push authorized (2026-10-24):** after the completed local Team Activity
   handoff `4d74f11`, the owner instructed "now push to main and watch CI to
   complete". This supersedes the preceding no-push stop for the cumulative

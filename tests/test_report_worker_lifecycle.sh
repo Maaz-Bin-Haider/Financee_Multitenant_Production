@@ -18,11 +18,11 @@ FAKE
 chmod +x "$scratch/docker"
 export PATH="$scratch:$PATH" WORKER_TEST_LOG="$scratch/docker.log"
 WEB_IMAGE=new-image bash deploy/report_worker_control.sh start
-rg -q 'up -d --no-deps --wait --wait-timeout 150 report_worker' "$WORKER_TEST_LOG"
+grep -Fq 'up -d --no-deps --wait --wait-timeout 150 report_worker' "$WORKER_TEST_LOG"
 : >"$WORKER_TEST_LOG"
 WEB_IMAGE=old-image bash deploy/report_worker_control.sh restore
-rg -q 'stop report_worker' "$WORKER_TEST_LOG"
-if rg -q 'up -d' "$WORKER_TEST_LOG"; then exit 1; fi
+grep -Fq 'stop report_worker' "$WORKER_TEST_LOG"
+if grep -Fq 'up -d' "$WORKER_TEST_LOG"; then exit 1; fi
 if WEB_IMAGE=new-image WORKER_TEST_HEALTH=unhealthy bash deploy/report_worker_control.sh start; then exit 1; fi
 printf '%s\n' 'PASS: matching worker start, old-image rollback stop, and unhealthy-worker rejection'
 
@@ -49,6 +49,6 @@ chmod +x "$scratch/curl"
 : >"$WORKER_TEST_LOG"
 if WEB_IMAGE=candidate-image DEPLOY_HEALTH_ATTEMPTS=1 DEPLOY_HEALTH_INTERVAL_SECONDS=0 \
    bash deploy/deploy_pull.sh >"$scratch/deploy.log" 2>&1; then exit 1; fi
-rg -q 'WEB_IMAGE=sha256:previous-image compose -f docker-compose.yml up -d --no-deps web' "$WORKER_TEST_LOG"
-if rg -q 'WEB_IMAGE=sha256:previous-image compose.*up.*report_worker' "$WORKER_TEST_LOG"; then exit 1; fi
+grep -Fq 'WEB_IMAGE=sha256:previous-image compose -f docker-compose.yml up -d --no-deps web' "$WORKER_TEST_LOG"
+if grep -Eq 'WEB_IMAGE=sha256:previous-image compose.*up.*report_worker' "$WORKER_TEST_LOG"; then exit 1; fi
 printf '%s\n' 'PASS: worker-health failure after successful HTTP check rolls back web and stops unsupported worker'

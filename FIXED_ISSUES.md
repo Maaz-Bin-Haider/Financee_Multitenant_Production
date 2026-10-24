@@ -2,6 +2,21 @@
 
 This file records production/setup issues that were diagnosed and fixed, including the root cause, code or SQL changes, and verification steps.
 
+## 2026-10-24: Worker Rollback Test Assumed Ripgrep on the CI Runner
+
+The first cumulative feature push (`6942f6e`, workflow `40109251996`) failed
+the static-check job at `tests/test_report_worker_lifecycle.sh:21` with
+`rg: command not found` (exit 127). The local developer environment had ripgrep,
+so the existing rollback simulations passed locally while the runner failed
+before their assertions could complete. Django and frontend checks had passed.
+
+The test now uses standard `grep -Fq` for literal assertions and `grep -Eq`
+for the one regular-expression assertion. This keeps all worker start/stop,
+health and old-image rollback expectations intact without installing another
+runner dependency. Application and production helper behavior are unchanged.
+The original failure was reproduced with a system-only PATH excluding ripgrep;
+the corrected script passes in that same environment.
+
 ## 2026-09-26: Sidebar Hid Sales Reports From Most Report Permissions and Showed an Empty Inventory Badge
 
 ### Symptoms
