@@ -6,6 +6,16 @@ This file is the persistent engineering context for Financee. Update it on every
 
 ## Session Resume Checkpoint
 
+- **Main push authorized (2026-10-24):** after the completed local Team Activity
+  handoff `4d74f11`, the owner instructed "now push to main and watch CI to
+  complete". This supersedes the preceding no-push stop for the cumulative
+  report-email, Spotlight and Team Activity work. Remote `main` was verified
+  at `da30168` and is an ancestor of the clean local branch. Fast-forward
+  `main`, preserving every focused implementation commit, and push normally;
+  monitor the exact resulting SHA through CI. Record actual results separately.
+  Do not self-approve protected staging/production environments or run a
+  production historical import. Accounting and local review data stay intact.
+
 - **Phase 4 Team Activity ready for owner review (2026-10-24):** application
   `703be6c` is complete locally on `codex/team-activity`, above unpushed
   Spotlight checkpoint `7e4e01e`. All 25 regression modules passed on

@@ -1,6 +1,6 @@
 # Financee feature rollout plan
 
-Created: 2026-10-23. Updated: 2026-10-24. Status: Phase 1 deployed and owner-confirmed; Phase 2 manual review passed, unpushed. Phases 3 and 4 are implemented and verified locally under explicit local exceptions below, awaiting owner review. No further push, merge, deployment or production historical import is authorized.
+Created: 2026-10-23. Updated: 2026-10-24. Status: Phase 1 deployed and owner-confirmed; Phases 2–4 implemented and verified locally. After the final Team Activity handoff, the owner explicitly authorized pushing the cumulative work to main and watching CI. The main push/CI checkpoint below supersedes earlier no-push stops; protected release approvals and production historical import remain owner-controlled.
 
 ## 1. Scope and working agreement
 
@@ -278,3 +278,11 @@ image/commit. Earlier branches/data are preserved; their stacks were already
 stopped when this phase began. STOP for owner review; no push, merge, deployment
 or production historical import. GitHub contribution history changes only
 after an explicitly authorized push.
+
+Main push authorization (2026-10-24): following local handoff `4d74f11`, the
+owner instructed "now push to main and watch CI to complete". Remote `main`
+at `da30168` is an ancestor of the completed branch. Fast-forward and push
+normally, retaining the focused Phase 2–4 commits, then monitor the exact SHA.
+This instruction supersedes the earlier local-only push gates. Record actual
+CI/release outcomes as observed; do not infer production success from the push,
+self-approve protected environments or import production activity history.

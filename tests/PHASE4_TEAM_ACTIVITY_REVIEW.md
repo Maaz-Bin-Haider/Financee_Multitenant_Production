@@ -187,3 +187,14 @@ authorized by this handoff.
 
 Subsequent handoff commits record verification/documentation only. The private
 handoff always identifies the exact final committed checkout/image running.
+
+## Subsequent main push authorization
+
+On 2026-10-24, after this local handoff, the owner instructed "now push to main
+and watch CI to complete". This authorizes the cumulative Phase 2–4 main push
+and supersedes the earlier no-push stop. Preserve the focused commits with a
+fast-forward from verified `origin/main` at `da30168`; monitor the exact pushed
+SHA. The verification above remains evidence for application `703be6c` and the
+documentation-only handoff `4d74f11`. Record actual CI outcomes when available.
+Protected environment approvals and production historical import remain with
+the owner; local review data and Accounting are preserved.
