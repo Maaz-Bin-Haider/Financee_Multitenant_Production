@@ -1,10 +1,20 @@
 # Project Context
 
-Last updated: 2026-10-23
+Last updated: 2026-10-24
 
 This file is the persistent engineering context for Financee. Update it on every meaningful project change, especially changes to architecture, routes, permissions, tenant SQL, deployment behavior, environment variables, tests, or data model assumptions.
 
 ## Session Resume Checkpoint
+
+- **Phase 4 locally authorized (2026-10-24):** the owner instructed "continue
+  to next phase on local". The workspace already contains completed Spotlight
+  at `7e4e01e`; continue with Team Activity on `codex/team-activity` from that
+  clean checkpoint. This permits local implementation before releasing the
+  earlier phases; it does not assert that Spotlight manual review passed.
+  No push, merge, deployment or production backfill is authorized. Preserve
+  all three existing review stacks/data and Accounting as a read-only source.
+  Make focused commits, verify in disposable resources and stop with a fourth
+  isolated local review stack for the owner.
 
 - **Phase 3 Spotlight ready for owner review (2026-10-23):** implemented locally
   on `codex/spotlight` above Phase 2 handoff `82f3d7e`, by explicit owner

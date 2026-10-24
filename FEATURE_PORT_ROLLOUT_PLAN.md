@@ -257,3 +257,10 @@ and the owner checklist. Leave its separate review application at
 `http://financee-review-spotlight.localhost:8183/` running. Keep Phase 1/2
 stacks/data intact. Owner Spotlight review is pending. No push, merge,
 deployment or Team Activity work is authorized. STOP for the owner.
+
+Phase 4 local exception (2026-10-24): the owner instructed "continue to next
+phase on local" after Spotlight implementation was complete. Proceed with
+Team Activity on `codex/team-activity` from `7e4e01e`, preserving all earlier
+branches and review data. Spotlight manual approval is not inferred. All work
+stays local; no push, deployment or production backfill is authorized. Stop
+after Team Activity for the owner's manual review and further instruction.
