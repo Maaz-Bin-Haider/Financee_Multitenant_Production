@@ -1058,3 +1058,10 @@ permissions and tenant-local existence checks. Successful updates retain the
 pre-edit document date so changing an old document's date does not hide it from
 the watch list. Eighteen real integration scenarios cover these cases, including
 1,000-event day bounds over 12,000 generated history rows.
+
+The first full regression passed 24 modules; the feature-plan module still
+expected the pre-activity group/default set. Its exact expected plan now
+explicitly includes Team Activity only in builds that install the app, retaining
+old-image compatibility and adding independent read-versus-record path checks.
+The browser pass also corrected Accounting's different user-link helper API;
+Financee's shared record-link implementation itself remains unchanged.

@@ -95,6 +95,11 @@ if "spotlight" in settings.INSTALLED_APPS:
     EXPECTED_DEFAULT_OFF.add("spotlight")
     EXPECTED_GROUPS.add("spotlight")
 
+if "activity" in settings.INSTALLED_APPS:
+    EXPECTED_DEFAULT_OFF.add("team_activity")
+    EXPECTED_GROUPS.add("team_activity")
+
+
 def chk(name, ok, detail=""):
     RESULTS.append((name, bool(ok), "" if ok else str(detail)))
     return bool(ok)
@@ -478,6 +483,8 @@ def check_default_registry():
         "/draft/pending/": "draft_invoices.pending_report",
         "/sales-reports/": "sales_reports",
     }
+    if "activity" in settings.INSTALLED_APPS:
+        expected.update({"/activity/":"team_activity", "/activity/api/team/":"team_activity", "/activity/record/":None})
     wrong = {path: (feature_for_path(path), want)
              for path, want in expected.items() if feature_for_path(path) != want}
     chk("defaults: module, dashboard, draft and shared-picker paths resolve", not wrong, wrong)
